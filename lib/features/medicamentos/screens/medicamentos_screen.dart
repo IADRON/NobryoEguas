@@ -1,0 +1,279 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:nobryo_final/core/database/sqlite_helper.dart';
+import 'package:nobryo_final/core/models/medicamento_model.dart';
+import 'package:nobryo_final/core/services/sync_service.dart';
+import 'package:nobryo_final/features/auth/screens/manage_users_screen.dart';
+import 'package:nobryo_final/core/services/auth_service.dart';
+import 'package:nobryo_final/features/auth/widgets/user_profile_modal.dart';
+import 'package:nobryo_final/shared/theme/theme.dart';
+import 'package:nobryo_final/shared/widgets/loading_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
+
+class MedicamentosScreen extends StatefulWidget {
+  const MedicamentosScreen({super.key});
+
+  @override
+  State<MedicamentosScreen> createState() => _MedicamentosScreenState();
+}
+
+class _MedicamentosScreenState extends State<MedicamentosScreen> {
+  late Future<List<Medicamento>> _medicamentosFuture;
+
+  final SyncService _syncService = SyncService();
+  final AuthService _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshMedicamentos();
+    Provider.of<SyncService>(context, listen: false).addListener(_refreshMedicamentos);  
+  }
+
+  @override
+  void dispose() {
+    Provider.of<SyncService>(context, listen: false).removeListener(_refreshMedicamentos);
+    super.dispose();
+  }
+
+  void _refreshMedicamentos() {
+    setState(() {
+      _medicamentosFuture = SQLiteHelper.instance.readAllMedicamentos();
+    });
+  }
+
+  Future<void> _autoSync() async {
+    final bool _ = await _syncService.syncData(isManual: false);
+    if (mounted) {}
+    _refreshMedicamentos();
+  }
+
+  Future<void> _manualSync() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => const LoadingScreen(),
+    );
+
+    final bool online = await _syncService.syncData(isManual: true);
+
+    if (mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(online ? "Sincronização concluída!" : "Sem conexão com a internet."),
+        backgroundColor: online ? Colors.green : Colors.orange,
+      ));
+    }
+    _refreshMedicamentos();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final username = _authService.currentUserNotifier.value?.username;
+    final bool isAdmin = username == 'admin' || username == 'Bruna';
+    final currentUser = _authService.currentUserNotifier.value;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("MEDICAMENTOS"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.sync),
+            tooltip: "Sincronizar Dados",
+            onPressed: _manualSync,
+          ),
+          if (isAdmin)
+            IconButton(
+              icon: const Icon(Icons.group_outlined),
+              tooltip: "Gerenciar Usuários",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ManageUsersScreen()),
+                );
+              },
+            ),
+          if (currentUser != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: GestureDetector(
+                onTap: () => showUserProfileModal(context),
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: AppTheme.lightGrey,
+                  backgroundImage: (currentUser.photoUrl != null &&
+                          currentUser.photoUrl!.isNotEmpty)
+                      ? FileImage(File(currentUser.photoUrl!)) as ImageProvider
+                      : null,
+                  child: (currentUser.photoUrl == null ||
+                          currentUser.photoUrl!.isEmpty)
+                      ? const Icon(Icons.person, color: AppTheme.darkGreen)
+                      : null,
+                ),
+              ),
+            ),
+        ],
+      ),
+      body: FutureBuilder<List<Medicamento>>(
+        future: _medicamentosFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text("Erro: ${snapshot.error}"));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Text(
+                  "Nenhum medicamento cadastrado.\nClique no '+' para adicionar o primeiro.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+            );
+          }
+          
+          final medicamentos = snapshot.data!;
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
+            itemCount: medicamentos.length,
+            itemBuilder: (context, index) {
+              final med = medicamentos[index];
+              return Card(
+                child: ListTile(
+                  title: Text(med.nome, style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.darkText)),
+                  subtitle: Text(med.descricao, style: TextStyle(color: Colors.grey[700])),
+                  trailing: IconButton(
+                    icon: Icon(Icons.delete_outline, color: Colors.red[700]),
+                    onPressed: () => _confirmDeleteMedicamento(med),
+                    tooltip: "Excluir medicamento",
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddMedicamentoModal(context),
+        child: const Icon(Icons.add),
+        tooltip: "Adicionar Medicamento",
+      ),
+    );
+  }
+
+  void _confirmDeleteMedicamento(Medicamento med) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Confirmar Exclusão"),
+        content: Text("Tem certeza que deseja excluir o medicamento \"${med.nome}\"?"),
+        actions: [
+          TextButton(
+            child: const Text("Cancelar"),
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          TextButton(
+            child: Text("Excluir", style: TextStyle(color: Colors.red[700])),
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await SQLiteHelper.instance.softDeleteMedicamento(med.id);
+      if (mounted) {
+          _refreshMedicamentos();
+          _autoSync();
+      }
+    }
+  }
+
+  void _showAddMedicamentoModal(BuildContext context) {
+    final formKey = GlobalKey<FormState>();
+    final nomeController = TextEditingController();
+    final descController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                top: 20,
+                left: 20,
+                right: 20),
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 10),
+                  Text("Adicionar Medicamento",
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  const Divider(height: 30, thickness: 1),
+              TextFormField(
+                controller: nomeController,
+                decoration: InputDecoration(
+                  labelText: "Nome",
+                  prefixIcon: Icon(Icons.medication_outlined)),
+                validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: descController,
+                decoration: InputDecoration(
+                  labelText: "Descrição",
+                  prefixIcon: Icon(Icons.notes_outlined)),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
+                  onPressed: () async {
+                    if (formKey.currentState!.validate()) {
+                      final novoMed = Medicamento(
+                        id: const Uuid().v4(),
+                        nome: nomeController.text,
+                        descricao: descController.text,
+                      );
+                      await SQLiteHelper.instance.createMedicamento(novoMed);
+                      if (mounted) {
+                        Navigator.of(ctx).pop();
+                        _autoSync();
+                      }
+                    }
+                  },
+                  child: const Text("Salvar"),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    ));
+  }
+} 
