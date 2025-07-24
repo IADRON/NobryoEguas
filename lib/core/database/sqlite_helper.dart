@@ -25,7 +25,7 @@ class SQLiteHelper {
 
     return await openDatabase(
       path,
-      version: 14,
+      version: 16,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -34,9 +34,7 @@ class SQLiteHelper {
     );
   }
 
-  // MÉTODO CORRIGIDO
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Mantém as atualizações de versões anteriores
     if (oldVersion < 7) {
       await db.execute('ALTER TABLE users ADD COLUMN photoUrl TEXT');
     }
@@ -51,7 +49,6 @@ class SQLiteHelper {
         await db.execute('ALTER TABLE propriedades ADD COLUMN isDeleted INTEGER DEFAULT 0 NOT NULL');
     }
     if (oldVersion < 13) {
-        // Lógica de migração da tabela de usuários
         final columns = await db.rawQuery('PRAGMA table_info(users)');
         final hasUsernameColumn = columns.any((col) => col['name'] == 'username');
         if (!hasUsernameColumn) {
@@ -80,6 +77,12 @@ class SQLiteHelper {
     if (oldVersion < 14) {
       await db.execute('ALTER TABLE users ADD COLUMN isDeleted INTEGER DEFAULT 0 NOT NULL');
       await _createPeoesTable(db);
+    }
+    if (oldVersion < 15) {
+      await db.execute("ALTER TABLE eguas ADD COLUMN categoria TEXT NOT NULL DEFAULT 'Matriz'");
+    }
+     if (oldVersion < 16) {
+      await db.execute("ALTER TABLE propriedades ADD COLUMN parentId TEXT");
     }
   }
 
@@ -117,7 +120,7 @@ class SQLiteHelper {
      await db.execute('''
       CREATE TABLE IF NOT EXISTS propriedades (
         id TEXT PRIMARY KEY, firebaseId TEXT, nome TEXT NOT NULL,
-        dono TEXT NOT NULL, statusSync TEXT NOT NULL,
+        dono TEXT NOT NULL, parentId TEXT, statusSync TEXT NOT NULL,
         isDeleted INTEGER DEFAULT 0 NOT NULL
       )
     ''');
@@ -130,6 +133,7 @@ class SQLiteHelper {
         dataParto TEXT, sexoPotro TEXT, statusReprodutivo TEXT NOT NULL, diasPrenhe INTEGER,
         observacao TEXT, propriedadeId TEXT NOT NULL, statusSync TEXT NOT NULL,
         isDeleted INTEGER DEFAULT 0 NOT NULL,
+        categoria TEXT NOT NULL DEFAULT 'Matriz',
         FOREIGN KEY (propriedadeId) REFERENCES propriedades (id) ON DELETE CASCADE
       )
     ''');
@@ -182,7 +186,6 @@ class SQLiteHelper {
     ''');
   }
 
-  // --- CRUD Users ---
   Future<void> createUser(AppUser user) async {
     final db = await instance.database;
     await db.insert('users', user.toMapForDb(), conflictAlgorithm: ConflictAlgorithm.replace);
@@ -223,7 +226,6 @@ class SQLiteHelper {
     return result.map((json) => AppUser.fromDbMap(json)).toList();
   }
   
-  // --- CRUD Propriedades ---
   Future<void> createPropriedade(Propriedade propriedade) async {
     final db = await instance.database;
     await db.insert('propriedades', propriedade.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
@@ -232,6 +234,18 @@ class SQLiteHelper {
   Future<List<Propriedade>> readAllPropriedades() async {
     final db = await instance.database;
     final result = await db.query('propriedades', where: 'isDeleted = 0', orderBy: 'nome ASC');
+    return result.map((json) => Propriedade.fromMap(json)).toList();
+  }
+
+  Future<List<Propriedade>> readTopLevelPropriedades() async {
+    final db = await instance.database;
+    final result = await db.query('propriedades', where: 'isDeleted = 0 AND parentId IS NULL', orderBy: 'nome ASC');
+    return result.map((json) => Propriedade.fromMap(json)).toList();
+  }
+  
+  Future<List<Propriedade>> readSubPropriedades(String parentId) async {
+    final db = await instance.database;
+    final result = await db.query('propriedades', where: 'isDeleted = 0 AND parentId = ?', whereArgs: [parentId], orderBy: 'nome ASC');
     return result.map((json) => Propriedade.fromMap(json)).toList();
   }
 
@@ -280,7 +294,6 @@ class SQLiteHelper {
     return db.delete('propriedades', where: 'id = ?', whereArgs: [id]);
   }
 
-  // --- CRUD Eguas ---
   Future<void> createEgua(Egua egua) async {
     final db = await instance.database;
     await db.insert('eguas', egua.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
@@ -343,7 +356,6 @@ class SQLiteHelper {
     return db.delete('eguas', where: 'id = ?', whereArgs: [id]);
   }
 
-  // --- CRUD Medicamentos ---
   Future<void> createMedicamento(Medicamento medicamento) async {
     final db = await instance.database;
     await db.insert('medicamentos', medicamento.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
@@ -382,7 +394,6 @@ class SQLiteHelper {
     return db.delete('medicamentos', where: 'id = ?', whereArgs: [id]);
   }
   
-  // --- CRUD Manejos ---
   Future<void> createManejo(Manejo manejo) async {
     final db = await instance.database;
     await db.insert('manejos', manejo.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
@@ -439,7 +450,6 @@ class SQLiteHelper {
     return result.map((json) => Manejo.fromMap(json)).toList();
   }
 
-  // --- CRUD Peões ---
   Future<void> createPeao(Peao peao) async {
     final db = await instance.database;
     await db.insert('peoes', peao.toMap(),

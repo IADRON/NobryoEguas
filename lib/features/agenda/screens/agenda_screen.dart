@@ -29,7 +29,7 @@ class AgendaScreen extends StatefulWidget {
   State<AgendaScreen> createState() => _AgendaScreenState();
 }
 
-class _AgendaScreenState extends State<AgendaScreen> with SingleTickerProviderStateMixin {
+class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMixin {
   DateTime? _selectedDate;
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -58,22 +58,22 @@ class _AgendaScreenState extends State<AgendaScreen> with SingleTickerProviderSt
     Provider.of<SyncService>(context, listen: false).addListener(_refreshAgenda);
 
    _scrollController.addListener(() {
-     if (_scrollController.position.userScrollDirection == ScrollDirection.reverse) {
-       if (_isFabVisible) {
-         setState(() {
-           _isFabVisible = false;
-           _animationController.reverse();
-         });
-       }
-     } else {
-       if (!_isFabVisible) {
-         setState(() {
-           _isFabVisible = true;
-           _animationController.forward();
-         });
-       }
-     }
-   });
+      if (_scrollController.position.userScrollDirection == ScrollDirection.reverse) {
+        if (_isFabVisible) {
+          setState(() {
+            _isFabVisible = false;
+            _animationController.reverse();
+          });
+        }
+      } else {
+        if (!_isFabVisible) {
+          setState(() {
+            _isFabVisible = true;
+            _animationController.forward();
+          });
+        }
+      }
+    });
 
     _animationController = AnimationController(
       vsync: this,
@@ -550,7 +550,7 @@ class _AgendaScreenState extends State<AgendaScreen> with SingleTickerProviderSt
     );
   }
 
-   void _showAddAgendamentoModal(BuildContext context) async {
+  void _showAddAgendamentoModal(BuildContext context) async {
     final currentUser = _authService.currentUserNotifier.value;
     if (currentUser == null) return;
 
@@ -980,7 +980,7 @@ class _AgendaScreenState extends State<AgendaScreen> with SingleTickerProviderSt
                           icon: const Icon(Icons.visibility_outlined, color: AppTheme.darkGreen),
                           tooltip: "Ver detalhes da égua",
                           onPressed: (){
-                             Navigator.push(
+                              Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => EguaDetailsScreen(egua: egua),
@@ -1006,7 +1006,8 @@ class _AgendaScreenState extends State<AgendaScreen> with SingleTickerProviderSt
                           _showMarkAsCompleteModal(context, manejo, egua);
                         },
                         style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.darkGreen,
+                            backgroundColor:
+                                AppTheme.darkGreen,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)
@@ -1022,7 +1023,7 @@ class _AgendaScreenState extends State<AgendaScreen> with SingleTickerProviderSt
     );
   }
 
-    void _showEditObservacaoModal(BuildContext mainContext, Manejo manejo) {
+  void _showEditObservacaoModal(BuildContext mainContext, Manejo manejo) {
     final formKey = GlobalKey<FormState>();
     final obsController =
         TextEditingController(text: manejo.detalhes['descricao'] ?? '');
@@ -1348,9 +1349,9 @@ class _AgendaScreenState extends State<AgendaScreen> with SingleTickerProviderSt
                       TextFormField(
                         readOnly: true,
                         decoration: InputDecoration(
-                            labelText: "Data e Hora da Indução",
-                            prefixIcon: const Icon(Icons.schedule_outlined),
-                            hintText: dataHoraInducao == null ? 'Toque para selecionar' : DateFormat('dd/MM/yyyy HH:mm').format(dataHoraInducao!),
+                          labelText: "Data e Hora da Indução",
+                          prefixIcon: const Icon(Icons.schedule_outlined),
+                          hintText: dataHoraInducao == null ? 'Toque para selecionar' : DateFormat('dd/MM/yyyy HH:mm').format(dataHoraInducao!),
                         ),
                         onTap: () async {
                           final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
@@ -1405,7 +1406,7 @@ class _AgendaScreenState extends State<AgendaScreen> with SingleTickerProviderSt
                           setModalState(() => dataFinalManejo = pickedDate);
                         }
                       },
-                       controller: TextEditingController(text: DateFormat('dd/MM/yyyy').format(dataFinalManejo)),
+                        controller: TextEditingController(text: DateFormat('dd/MM/yyyy').format(dataFinalManejo)),
                     ),
                     const SizedBox(height: 15),
 
@@ -1414,7 +1415,7 @@ class _AgendaScreenState extends State<AgendaScreen> with SingleTickerProviderSt
                         decoration: const InputDecoration(
                             labelText: "Observações Finais", prefixIcon: Icon(Icons.comment_outlined)),
                         maxLines: 3),
-                   
+                    
                     const SizedBox(height: 30),
                     SizedBox(
                       width: double.infinity,

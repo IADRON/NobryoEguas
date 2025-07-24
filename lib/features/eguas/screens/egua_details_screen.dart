@@ -247,7 +247,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
               ],
             ),
             child: ElevatedButton(
-              onPressed: () => _showAddHistoricoModal(context),
+              onPressed: () => _showAddHistoricoModal(context, isEditing: false),
               child: const Text("Adicionar Manejo ao Histórico"),
             ),
           ),
@@ -280,8 +280,10 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: _buildInfoItem("Pelagem:", egua.pelagem)),
-              if (egua.cobertura != null && egua.cobertura!.isNotEmpty)
-                Expanded(child: _buildInfoItem("Cobertura:", egua.cobertura!)),
+              if (egua.categoria == 'Matriz' && egua.cobertura != null && egua.cobertura!.isNotEmpty)
+                Expanded(child: _buildInfoItem("Padreador:", egua.cobertura!))
+              else if (egua.categoria != 'Matriz')
+                Expanded(child: _buildInfoItem("Categoria:", egua.categoria)),
             ],
           ),
           if (egua.dataParto != null) ...[
@@ -413,8 +415,40 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(DateFormat('dd/MM/yyyy').format(manejo.dataAgendada),
-                          style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                           Text(DateFormat('dd/MM/yyyy').format(manejo.dataAgendada),
+                              style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                           if(isHistorico)
+                             PopupMenuButton<String>(
+                                icon: const Icon(Icons.more_vert, size: 20, color: Colors.grey),
+                                onSelected: (value) {
+                                  if (value == 'edit') {
+                                    _showAddHistoricoModal(context, manejo: manejo, isEditing: true);
+                                  } else if (value == 'delete') {
+                                    _showDeleteManejoConfirmationDialog(manejo);
+                                  }
+                                },
+                                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                                  const PopupMenuItem<String>(
+                                    value: 'edit',
+                                    child: ListTile(
+                                      leading: Icon(Icons.edit_outlined),
+                                      title: Text('Editar'),
+                                    ),
+                                  ),
+                                  const PopupMenuItem<String>(
+                                    value: 'delete',
+                                    child: ListTile(
+                                      leading: Icon(Icons.delete_outline, color: Colors.red),
+                                      title: Text('Excluir', style: TextStyle(color: Colors.red)),
+                                    ),
+                                  ),
+                                ],
+                              )
+                        ],
+                      ),
                       const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -451,6 +485,37 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
       },
     );
   }
+   void _showDeleteManejoConfirmationDialog(Manejo manejo) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text("Excluir Manejo do Histórico"),
+        content: Text("Tem certeza que deseja excluir o manejo de '${manejo.tipo}' do dia ${DateFormat('dd/MM/yyyy').format(manejo.dataAgendada)}? Esta ação não pode ser desfeita."),
+        actions: [
+          TextButton(
+            child: const Text("Cancelar"),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red[700]),
+            child: const Text("Confirmar Exclusão"),
+            onPressed: () async {
+              await SQLiteHelper.instance.softDeleteManejo(manejo.id);
+              if (mounted) {
+                Navigator.of(dialogCtx).pop();
+                _refreshData();
+                _autoSync();
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: const Text("Manejo excluído do histórico."),
+                  backgroundColor: Colors.red[700],
+                ));
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildDetalhesManejo(Map<String, dynamic> detalhes) {
     const labelMap = {
@@ -470,7 +535,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
       'doadora': 'Doadora',
       'avaliacaoUterina': 'Avaliação Uterina',
       'observacao': 'Observação',
-      // Adicionando labels para os novos campos
       'inducao': 'Indução',
       'dataHoraInducao': 'Data/Hora da Indução'
     };
@@ -481,7 +545,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
             try {
               final dt = DateTime.parse(value);
               return DateFormat('dd/MM/yyyy HH:mm', 'pt_BR').format(dt);
-            } catch (e) { /* Retorna o valor original se não for uma data válida */ }
+            } catch (e) { }
         }
       }
       return value.toString();
@@ -1154,7 +1218,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
                            if (time == null) return;
                            setModalState(() => dataHoraInducao = DateTime(date.year, date.month, date.day, time.hour, time.minute));
                            if(inducaoSelecionada != null)  {
-                             // ignore: unused_label
                              validator: (v) => v == null ? "Selecione a data e hora da indução" : null;
                            }
                         },
@@ -1281,37 +1344,61 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
     );
   }
 
-  void _showAddHistoricoModal(BuildContext context) async {
+  void _showAddHistoricoModal(BuildContext context, {Manejo? manejo, required bool isEditing}) async {
     final currentUser = _authService.currentUserNotifier.value;
     if(currentUser == null) return;
 
     final formKey = GlobalKey<FormState>();
-    String? tipoManejoSelecionado;
-    DateTime dataFinalManejo = DateTime.now();
-    final obsController = TextEditingController();
+    final String title = isEditing ? "Editar Manejo do Histórico" : "Adicionar ao Histórico";
+
+    String? tipoManejoSelecionado = manejo?.tipo;
+    DateTime dataFinalManejo = manejo?.dataAgendada ?? DateTime.now();
+    final obsController = TextEditingController(text: manejo?.detalhes['observacao'] ?? '');
     
-    final garanhaoController = TextEditingController(text: _currentEgua.cobertura);
-    final litrosController = TextEditingController();
-    String? ovarioDirOp, ovarioEsqOp, edemaSelecionado, idadeEmbriaoSelecionada;
-    final ovarioDirTamanhoController = TextEditingController();
-    final ovarioEsqTamanhoController = TextEditingController();
-    final uteroController = TextEditingController();
-    final avaliacaoUterinaController = TextEditingController();
-    Egua? doadoraSelecionada;
-    String? resultadoDiagnostico;
-    final diasPrenheController = TextEditingController();
-    DateTime? dataHoraInseminacao;
-    Medicamento? medicamentoSelecionado;
-    String? inducaoSelecionada;
-    DateTime? dataHoraInducao;
-    final medicamentoSearchController = TextEditingController();
-    List<Medicamento> _filteredMedicamentos = [];
-    bool _showMedicamentoList = false;
+    final garanhaoController = TextEditingController(text: manejo?.detalhes['garanhao'] ?? _currentEgua.cobertura);
+    final litrosController = TextEditingController(text: manejo?.detalhes['litros']?.toString());
+    
+    String? ovarioDirOp = manejo?.detalhes['ovarioDireito'];
+    String? ovarioEsqOp = manejo?.detalhes['ovarioEsquerdo'];
+    String? edemaSelecionado = manejo?.detalhes['edema'];
+    String? idadeEmbriaoSelecionada = manejo?.detalhes['idadeEmbriao'];
+    String? resultadoDiagnostico = manejo?.detalhes['resultado'];
+    
+    final ovarioDirTamanhoController = TextEditingController(text: manejo?.detalhes['ovarioDireitoTamanho']?.toString());
+    final ovarioEsqTamanhoController = TextEditingController(text: manejo?.detalhes['ovarioEsquerdoTamanho']?.toString());
+    final uteroController = TextEditingController(text: manejo?.detalhes['utero']?.toString());
+    final avaliacaoUterinaController = TextEditingController(text: manejo?.detalhes['avaliacaoUterina']?.toString());
+    final diasPrenheController = TextEditingController(text: manejo?.detalhes['diasPrenhe']?.toString());
+
+    DateTime? dataHoraInseminacao = manejo?.detalhes['dataHora'] != null ? DateTime.tryParse(manejo!.detalhes['dataHora']) : null;
+    DateTime? dataHoraInducao = manejo?.dataHoraInducao;
+    
     final todosMedicamentos = await SQLiteHelper.instance.readAllMedicamentos();
-    _filteredMedicamentos = todosMedicamentos;
+    Medicamento? medicamentoSelecionado;
+     if (manejo?.medicamentoId != null) {
+      medicamentoSelecionado = todosMedicamentos.firstWhere((med) => med.id == manejo!.medicamentoId, orElse: () => todosMedicamentos.isNotEmpty ? todosMedicamentos.first : null!);
+    } else if (manejo?.detalhes['medicamento'] != null) {
+      medicamentoSelecionado = todosMedicamentos.firstWhere((med) => med.nome == manejo!.detalhes['medicamento'], orElse: () => todosMedicamentos.isNotEmpty ? todosMedicamentos.first : null!);
+    }
+    
+    String? inducaoSelecionada = manejo?.inducao;
+    final medicamentoSearchController = TextEditingController(text: medicamentoSelecionado?.nome);
+    List<Medicamento> _filteredMedicamentos = todosMedicamentos;
+    bool _showMedicamentoList = false;
+
+    Egua? doadoraSelecionada;
+    if (manejo?.detalhes['doadora'] != null) {
+        final allEguas = await SQLiteHelper.instance.getAllEguas();
+        doadoraSelecionada = allEguas.firstWhere((e) => e.nome == manejo!.detalhes['doadora'], orElse: () => allEguas.isNotEmpty ? allEguas.first : null!);
+    }
 
     final List<AppUser> allUsersList = await SQLiteHelper.instance.getAllUsers();
-    AppUser? concluidoPorSelecionado = allUsersList.firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
+    AppUser? concluidoPorSelecionado;
+    if (manejo?.concluidoPorId != null) {
+      concluidoPorSelecionado = allUsersList.firstWhere((u) => u.uid == manejo!.concluidoPorId, orElse: () => allUsersList.first);
+    } else {
+      concluidoPorSelecionado = allUsersList.firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
+    }
 
     showModalBottomSheet(
       context: context,
@@ -1345,7 +1432,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "Adicionar ao Histórico",
+                          title,
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         IconButton(
@@ -1362,7 +1449,9 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
                       value: tipoManejoSelecionado,
                       decoration: InputDecoration(
                         labelText: "Tipo de Manejo",
-                        prefixIcon: Icon(Icons.edit_note_outlined)
+                        prefixIcon: Icon(Icons.edit_note_outlined),
+                        filled: isEditing,
+                        fillColor: isEditing ? Colors.grey[200] : null,
                       ),
                       hint: const Text("Selecione o Tipo de Manejo"),
                       items: [
@@ -1372,7 +1461,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
                           .map((tipo) =>
                               DropdownMenuItem(value: tipo, child: Text(tipo)))
                           .toList(),
-                      onChanged: (val) {
+                      onChanged: isEditing ? null : (val) {
                           setModalState(() => tipoManejoSelecionado = val);
                       },
                       validator: (v) => v == null ? "Obrigatório" : null,
@@ -1455,7 +1544,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
                                   setModalState(() {
                                     medicamentoSelecionado = med;
                                     medicamentoSearchController.text = med.nome;
-                                    _showMedicamentoList = true;
+                                    _showMedicamentoList = false;
                                     FocusScope.of(context).unfocus();
                                   });
                                 },
@@ -1595,23 +1684,36 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
                               detalhes['avaliacaoUterina'] = avaliacaoUterinaController.text;
                             }
 
-                            final novoManejo = Manejo(
-                              id: const Uuid().v4(),
-                              tipo: tipoManejoSelecionado!,
-                              dataAgendada: dataFinalManejo,
-                              detalhes: detalhes,
-                              eguaId: _currentEgua.id,
-                              propriedadeId: _currentEgua.propriedadeId,
-                              responsavelId: currentUser.uid,
-                              concluidoPorId: concluidoPorSelecionado?.uid,
-                              status: 'Concluído',
-                              statusSync: 'pending_create',
-                              medicamentoId: tipoManejoSelecionado == 'Controle Folicular' ? medicamentoSelecionado?.id : null,
-                              inducao: tipoManejoSelecionado == 'Controle Folicular' ? inducaoSelecionada : null,
-                              dataHoraInducao: tipoManejoSelecionado == 'Controle Folicular' ? dataHoraInducao : null,
-                            );
-
-                            await SQLiteHelper.instance.createManejo(novoManejo);
+                            if(isEditing && manejo != null){
+                              final updatedManejo = manejo.copyWith(
+                                  dataAgendada: dataFinalManejo,
+                                  detalhes: detalhes,
+                                  concluidoPorId: concluidoPorSelecionado?.uid,
+                                  statusSync: 'pending_update',
+                                  medicamentoId: tipoManejoSelecionado == 'Controle Folicular' ? medicamentoSelecionado?.id : null,
+                                  inducao: tipoManejoSelecionado == 'Controle Folicular' ? inducaoSelecionada : null,
+                                  dataHoraInducao: tipoManejoSelecionado == 'Controle Folicular' ? dataHoraInducao : null,
+                              );
+                              await SQLiteHelper.instance.updateManejo(updatedManejo);
+                            } else {
+                              final novoManejo = Manejo(
+                                id: const Uuid().v4(),
+                                tipo: tipoManejoSelecionado!,
+                                dataAgendada: dataFinalManejo,
+                                detalhes: detalhes,
+                                eguaId: _currentEgua.id,
+                                propriedadeId: _currentEgua.propriedadeId,
+                                responsavelId: currentUser.uid,
+                                concluidoPorId: concluidoPorSelecionado?.uid,
+                                status: 'Concluído',
+                                statusSync: 'pending_create',
+                                medicamentoId: tipoManejoSelecionado == 'Controle Folicular' ? medicamentoSelecionado?.id : null,
+                                inducao: tipoManejoSelecionado == 'Controle Folicular' ? inducaoSelecionada : null,
+                                dataHoraInducao: tipoManejoSelecionado == 'Controle Folicular' ? dataHoraInducao : null,
+                              );
+                              await SQLiteHelper.instance.createManejo(novoManejo);
+                            }
+                            
                             _refreshData();
                             if (mounted) {
                               Navigator.of(ctx).pop();
@@ -1619,7 +1721,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
                             }
                           }
                         },
-                        child: const Text("Salvar no Histórico"),
+                        child: Text(isEditing ? "Salvar Alterações" : "Salvar no Histórico"),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -1691,7 +1793,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
             ),
             const SizedBox(height: 10),
             TextFormField(
-              controller: garanhaoController, // Controlador para o campo Cobertura
+              controller: garanhaoController,
               decoration: const InputDecoration(labelText: "Cobertura"),
               validator: (v) => v!.isEmpty ? "Informe a cobertura" : null,
             ),
@@ -1804,7 +1906,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
                 child: TextFormField(
                   controller: ovarioDirTamanhoController,
                   decoration:
-                      const InputDecoration(labelText: "Tamanho (mm)")), //expand icon
+                      const InputDecoration(labelText: "Tamanho (mm)")),
                 )
             ],
           ),
@@ -1930,6 +2032,7 @@ class __EditEguaFormState extends State<_EditEguaForm> {
   late final TextEditingController _coberturaController;
   late final TextEditingController _obsController;
 
+  late String _categoriaSelecionada;
   late bool _teveParto;
   late DateTime? _dataParto;
   late String? _sexoPotro;
@@ -1943,6 +2046,7 @@ class __EditEguaFormState extends State<_EditEguaForm> {
     _coberturaController = TextEditingController(text: widget.egua.cobertura);
     _obsController = TextEditingController(text: widget.egua.observacao);
     
+    _categoriaSelecionada = widget.egua.categoria;
     _teveParto = widget.egua.dataParto != null;
     _dataParto = widget.egua.dataParto;
     _sexoPotro = widget.egua.sexoPotro;
@@ -1964,7 +2068,8 @@ class __EditEguaFormState extends State<_EditEguaForm> {
         nome: _nomeController.text,
         rp: _rpController.text,
         pelagem: _pelagemController.text,
-        cobertura: _coberturaController.text,
+        categoria: _categoriaSelecionada,
+        cobertura: _categoriaSelecionada == 'Matriz' ? _coberturaController.text : null,
         observacao: _obsController.text,
         dataParto: _teveParto ? _dataParto : null,
         sexoPotro: _teveParto ? _sexoPotro : null,
@@ -2044,18 +2149,37 @@ class __EditEguaFormState extends State<_EditEguaForm> {
                 ), 
               validator: (v) => v!.isEmpty ? "Obrigatório" : null),
               const SizedBox(height: 10),
-              TextFormField(controller: _coberturaController,
+              DropdownButtonFormField<String>(
+                value: _categoriaSelecionada,
                 decoration: const InputDecoration(
-                  labelText: "Cobertura",
-                  prefixIcon: Icon(Icons.male),
+                  labelText: "Categoria",
+                  prefixIcon: Icon(Icons.category_outlined),
                 ),
-                validator: (value) {
-                  if (_teveParto && (value == null || value.isEmpty)) {
-                    return "Cobertura é obrigatória se houve parto";
+                items: ['Matriz', 'Doadora', 'Receptora']
+                    .map((label) => DropdownMenuItem(
+                          child: Text(label),
+                          value: label,
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _categoriaSelecionada = value;
+                    });
                   }
-                  return null;
                 },
               ),
+              if (_categoriaSelecionada == 'Matriz')
+                Padding(
+                  padding: const EdgeInsets.only(top: 10.0),
+                  child: TextFormField(
+                    controller: _coberturaController,
+                    decoration: const InputDecoration(
+                      labelText: "Padreador",
+                      prefixIcon: Icon(Icons.male),
+                    ),
+                  ),
+                ),
               const SizedBox(height: 15),
               const Text("Parto?", style: TextStyle(fontWeight: FontWeight.bold)),
               Row(

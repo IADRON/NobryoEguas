@@ -15,6 +15,7 @@ class Egua {
   String propriedadeId;
   String statusSync;
   bool isDeleted;
+  String categoria; // Novo campo adicionado
 
   Egua({
     required this.id,
@@ -31,6 +32,7 @@ class Egua {
     required this.propriedadeId,
     this.statusSync = 'pending_create',
     this.isDeleted = false,
+    this.categoria = 'Matriz', // Valor padrão
   });
 
   @override
@@ -57,6 +59,7 @@ class Egua {
       'propriedadeId': propriedadeId,
       'statusSync': statusSync,
       'isDeleted': isDeleted ? 1 : 0,
+      'categoria': categoria,
     };
   }
 
@@ -76,6 +79,7 @@ class Egua {
       propriedadeId: map['propriedadeId'],
       statusSync: map['statusSync'],
       isDeleted: map['isDeleted'] == 1,
+      categoria: map['categoria'] ?? 'Matriz',
     );
   }
 
@@ -92,6 +96,7 @@ class Egua {
       'statusReprodutivo': statusReprodutivo,
       'diasPrenhe': diasPrenhe,
       'propriedadeFirebaseId': propriedadeFirebaseId,
+      'categoria': categoria,
     };
   }
 
@@ -112,6 +117,7 @@ class Egua {
       observacao: map['observacao'],
       statusSync: 'synced',
       isDeleted: false, 
+      categoria: map['categoria'] ?? 'Matriz',
     );
   }
 
@@ -130,6 +136,7 @@ class Egua {
     String? propriedadeId,
     String? statusSync,
     bool? isDeleted,
+    String? categoria,
   }) {
     return Egua(
       id: id ?? this.id,
@@ -146,6 +153,7 @@ class Egua {
       propriedadeId: propriedadeId ?? this.propriedadeId,
       statusSync: statusSync ?? this.statusSync,
       isDeleted: isDeleted ?? this.isDeleted,
+      categoria: categoria ?? this.categoria,
     );
   }
 }

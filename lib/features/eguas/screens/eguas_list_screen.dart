@@ -12,9 +12,10 @@ import 'package:nobryo_final/features/propriedades/widgets/peoes_management_widg
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
 
+// NÍVEL 3: Tela que lista apenas as ÉGUAS de uma Sub-propriedade.
 class EguasListScreen extends StatefulWidget {
-  final String propriedadeId;
-  final String propriedadeNome;
+  final String propriedadeId; // ID da Sub-propriedade
+  final String propriedadeNome; // Nome da Sub-propriedade
 
   const EguasListScreen({
     super.key,
@@ -27,13 +28,11 @@ class EguasListScreen extends StatefulWidget {
 }
 
 class _EguasListScreenState extends State<EguasListScreen> {
-  // State variables to hold the list of mares and loading status.
   List<Egua>? _eguas;
-  bool _isLoadingEguas = true;
+  bool _isLoading = true;
 
   final ExportService _exportService = ExportService();
   final SyncService _syncService = SyncService();
-  bool _isLoading = false;
 
   Propriedade? _propriedade;
   late String _currentPropriedadeNome;
@@ -42,7 +41,6 @@ class _EguasListScreenState extends State<EguasListScreen> {
   void initState() {
     super.initState();
     _currentPropriedadeNome = widget.propriedadeNome;
-    _loadPropriedade();
     _refreshEguasList();
     Provider.of<SyncService>(context, listen: false)
         .addListener(_refreshEguasList);
@@ -55,17 +53,32 @@ class _EguasListScreenState extends State<EguasListScreen> {
     super.dispose();
   }
 
-  Future<void> _loadPropriedade() async {
-    final prop = await SQLiteHelper.instance.readPropriedade(widget.propriedadeId);
-    if (prop != null && mounted) {
+  Future<void> _refreshEguasList() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    final propFuture = SQLiteHelper.instance.readPropriedade(widget.propriedadeId);
+    final eguasFuture = SQLiteHelper.instance.readEguasByPropriedade(widget.propriedadeId);
+
+    final results = await Future.wait([propFuture, eguasFuture]);
+    
+    final prop = results[0] as Propriedade?;
+    final initialEguas = results[1] as List<Egua>;
+
+    final List<Future<Egua>> updateFutures =
+        initialEguas.map((egua) => _getEguaWithUpdatedDiasPrenhe(egua)).toList();
+    final updatedEguas = await Future.wait(updateFutures);
+
+    if (mounted) {
       setState(() {
         _propriedade = prop;
-        _currentPropriedadeNome = prop.nome;
+        if(prop != null) _currentPropriedadeNome = prop.nome;
+        _eguas = updatedEguas;
+        _isLoading = false;
       });
     }
   }
 
-  /// Calculates the current days of pregnancy for a single mare.
   Future<Egua> _getEguaWithUpdatedDiasPrenhe(Egua egua) async {
     if (egua.statusReprodutivo.toLowerCase() != 'prenhe') {
       return egua.copyWith(diasPrenhe: 0);
@@ -101,32 +114,6 @@ class _EguasListScreenState extends State<EguasListScreen> {
     }
   }
 
-  /// Refreshes the list of mares and calculates pregnancy days for each one.
-  Future<void> _refreshEguasList() async {
-    if (!mounted) return;
-
-    setState(() {
-      _isLoadingEguas = true;
-    });
-
-    List<Egua> initialEguas =
-        await SQLiteHelper.instance.readEguasByPropriedade(widget.propriedadeId);
-
-    // Create a list of futures to update all mares in parallel.
-    final List<Future<Egua>> updateFutures =
-        initialEguas.map((egua) => _getEguaWithUpdatedDiasPrenhe(egua)).toList();
-
-    // Wait for all calculations to complete.
-    final List<Egua> updatedEguas = await Future.wait(updateFutures);
-
-    if (mounted) {
-      setState(() {
-        _eguas = updatedEguas;
-        _isLoadingEguas = false;
-      });
-    }
-  }
-
   Future<void> _autoSync() async {
     final bool _ = await _syncService.syncData(isManual: false);
     if (mounted) {}
@@ -139,7 +126,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
   ) async {
     setState(() => _isLoading = true);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text("Buscando todos os dados da propriedade..."),
+      content: Text("Buscando todos os dados do local..."),
       backgroundColor: Colors.blue,
     ));
 
@@ -148,7 +135,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
 
       if (eguasDaPropriedade == null || eguasDaPropriedade.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Não há éguas nesta propriedade para exportar."),
+          content: Text("Não há éguas neste local para exportar."),
         ));
         setState(() => _isLoading = false);
         return;
@@ -164,7 +151,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
 
       if (dadosCompletos.values.every((list) => list.isEmpty)) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Nenhum manejo encontrado para exportar nesta propriedade."),
+          content: Text("Nenhum manejo encontrado para exportar neste local."),
           backgroundColor: Colors.orange,
         ));
       } else {
@@ -180,6 +167,42 @@ class _EguasListScreenState extends State<EguasListScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+  
+  void _showOptionsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        return Wrap(
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.group_outlined),
+              title: const Text('Gerenciar Peões'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showPeoesWidget();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.download_outlined),
+              title: const Text('Exportar Relatório do Local'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showExportOptions(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Editar Local'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showEditPropriedadeModal(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showExportOptions(BuildContext context) {
@@ -235,27 +258,11 @@ class _EguasListScreenState extends State<EguasListScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      "Editar Propriedade",
+                      "Editar Local",
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     IconButton(
@@ -265,11 +272,10 @@ class _EguasListScreenState extends State<EguasListScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-
                 TextFormField(
                   controller: nomeController,
                   decoration: const InputDecoration(
-                      labelText: "Nome da Propriedade",
+                      labelText: "Nome",
                       prefixIcon: Icon(Icons.home_work_outlined)),
                   validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                 ),
@@ -277,12 +283,11 @@ class _EguasListScreenState extends State<EguasListScreen> {
                 TextFormField(
                   controller: donoController,
                   decoration: const InputDecoration(
-                      labelText: "Dono da Propriedade",
+                      labelText: "Dono",
                       prefixIcon: Icon(Icons.person_outlined)),
                   validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                 ),
                 const SizedBox(height: 20),
-
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -295,13 +300,11 @@ class _EguasListScreenState extends State<EguasListScreen> {
                           dono: donoController.text,
                           statusSync: 'pending_update',
                         );
-
                         await SQLiteHelper.instance.updatePropriedade(updatedProp);
-
                         if (mounted) {
                           Navigator.of(ctx).pop();
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text("Propriedade atualizada com sucesso!"),
+                            content: Text("Local atualizado!"),
                             backgroundColor: Colors.green,
                           ));
                           setState(() {
@@ -330,7 +333,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
       builder: (dialogCtx) => AlertDialog(
         title: const Text("Confirmar Exclusão"),
         content: Text(
-            'Tem certeza que deseja excluir a propriedade "${_propriedade!.nome}"? Todos os dados de éguas e manejos associados a ela serão perdidos.'),
+            'Tem certeza que deseja excluir "${_propriedade!.nome}"? Todas as éguas e manejos associados serão perdidos.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
@@ -341,9 +344,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
             onPressed: () async {
               Navigator.of(dialogCtx).pop();
               Navigator.of(modalContext).pop();
-
               await SQLiteHelper.instance.softDeletePropriedade(_propriedade!.id);
-
               if (mounted) {
                 Navigator.of(context).pop();
                 _autoSync();
@@ -382,7 +383,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
       },
     );
   }
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -395,34 +396,13 @@ class _EguasListScreenState extends State<EguasListScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.group_outlined),
-            onPressed: _showPeoesWidget,
-            tooltip: "Gerenciar Peões",
-          ),
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Center(
-                  child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 3, color: AppTheme.darkText))),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.download_outlined),
-              onPressed: () => _showExportOptions(context),
-              tooltip: "Exportar Relatório da Propriedade",
-            ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () => _showEditPropriedadeModal(context),
-            tooltip: "Editar Propriedade",
+            icon: const Icon(Icons.more_vert),
+            onPressed: () => _showOptionsModal(context),
+            tooltip: "Mais Opções",
           ),
         ],
       ),
-      body: _isLoadingEguas
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _eguas == null || _eguas!.isEmpty
               ? const Center(
@@ -442,6 +422,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddEguaModal(context),
         child: const Icon(Icons.add),
+        tooltip: "Adicionar Égua",
       ),
     );
   }
@@ -464,54 +445,48 @@ class _EguasListScreenState extends State<EguasListScreen> {
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Row(
+          child: Column(
+             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(egua.nome,
+               Text(egua.nome,
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.darkText)),
+              Text("RP: ${egua.rp}",
+                  style:
+                      TextStyle(fontSize: 14, color: Colors.grey[600])),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                        color: statusColor,
+                        borderRadius: BorderRadius.circular(20)),
+                    child: Text(egua.statusReprodutivo.toUpperCase(),
                         style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.darkText)),
-                    Text("RP: ${egua.rp}",
-                        style:
-                            TextStyle(fontSize: 14, color: Colors.grey[600])),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                              color: statusColor,
-                              borderRadius: BorderRadius.circular(20)),
-                          child: Text(egua.statusReprodutivo.toUpperCase(),
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                        if (egua.diasPrenhe != null && egua.diasPrenhe! > 0) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                                color: AppTheme.brown,
-                                borderRadius: BorderRadius.circular(20)),
-                            child: Text("${egua.diasPrenhe} D",
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold)),
-                          ),
-                        ]
-                      ],
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold)),
+                  ),
+                  if (egua.diasPrenhe != null && egua.diasPrenhe! > 0) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                          color: AppTheme.brown,
+                          borderRadius: BorderRadius.circular(20)),
+                      child: Text("${egua.diasPrenhe} D",
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold)),
                     ),
-                  ],
-                ),
+                  ]
+                ],
               ),
             ],
           ),
@@ -521,16 +496,22 @@ class _EguasListScreenState extends State<EguasListScreen> {
   }
 
   void _showAddEguaModal(BuildContext context) {
-    final formKey = GlobalKey<FormState>();
-    final nomeController = TextEditingController();
-    final rpController = TextEditingController();
-    final pelagemController = TextEditingController();
-    final coberturaController = TextEditingController();
-    final obsController = TextEditingController();
+    _showAddOrEditEguaModal(context);
+  }
 
-    bool teveParto = false;
-    DateTime? dataParto;
-    String? sexoPotro;
+  void _showAddOrEditEguaModal(BuildContext context, {Egua? egua}) {
+    final isEditing = egua != null;
+    final formKey = GlobalKey<FormState>();
+    final nomeController = TextEditingController(text: egua?.nome ?? '');
+    final rpController = TextEditingController(text: egua?.rp ?? '');
+    final pelagemController = TextEditingController(text: egua?.pelagem ?? '');
+    final coberturaController = TextEditingController(text: egua?.cobertura ?? '');
+    final obsController = TextEditingController(text: egua?.observacao ?? '');
+
+    String categoriaSelecionada = egua?.categoria ?? 'Matriz';
+    bool teveParto = egua?.dataParto != null;
+    DateTime? dataParto = egua?.dataParto;
+    String? sexoPotro = egua?.sexoPotro;
 
     showModalBottomSheet(
       context: context,
@@ -551,26 +532,9 @@ class _EguasListScreenState extends State<EguasListScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 40,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text("Adicionar Égua",
+                     Text(isEditing ? "Editar Égua" : "Adicionar Égua em\n$_currentPropriedadeNome",
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
                     const Divider(height: 30, thickness: 1),
-                    const SizedBox(height: 20),
                       TextFormField(
                           controller: nomeController,
                           decoration:
@@ -594,18 +558,37 @@ class _EguasListScreenState extends State<EguasListScreen> {
                             prefixIcon: Icon(Icons.pets_outlined)),
                           validator: (v) => v!.isEmpty ? "Obrigatório" : null),
                       const SizedBox(height: 10),
-                      TextFormField(controller: coberturaController,
+                      DropdownButtonFormField<String>(
+                        value: categoriaSelecionada,
                         decoration: const InputDecoration(
-                          labelText: "Padreador",
-                          prefixIcon: Icon(Icons.male),
+                          labelText: "Categoria",
+                          prefixIcon: Icon(Icons.category_outlined),
                         ),
-                        validator: (value) {
-                          if (teveParto && (value == null || value.isEmpty)) {
-                            return "Padreador é obrigatória se houve parto";
+                        items: ['Matriz', 'Doadora', 'Receptora']
+                            .map((label) => DropdownMenuItem(
+                                  child: Text(label),
+                                  value: label,
+                                ))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setModalState(() {
+                              categoriaSelecionada = value;
+                            });
                           }
-                          return null;
                         },
                       ),
+                      if (categoriaSelecionada == 'Matriz')
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10.0),
+                          child: TextFormField(
+                            controller: coberturaController,
+                            decoration: const InputDecoration(
+                              labelText: "Padreador",
+                              prefixIcon: Icon(Icons.male),
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 15),
                       const Text("Parto?",
                           style: TextStyle(fontWeight: FontWeight.bold)),
@@ -697,26 +680,35 @@ class _EguasListScreenState extends State<EguasListScreen> {
                           style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
                           onPressed: () async {
                             if (formKey.currentState!.validate()) {
-                              final novaEgua = Egua(
-                                id: const Uuid().v4(),
+                              final eguaData = Egua(
+                                id: isEditing ? egua.id : const Uuid().v4(),
+                                firebaseId: egua?.firebaseId,
                                 nome: nomeController.text,
                                 rp: rpController.text,
                                 pelagem: pelagemController.text,
-                                cobertura: coberturaController.text,
+                                categoria: categoriaSelecionada,
+                                cobertura: categoriaSelecionada == 'Matriz' ? coberturaController.text : null,
                                 dataParto: teveParto ? dataParto : null,
                                 sexoPotro: teveParto ? sexoPotro : null,
                                 observacao: obsController.text,
-                                statusReprodutivo: 'Vazia',
+                                statusReprodutivo: egua?.statusReprodutivo ?? 'Vazia',
                                 propriedadeId: widget.propriedadeId,
+                                statusSync: isEditing ? 'pending_update' : 'pending_create',
                               );
-                              await SQLiteHelper.instance.createEgua(novaEgua);
+
+                              if (isEditing) {
+                                await SQLiteHelper.instance.updateEgua(eguaData);
+                              } else {
+                                await SQLiteHelper.instance.createEgua(eguaData);
+                              }
+
                               if (mounted) {
                                 Navigator.of(ctx).pop();
                                 _autoSync();
                               }
                             }
                           },
-                          child: const Text("Salvar"),
+                          child: Text(isEditing ? "Salvar Alterações" : "Salvar"),
                         ),
                       ),
                       const SizedBox(height: 20),
