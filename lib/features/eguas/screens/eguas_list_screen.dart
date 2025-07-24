@@ -8,6 +8,7 @@ import 'package:nobryo_final/core/services/export_service.dart';
 import 'package:nobryo_final/core/services/sync_service.dart';
 import 'package:nobryo_final/features/eguas/screens/egua_details_screen.dart';
 import 'package:nobryo_final/shared/theme/theme.dart';
+import 'package:nobryo_final/features/propriedades/widgets/peoes_management_widget.dart';
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
 
@@ -355,6 +356,33 @@ class _EguasListScreenState extends State<EguasListScreen> {
     );
   }
 
+  void _showPeoesWidget() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppTheme.pageBackground,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: PeoesManagementWidget(
+                propriedadeId: widget.propriedadeId,
+                scrollController: scrollController,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -366,6 +394,11 @@ class _EguasListScreenState extends State<EguasListScreen> {
           style: const TextStyle(fontSize: 18, color: AppTheme.lightGrey),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.group_outlined),
+            onPressed: _showPeoesWidget,
+            tooltip: "Gerenciar Peões",
+          ),
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0),
@@ -563,12 +596,12 @@ class _EguasListScreenState extends State<EguasListScreen> {
                       const SizedBox(height: 10),
                       TextFormField(controller: coberturaController,
                         decoration: const InputDecoration(
-                          labelText: "Cobertura",
+                          labelText: "Padreador",
                           prefixIcon: Icon(Icons.male),
                         ),
                         validator: (value) {
                           if (teveParto && (value == null || value.isEmpty)) {
-                            return "Cobertura é obrigatória se houve parto";
+                            return "Padreador é obrigatória se houve parto";
                           }
                           return null;
                         },

@@ -281,7 +281,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
             children: [
               Expanded(child: _buildInfoItem("Pelagem:", egua.pelagem)),
               if (egua.cobertura != null && egua.cobertura!.isNotEmpty)
-                Expanded(child: _buildInfoItem("Padreação:", egua.cobertura!)),
+                Expanded(child: _buildInfoItem("Cobertura:", egua.cobertura!)),
             ],
           ),
           if (egua.dataParto != null) ...[
@@ -1667,8 +1667,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
     required void Function(bool) onShowMedicamentoListChange,
     required List<Medicamento> filteredMedicamentos,
   }) {
-    final ovarioOptions = ["CL", "HAF", "PQ", "FL"];
-    final idadeEmbriaoOptions = ['D6', 'D7', 'D8', 'D9', 'D10'];
+    final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
+    final idadeEmbriaoOptions = ['D6', 'D7', 'D8', 'D9', 'D10', 'D11'];
     switch (tipo) {
       case "Diagnóstico":
         return [
@@ -1692,8 +1692,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
             const SizedBox(height: 10),
             TextFormField(
               controller: garanhaoController, // Controlador para o campo Cobertura
-              decoration: const InputDecoration(labelText: "Padreação"),
-              validator: (v) => v!.isEmpty ? "Informe a padreação" : null,
+              decoration: const InputDecoration(labelText: "Cobertura"),
+              validator: (v) => v!.isEmpty ? "Informe a cobertura" : null,
             ),
           ]
         ];
@@ -1798,16 +1798,14 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
                           .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                           .toList(),
                       onChanged: onOvarioDirChange)),
-              if (ovarioDirOp == 'FL') ...[
                 const SizedBox(width: 10),
-                SizedBox(
-                  width: 120,
-                  child: TextFormField(
-                      controller: ovarioDirTamanhoController,
-                      decoration:
-                          const InputDecoration(labelText: "Tamanho (mm)")),
+              SizedBox(
+                width: 120,
+                child: TextFormField(
+                  controller: ovarioDirTamanhoController,
+                  decoration:
+                      const InputDecoration(labelText: "Tamanho (mm)")), //expand icon
                 )
-              ]
             ],
           ),
           const SizedBox(height: 10),
@@ -1825,16 +1823,14 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen> {
                           .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                           .toList(),
                       onChanged: onOvarioEsqChange)),
-              if (ovarioEsqOp == 'FL') ...[
                 const SizedBox(width: 10),
-                SizedBox(
-                  width: 120,
-                  child: TextFormField(
-                      controller: ovarioEsqTamanhoController,
-                      decoration:
-                          const InputDecoration(labelText: "Tamanho (mm)")),
-                )
-              ]
+              SizedBox(
+                width: 120,
+                child: TextFormField(
+                    controller: ovarioEsqTamanhoController,
+                    decoration:
+                        const InputDecoration(labelText: "Tamanho (mm)")),
+              )
             ],
           ),
           const SizedBox(height: 10),
@@ -2050,12 +2046,12 @@ class __EditEguaFormState extends State<_EditEguaForm> {
               const SizedBox(height: 10),
               TextFormField(controller: _coberturaController,
                 decoration: const InputDecoration(
-                  labelText: "Padreação",
+                  labelText: "Cobertura",
                   prefixIcon: Icon(Icons.male),
                 ),
                 validator: (value) {
                   if (_teveParto && (value == null || value.isEmpty)) {
-                    return "Padreação é obrigatória se houve parto";
+                    return "Cobertura é obrigatória se houve parto";
                   }
                   return null;
                 },

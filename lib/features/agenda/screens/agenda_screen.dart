@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
 import 'package:flutter/rendering.dart';
 import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
@@ -1569,7 +1570,6 @@ class _AgendaScreenState extends State<AgendaScreen> with SingleTickerProviderSt
     required String? resultadoDiagnostico,
     required TextEditingController diasPrenheController,
     required Function(String?) onResultadoChange,
-    // --- Novos parâmetros para seleção da Doadora ---
     required Propriedade? propDoadoraSelecionada,
     required TextEditingController propDoadoraSearchController,
     required Function(Propriedade?) onPropDoadoraChange,
@@ -1579,10 +1579,9 @@ class _AgendaScreenState extends State<AgendaScreen> with SingleTickerProviderSt
     required Function(bool) onShowPropDoadoraListChange,
     required List<Propriedade> allPropsDoadora,
   }) {
-    final ovarioOptions = ["CL", "HAF", "PQ", "FL"];
-    final idadeEmbriaoOptions = ['D6', 'D7', 'D8', 'D9', 'D10'];
+    final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
+    final idadeEmbriaoOptions = ['D6', 'D7', 'D8', 'D9', 'D10', 'D11'];
     switch (tipo) {
-      // Novo código para o case "Diagnóstico"
     case "Diagnóstico":
       return [
         DropdownButtonFormField<String>(
@@ -1604,9 +1603,9 @@ class _AgendaScreenState extends State<AgendaScreen> with SingleTickerProviderSt
           ),
           const SizedBox(height: 10),
           TextFormField(
-            controller: garanhaoController, // Controlador para o campo Cobertura
-            decoration: const InputDecoration(labelText: "Padreação"),
-            validator: (v) => v!.isEmpty ? "Informe a padreação" : null,
+            controller: garanhaoController,
+            decoration: const InputDecoration(labelText: "Cobertura"),
+            validator: (v) => v!.isEmpty ? "Informe a cobertura" : null,
           ),
         ]
       ];
@@ -1632,11 +1631,39 @@ class _AgendaScreenState extends State<AgendaScreen> with SingleTickerProviderSt
                   firstDate: DateTime(2020),
                   lastDate: DateTime.now());
               if (date == null) return;
-              final time = await showTimePicker(
-                  context: context, initialTime: TimeOfDay.now());
+              TimeOfDay? time;
+                await showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: Text("Selecione a Hora"),
+                      content: TimePickerSpinner(
+                        is24HourMode: true,
+                        minutesInterval: 5,
+                        onTimeChange: (dateTime) {
+                          time = TimeOfDay.fromDateTime(dateTime);
+                        },
+                      ),
+                      actions: <Widget>[
+                        TextButton(
+                          child: Text("CANCELAR"),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                        TextButton(
+                          child: Text("OK"),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                );
               if (time == null) return;
               onDataHoraInseminacaoChange(DateTime(
-                  date.year, date.month, date.day, time.hour, time.minute));
+                  date.year, date.month, date.day, time!.hour, time!.minute));
             },
           ),
         ];

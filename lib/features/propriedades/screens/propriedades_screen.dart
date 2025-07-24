@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:nobryo_final/core/database/sqlite_helper.dart';
+import 'package:nobryo_final/core/models/egua_model.dart';
 import 'package:nobryo_final/core/models/propriedade_model.dart';
 import 'package:nobryo_final/core/services/sync_service.dart';
 import 'package:nobryo_final/features/auth/screens/manage_users_screen.dart';
@@ -22,6 +23,9 @@ class PropriedadesScreen extends StatefulWidget {
 class _PropriedadesScreenState extends State<PropriedadesScreen> {
   bool _isLoading = true;
   List<Propriedade> _allPropriedades = [];
+  List<Egua> _allEguas = [];
+  Set<String> _propriedadesComManejosAgendados = {};
+
   List<Propriedade> _filteredPropriedades = [];
   final TextEditingController _searchController = TextEditingController();
 
@@ -31,24 +35,35 @@ class _PropriedadesScreenState extends State<PropriedadesScreen> {
   @override
   void initState() {
     super.initState();
-    _refreshPropriedades();
-    _searchController.addListener(_filterPropriedades);
-    Provider.of<SyncService>(context, listen: false).addListener(_refreshPropriedades);
+    _refreshData();
+    _searchController.addListener(_filterData);
+    Provider.of<SyncService>(context, listen: false).addListener(_refreshData);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    Provider.of<SyncService>(context, listen: false).removeListener(_refreshPropriedades);
+    Provider.of<SyncService>(context, listen: false).removeListener(_refreshData);
     super.dispose();
   }
 
-  Future<void> _refreshPropriedades() async {
+  Future<void> _refreshData() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      _allPropriedades = await SQLiteHelper.instance.readAllPropriedades();
-      _filterPropriedades();
+      final propriedades = await SQLiteHelper.instance.readAllPropriedades();
+      final eguas = await SQLiteHelper.instance.getAllEguas();
+      final manejosAgendados = await SQLiteHelper.instance.readAllManejos();
+
+      if (mounted) {
+        setState(() {
+          _allPropriedades = propriedades;
+          _allEguas = eguas;
+          _propriedadesComManejosAgendados = manejosAgendados.map((m) => m.propriedadeId).toSet();
+          _filterData();
+        });
+      }
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -64,10 +79,11 @@ class _PropriedadesScreenState extends State<PropriedadesScreen> {
     }
   }
 
+
   Future<void> _autoSync() async {
     final bool _ = await _syncService.syncData(isManual: false);
     if (mounted) {}
-    await _refreshPropriedades();
+    await _refreshData();
   }
 
   Future<void> _manualSync() async {
@@ -80,22 +96,36 @@ class _PropriedadesScreenState extends State<PropriedadesScreen> {
     final bool online = await _syncService.syncData(isManual: true);
     
     if (mounted) {
-      Navigator.of(context).pop(); // Fecha a tela de loading
+      Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
             online ? "Sincronização concluída!" : "Sem conexão com a internet."),
         backgroundColor: online ? Colors.green : Colors.orange,
       ));
     }
-    _refreshPropriedades();
+    _refreshData();
   }
 
-  void _filterPropriedades() {
+  void _filterData() {
     final query = _searchController.text.toLowerCase();
     setState(() {
-      _filteredPropriedades = _allPropriedades.where((prop) {
-        return prop.nome.toLowerCase().contains(query);
-      }).toList();
+      if (query.isEmpty) {
+        _filteredPropriedades = _allPropriedades;
+      } else {
+        final eguasPorPropriedade = <String, List<Egua>>{};
+        for (var egua in _allEguas) {
+          (eguasPorPropriedade[egua.propriedadeId] ??= []).add(egua);
+        }
+
+        _filteredPropriedades = _allPropriedades.where((prop) {
+          final nomePropriedadeMatch = prop.nome.toLowerCase().contains(query);
+          if (nomePropriedadeMatch) return true;
+
+          final eguasDaPropriedade = eguasPorPropriedade[prop.id] ?? [];
+          return eguasDaPropriedade.any((egua) => egua.nome.toLowerCase().contains(query));
+
+        }).toList();
+      }
     });
   }
 
@@ -154,7 +184,7 @@ class _PropriedadesScreenState extends State<PropriedadesScreen> {
             TextField(
               controller: _searchController,
               decoration: const InputDecoration(
-                hintText: "Busca por nome",
+                hintText: "Buscar por propriedade ou égua...",
                 prefixIcon: Icon(Icons.search, color: Colors.grey),
               ),
             ),
@@ -172,13 +202,31 @@ class _PropriedadesScreenState extends State<PropriedadesScreen> {
                           itemCount: _filteredPropriedades.length,
                           itemBuilder: (context, index) {
                             final prop = _filteredPropriedades[index];
+                            final hasPendingManejos = _propriedadesComManejosAgendados.contains(prop.id);
+
                             return Card(
                               child: ListTile(
-                                title: Text(
-                                  prop.nome,
-                                  style: const TextStyle(
-                                      color: AppTheme.darkText,
-                                      fontWeight: FontWeight.w600),
+                                title: Row(
+                                  children: [
+                                    if(hasPendingManejos)
+                                      Container(
+                                        width: 10,
+                                        height: 10,
+                                        margin: const EdgeInsets.only(right: 8),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.blueAccent,
+                                          shape: BoxShape.circle
+                                        ),
+                                      ),
+                                    Expanded(
+                                      child: Text(
+                                        prop.nome,
+                                        style: const TextStyle(
+                                            color: AppTheme.darkText,
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 subtitle: Text(prop.dono,
                                     style: TextStyle(color: Colors.grey[600])),
@@ -194,7 +242,7 @@ class _PropriedadesScreenState extends State<PropriedadesScreen> {
                                       ),
                                     ),
                                   ).then((_) {
-                                    _refreshPropriedades();
+                                    _refreshData();
                                   });
                                 },
                               ),
@@ -255,16 +303,16 @@ class _PropriedadesScreenState extends State<PropriedadesScreen> {
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: nomeController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: "Propriedade",
-                      prefixIcon: const Icon(Icons.home_work_outlined)),
+                      prefixIcon: Icon(Icons.home_work_outlined)),
                     validator: (value) =>
                       value!.isEmpty ? "Este campo não pode ser vazio" : null,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: donoController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                           labelText: "Dono da Propriedade",
                           prefixIcon: Icon(Icons.person_outlined)),
                     validator: (value) =>
@@ -301,4 +349,4 @@ class _PropriedadesScreenState extends State<PropriedadesScreen> {
       )
     );
   }
-} 
+}
