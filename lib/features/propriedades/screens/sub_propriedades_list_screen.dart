@@ -7,14 +7,14 @@ import 'package:nobryo_final/shared/theme/theme.dart';
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
 
-// NÍVEL 2: Tela que lista as SUB-PROPRIEDADES de uma Propriedade Mãe.
 class SubPropriedadesListScreen extends StatefulWidget {
   final Propriedade parentPropriedade;
 
   const SubPropriedadesListScreen({super.key, required this.parentPropriedade});
 
   @override
-  State<SubPropriedadesListScreen> createState() => _SubPropriedadesListScreenState();
+  State<SubPropriedadesListScreen> createState() =>
+      _SubPropriedadesListScreenState();
 }
 
 class _SubPropriedadesListScreenState extends State<SubPropriedadesListScreen> {
@@ -24,18 +24,21 @@ class _SubPropriedadesListScreenState extends State<SubPropriedadesListScreen> {
   void initState() {
     super.initState();
     _refreshSubPropriedadesList();
-    Provider.of<SyncService>(context, listen: false).addListener(_refreshSubPropriedadesList);
+    Provider.of<SyncService>(context, listen: false)
+        .addListener(_refreshSubPropriedadesList);
   }
 
   @override
   void dispose() {
-    Provider.of<SyncService>(context, listen: false).removeListener(_refreshSubPropriedadesList);
+    Provider.of<SyncService>(context, listen: false)
+        .removeListener(_refreshSubPropriedadesList);
     super.dispose();
   }
 
   void _refreshSubPropriedadesList() {
     setState(() {
-      _subPropriedadesFuture = SQLiteHelper.instance.readSubPropriedades(widget.parentPropriedade.id);
+      _subPropriedadesFuture =
+          SQLiteHelper.instance.readSubPropriedades(widget.parentPropriedade.id);
     });
   }
 
@@ -84,7 +87,6 @@ class _SubPropriedadesListScreenState extends State<SubPropriedadesListScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          // AÇÃO: Ao clicar, vai para a tela de éguas (Nível 3)
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -102,7 +104,10 @@ class _SubPropriedadesListScreenState extends State<SubPropriedadesListScreen> {
             children: [
               Text(
                 subPropriedade.nome,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.darkText),
               ),
               const SizedBox(height: 8),
               Text(
@@ -116,7 +121,6 @@ class _SubPropriedadesListScreenState extends State<SubPropriedadesListScreen> {
     );
   }
 
-  // Este modal cria uma SUB-PROPRIEDADE (parentId é o da propriedade mãe)
   void _showAddSubPropriedadeModal(BuildContext context) {
     final formKey = GlobalKey<FormState>();
     final nomeController = TextEditingController();
@@ -126,7 +130,11 @@ class _SubPropriedadesListScreenState extends State<SubPropriedadesListScreen> {
       context: context,
       isScrollControlled: true,
       builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, top: 20, left: 20, right: 20),
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            top: 20,
+            left: 20,
+            right: 20),
         child: Form(
           key: formKey,
           child: SingleChildScrollView(
@@ -136,39 +144,50 @@ class _SubPropriedadesListScreenState extends State<SubPropriedadesListScreen> {
               children: [
                 Text(
                   "Adicionar Local em\n${widget.parentPropriedade.nome}",
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
                 TextFormField(
                   controller: nomeController,
-                  decoration: const InputDecoration(labelText: "Nome do Local (Ex: Piquete 1)", prefixIcon: Icon(Icons.maps_home_work_outlined)),
-                  validator: (value) => value!.isEmpty ? "Este campo é obrigatório" : null,
+                  decoration: const InputDecoration(
+                      labelText: "Nome do Local (Ex: Piquete 1)",
+                      prefixIcon: Icon(Icons.maps_home_work_outlined)),
+                  validator: (value) =>
+                      value!.isEmpty ? "Este campo é obrigatório" : null,
                 ),
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: donoController,
-                  decoration: const InputDecoration(labelText: "Dono", prefixIcon: Icon(Icons.person_outlined)),
-                  validator: (value) => value!.isEmpty ? "Este campo é obrigatório" : null,
+                  decoration: const InputDecoration(
+                      labelText: "Dono", prefixIcon: Icon(Icons.person_outlined)),
+                  validator: (value) =>
+                      value!.isEmpty ? "Este campo é obrigatório" : null,
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.darkGreen),
                     onPressed: () async {
                       if (formKey.currentState!.validate()) {
                         final novaPropriedade = Propriedade(
                           id: const Uuid().v4(),
                           nome: nomeController.text,
                           dono: donoController.text,
-                          parentId: widget.parentPropriedade.id, // Define o pai
+                          parentId: widget.parentPropriedade.id,
                           statusSync: 'pending_create',
                         );
-                        await SQLiteHelper.instance.createPropriedade(novaPropriedade);
+                        await SQLiteHelper.instance
+                            .createPropriedade(novaPropriedade);
                         if (mounted) {
                           Navigator.of(ctx).pop();
                           _refreshSubPropriedadesList();
-                          Provider.of<SyncService>(context, listen: false).syncData(isManual: false);
+                          Provider.of<SyncService>(context, listen: false)
+                              .syncData(isManual: false);
                         }
                       }
                     },

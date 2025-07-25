@@ -15,7 +15,8 @@ class Egua {
   String propriedadeId;
   String statusSync;
   bool isDeleted;
-  String categoria; // Novo campo adicionado
+  String categoria;
+  int orderIndex; // NOVO CAMPO
 
   Egua({
     required this.id,
@@ -32,7 +33,8 @@ class Egua {
     required this.propriedadeId,
     this.statusSync = 'pending_create',
     this.isDeleted = false,
-    this.categoria = 'Matriz', // Valor padrão
+    this.categoria = 'Matriz',
+    required this.orderIndex, // NOVO CAMPO
   });
 
   @override
@@ -60,6 +62,7 @@ class Egua {
       'statusSync': statusSync,
       'isDeleted': isDeleted ? 1 : 0,
       'categoria': categoria,
+      'orderIndex': orderIndex, // NOVO CAMPO
     };
   }
 
@@ -71,7 +74,8 @@ class Egua {
       rp: map['rp'],
       pelagem: map['pelagem'],
       cobertura: map['cobertura'],
-      dataParto: map['dataParto'] != null ? DateTime.parse(map['dataParto']) : null,
+      dataParto:
+          map['dataParto'] != null ? DateTime.parse(map['dataParto']) : null,
       sexoPotro: map['sexoPotro'],
       statusReprodutivo: map['statusReprodutivo'],
       diasPrenhe: map['diasPrenhe'],
@@ -80,6 +84,7 @@ class Egua {
       statusSync: map['statusSync'],
       isDeleted: map['isDeleted'] == 1,
       categoria: map['categoria'] ?? 'Matriz',
+      orderIndex: map['orderIndex'] ?? 0, // NOVO CAMPO
     );
   }
 
@@ -97,10 +102,12 @@ class Egua {
       'diasPrenhe': diasPrenhe,
       'propriedadeFirebaseId': propriedadeFirebaseId,
       'categoria': categoria,
+      'orderIndex': orderIndex, // NOVO CAMPO
     };
   }
 
-  factory Egua.fromFirebaseMap(String firebaseId, String propId, Map<String, dynamic> map) {
+  factory Egua.fromFirebaseMap(
+      String firebaseId, String propId, Map<String, dynamic> map) {
     final dataPartoTimestamp = map['dataParto'] as Timestamp?;
     return Egua(
       id: map['idLocal'] ?? firebaseId,
@@ -116,8 +123,9 @@ class Egua {
       diasPrenhe: map['diasPrenhe'],
       observacao: map['observacao'],
       statusSync: 'synced',
-      isDeleted: false, 
+      isDeleted: false,
       categoria: map['categoria'] ?? 'Matriz',
+      orderIndex: map['orderIndex'] ?? 0, // NOVO CAMPO
     );
   }
 
@@ -137,6 +145,7 @@ class Egua {
     String? statusSync,
     bool? isDeleted,
     String? categoria,
+    int? orderIndex, // NOVO CAMPO
   }) {
     return Egua(
       id: id ?? this.id,
@@ -154,6 +163,7 @@ class Egua {
       statusSync: statusSync ?? this.statusSync,
       isDeleted: isDeleted ?? this.isDeleted,
       categoria: categoria ?? this.categoria,
+      orderIndex: orderIndex ?? this.orderIndex, // NOVO CAMPO
     );
   }
 }
