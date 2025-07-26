@@ -1,0 +1,75 @@
+histórico:
+
+    deslocamentos mensais nos relatórios 
+    editar histórico
+    filtro de manejo no histórico
+
+    cores para manejos:
+
+        inseminação
+        indução
+
+    hora da conclusão do manejo
+    filtro de estações
+    manejos com controle folicular juntar tudo no mesmo card sem grifa
+
+menu de conclusão:
+
+ 	responsável da cabanha (dono ou peões)
+
+indução:
+        
+    sêmen: 		
+        congelado 		
+        refrigerado 		
+        afresco 		
+        monta natural
+
+campos para adicionar:
+    sim/não controle folicular em todos os manejos
+    
+propriedades:
+
+    transferir éguas entre propriedades
+    
+agenda:
+
+    editar tudo 	
+    filtro pendentes
+
+ovários:  
+    múltipla escolha    
+
+eguaslist:
+
+    widget para selecionar data para exportar relatório
+    barra de pesquisa
+
+
+propriedadeslist:
+
+    widget para selecionar data para exportar relatório
+
+    datapicked:
+    minutos de 5 em 5
+
+notificações:
+
+    monitoramento de controle folicular: 		
+    
+        agendamento automático de diagnóstico (com alerta de egua prenha)para égua prenha (14 dias após a inseminação)
+
+        fl >= 34 {alerta para concluir controle folicular}
+
+        conclusão de controle folicular:
+        verificar em qual dia o tamanho folicular vai bater 34mm e dar um alert se deseja marcar um controle folicular
+
+    conclusão de indução:
+        verificar em qual dia bate a inseminação e dar um alert se deseja marcar uma inseminação
+        após 36 hrs da conclusão, notificar para realizar a inseminação
+
+medicamentos:
+    editável
+
+
+função limpar campos (todos)

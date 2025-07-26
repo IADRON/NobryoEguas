@@ -29,6 +29,8 @@ class EguasListScreen extends StatefulWidget {
 class _EguasListScreenState extends State<EguasListScreen> {
   List<Egua> _eguas = [];
   bool _isLoading = true;
+  Map<String, DateTime?> _previsaoPartoMap = {};
+  Map<String, Manejo?> _proximoManejoMap = {};
 
   final ExportService _exportService = ExportService();
   final SyncService _syncService = SyncService();
@@ -77,6 +79,64 @@ class _EguasListScreenState extends State<EguasListScreen> {
         if (prop != null) _currentPropriedadeNome = prop.nome;
         _eguas = updatedEguas;
         _isLoading = false;
+      });
+      _calcularPrevisoesDeParto(updatedEguas);
+      _calcularProximosManejos(updatedEguas);
+    }
+  }
+
+  Future<void> _calcularProximosManejos(List<Egua> eguas) async {
+    final Map<String, Manejo?> newMap = {};
+    for (final egua in eguas) {
+      final agendados = await SQLiteHelper.instance.readAgendadosByEgua(egua.id);
+      if (agendados.isNotEmpty) {
+        newMap[egua.id] = agendados.first;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _proximoManejoMap = newMap;
+      });
+    }
+  }
+
+  Future<void> _calcularPrevisoesDeParto(List<Egua> eguas) async {
+    final Map<String, DateTime?> newMap = {};
+    for (final egua in eguas) {
+      if (egua.statusReprodutivo.toLowerCase() == 'prenhe') {
+        final historico = await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
+        historico.sort((a, b) => b.dataAgendada.compareTo(a.dataAgendada));
+
+        Manejo? diagnosticoPositivo;
+        for (var manejo in historico) {
+          if (manejo.tipo.toLowerCase() == 'diagnóstico' &&
+              manejo.detalhes['resultado']?.toString().toLowerCase() == 'prenhe') {
+            diagnosticoPositivo = manejo;
+            break;
+          }
+        }
+
+        if (diagnosticoPositivo != null) {
+          Manejo? ultimaInseminacao;
+          for (var manejo in historico) {
+            if (manejo.tipo.toLowerCase() == 'inseminação' &&
+                manejo.dataAgendada.isBefore(diagnosticoPositivo.dataAgendada)) {
+              ultimaInseminacao = manejo;
+              break;
+            }
+          }
+
+          if (ultimaInseminacao != null) {
+            final dataInseminacao = ultimaInseminacao.dataAgendada;
+            final previsao = DateTime(dataInseminacao.year, dataInseminacao.month + 11, dataInseminacao.day);
+            newMap[egua.id] = previsao;
+          }
+        }
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _previsaoPartoMap = newMap;
       });
     }
   }
@@ -447,6 +507,9 @@ class _EguasListScreenState extends State<EguasListScreen> {
     final statusColor = egua.statusReprodutivo.toLowerCase() == 'prenhe'
         ? AppTheme.statusPrenhe
         : AppTheme.statusVazia;
+    final previsaoParto = _previsaoPartoMap[egua.id];
+    final proximoManejo = _proximoManejoMap[egua.id];
+
     return Card(
       key: ValueKey(egua.id),
       child: InkWell(
@@ -480,8 +543,38 @@ class _EguasListScreenState extends State<EguasListScreen> {
                     Text("RP: ${egua.rp}",
                         style:
                             TextStyle(fontSize: 14, color: Colors.grey[600])),
-                    const SizedBox(height: 8),
-                    Row(
+
+                    if (proximoManejo != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.statusDiagnostico,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.calendar_month_outlined, size: 14, color: AppTheme.darkGreen),
+                            const SizedBox(width: 4),
+                            Text(
+                            "Próximo manejo: ${DateFormat('dd/MM/yy').format(proximoManejo.dataAgendada)}",
+                            style: const TextStyle(
+                              color: Color.fromARGB(255, 250, 250, 250),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ]
+                      ),
+                    )
+                  ),
+                  const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 6.0,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -495,8 +588,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold)),
                         ),
-                        if (egua.diasPrenhe != null && egua.diasPrenhe! > 0) ...[
-                          const SizedBox(width: 8),
+                        if (egua.diasPrenhe != null && egua.diasPrenhe! > 0)
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 5),
@@ -509,7 +601,24 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold)),
                           ),
-                        ]
+                        if (previsaoParto != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(width: 4),
+                                Text(
+                                  "Parto: ${DateFormat('dd/MM/yy').format(previsaoParto)}",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[800],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -653,19 +762,19 @@ class _EguasListScreenState extends State<EguasListScreen> {
                             children: [
                               TextFormField(
                                 readOnly: true,
-                                decoration: InputDecoration(
+                                controller: TextEditingController(
+                                  text: dataParto == null ? '' : DateFormat('dd/MM/yyyy').format(dataParto!),
+                                ),
+                                decoration: const InputDecoration(
                                   labelText: "Data do Parto",
                                   prefixIcon:
                                       Icon(Icons.calendar_today_outlined),
-                                  hintText: dataParto == null
-                                      ? 'Selecione a data'
-                                      : DateFormat('dd/MM/yyyy')
-                                          .format(dataParto!),
+                                  hintText: 'Selecione a data',
                                 ),
                                 onTap: () async {
                                   final pickedDate = await showDatePicker(
                                       context: context,
-                                      initialDate: DateTime.now(),
+                                      initialDate: dataParto ?? DateTime.now(),
                                       firstDate: DateTime(2000),
                                       lastDate: DateTime.now());
                                   if (pickedDate != null) {

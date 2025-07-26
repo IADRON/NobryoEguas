@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
 import 'package:intl/intl.dart';
-import 'package:nobryo_final/core/services/sync_service.dart';
 import 'package:nobryo_final/core/database/sqlite_helper.dart';
-import 'package:nobryo_final/core/services/export_service.dart';
-import 'package:nobryo_final/core/services/auth_service.dart';
 import 'package:nobryo_final/core/models/egua_model.dart';
 import 'package:nobryo_final/core/models/manejo_model.dart';
 import 'package:nobryo_final/core/models/medicamento_model.dart';
 import 'package:nobryo_final/core/models/user_model.dart';
+import 'package:nobryo_final/core/services/auth_service.dart';
+import 'package:nobryo_final/core/services/export_service.dart';
+import 'package:nobryo_final/core/services/sync_service.dart';
 import 'package:nobryo_final/shared/theme/theme.dart';
 import 'package:uuid/uuid.dart';
 
@@ -32,6 +33,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
   late Future<List<Manejo>> _agendadosFuture;
   final ExportService _exportService = ExportService();
   int? _diasPrenheCalculado;
+  // NOVO: Variável para armazenar a previsão de parto
+  DateTime? _previsaoParto;
   Map<String, AppUser> _allUsers = {};
   final SyncService _syncService = SyncService();
   final AuthService _authService = AuthService();
@@ -83,6 +86,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
       });
     }
     _calcularDiasPrenhe();
+    _calcularPrevisaoParto();
   }
 
   void _calcularDiasPrenhe() async {
@@ -120,6 +124,51 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
       if (mounted) {
         setState(() => _diasPrenheCalculado = _currentEgua.diasPrenhe);
       }
+    }
+  }
+
+  // NOVO: Função para calcular a previsão de parto para esta égua específica
+  void _calcularPrevisaoParto() async {
+    if (_currentEgua.statusReprodutivo.toLowerCase() != 'prenhe') {
+      if (mounted) setState(() => _previsaoParto = null);
+      return;
+    }
+
+    final historico = await _historicoFuture;
+    historico.sort((a, b) => b.dataAgendada.compareTo(a.dataAgendada));
+
+    Manejo? diagnosticoPositivo;
+    for (var manejo in historico) {
+      if (manejo.tipo.toLowerCase() == 'diagnóstico' &&
+          manejo.detalhes['resultado']?.toString().toLowerCase() == 'prenhe') {
+        diagnosticoPositivo = manejo;
+        break;
+      }
+    }
+
+    if (diagnosticoPositivo != null) {
+      Manejo? ultimaInseminacao;
+      for (var manejo in historico) {
+        if (manejo.tipo.toLowerCase() == 'inseminação' &&
+            manejo.dataAgendada.isBefore(diagnosticoPositivo.dataAgendada)) {
+          ultimaInseminacao = manejo;
+          break;
+        }
+      }
+
+      if (ultimaInseminacao != null) {
+        final dataInseminacao = ultimaInseminacao.dataAgendada;
+        final previsao = DateTime(dataInseminacao.year, dataInseminacao.month + 11, dataInseminacao.day);
+        if (mounted) {
+          setState(() {
+            _previsaoParto = previsao;
+          });
+        }
+      } else {
+         if (mounted) setState(() => _previsaoParto = null);
+      }
+    } else {
+       if (mounted) setState(() => _previsaoParto = null);
     }
   }
 
@@ -178,33 +227,143 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     }
   }
 
-  Future<void> _promptForDiagnosticSchedule() async {
-    final bool? confirm = await showDialog<bool>(
+  Future<void> _promptForDiagnosticSchedule(DateTime inseminationDate) async {
+    await Future.delayed(Duration(seconds: 2));
+    final bool? confirm = await showGeneralDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Agendamento Automático"),
-        content: const Text(
-            "Inseminação concluída. Deseja agendar o diagnóstico de prenhez para daqui a 14 dias?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text("Não"),
+      transitionDuration: const Duration(milliseconds: 350),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOut,
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text("Sim"),
-          ),
-        ],
-      ),
+          child: child,
+        );
+      },
+      pageBuilder: (ctx, animation, secondaryAnimation) {
+        return AlertDialog(
+          title: const Text("Agendamento Automático"),
+          content: const Text(
+              "Inseminação concluída. Deseja agendar o diagnóstico para daqui a 14 dias?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text("Não"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text("Sim"),
+            ),
+          ],
+        );
+      },
     );
 
     if (confirm == true && mounted) {
       _showAddAgendamentoModal(
         context,
         preselectedType: "Diagnóstico",
-        preselectedDate: DateTime.now().add(const Duration(days: 14)),
+        preselectedDate: inseminationDate.add(const Duration(days: 14)),
       );
     }
+  }
+
+    Widget _buildControleFolicularInputs({
+    required StateSetter setModalState,
+    required String? ovarioDirOp,
+    required Function(String?) onOvarioDirChange,
+    required TextEditingController ovarioDirTamanhoController,
+    required String? ovarioEsqOp,
+    required Function(String?) onOvarioEsqChange,
+    required TextEditingController ovarioEsqTamanhoController,
+    required String? edemaSelecionado,
+    required Function(String?) onEdemaChange,
+    required TextEditingController uteroController,
+  }) {
+    final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+        Text("Dados do Controle Folicular", style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 15),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: ovarioDirOp,
+                decoration: const InputDecoration(
+                  labelText: "Ovário Direito",
+                  prefixIcon: Icon(Icons.join_right_outlined)
+                ),
+                items: ovarioOptions
+                    .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+                    .toList(),
+                onChanged: onOvarioDirChange,
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 120,
+              child: TextFormField(
+                controller: ovarioDirTamanhoController,
+                decoration: const InputDecoration(labelText: "Tamanho (mm)"),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: ovarioEsqOp,
+                decoration: const InputDecoration(
+                  labelText: "Ovário Esquerdo",
+                  prefixIcon: Icon(Icons.join_left_outlined)
+                ),
+                items: ovarioOptions
+                    .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+                    .toList(),
+                onChanged: onOvarioEsqChange,
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 120,
+              child: TextFormField(
+                controller: ovarioEsqTamanhoController,
+                decoration: const InputDecoration(labelText: "Tamanho (mm)"),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+            )
+          ],
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          value: edemaSelecionado,
+          decoration: const InputDecoration(
+            labelText: "Edema",
+            prefixIcon: Icon(Icons.numbers_outlined)
+          ),
+          items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: onEdemaChange,
+        ),
+        const SizedBox(height: 10),
+        TextFormField(
+            controller: uteroController,
+            decoration: const InputDecoration(
+                labelText: "Útero",
+                prefixIcon: Icon(Icons.notes_outlined))),
+      ],
+    );
   }
 
   @override
@@ -353,7 +512,10 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             _buildInfoItem("Observação:", egua.observacao!),
             const SizedBox(height: 12),
           ],
-          Row(
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 6.0,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Container(
                 padding:
@@ -367,7 +529,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                         fontSize: 12,
                         fontWeight: FontWeight.bold)),
               ),
-              const SizedBox(width: 8),
               if (_diasPrenheCalculado != null && _diasPrenheCalculado! > 0)
                 Container(
                   padding:
@@ -380,6 +541,24 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                           color: Colors.white,
                           fontSize: 12,
                           fontWeight: FontWeight.bold)),
+                ),
+              if (_previsaoParto != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2.0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 4),
+                      Text(
+                        "Parto: ${DateFormat('dd/MM/yy').format(_previsaoParto!)}",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[800],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
             ],
           )
@@ -675,6 +854,27 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: detailEntries.map((entry) {
+        if (entry.key == 'inducao') {
+          return Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.statusDiagnostico,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                "${labelMap[entry.key]!.toUpperCase()}: ${entry.value.toString().toUpperCase()}",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          );
+        }
+
         return Padding(
           padding: const EdgeInsets.only(top: 4.0),
           child: RichText(
@@ -795,14 +995,16 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                     const SizedBox(height: 10),
                     TextFormField(
                       readOnly: true,
-                      decoration: InputDecoration(
+                      controller: TextEditingController(
+                        text: dataSelecionada == null
+                            ? ''
+                            : DateFormat('dd/MM/yyyy').format(dataSelecionada!),
+                      ),
+                      decoration: const InputDecoration(
                           labelText: "Data do Manejo",
                           prefixIcon:
-                              const Icon(Icons.calendar_today_outlined),
-                          hintText: dataSelecionada == null
-                              ? 'Selecione a data'
-                              : DateFormat('dd/MM/yyyy')
-                                  .format(dataSelecionada!)),
+                              Icon(Icons.calendar_today_outlined),
+                          hintText: 'Toque para selecionar a data'),
                       onTap: () async {
                         final pickedDate = await showDatePicker(
                             context: context,
@@ -1173,10 +1375,14 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     final List<AppUser> allUsersList = await SQLiteHelper.instance.getAllUsers();
     AppUser? concluidoPorSelecionado = allUsersList.firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
 
+    bool _incluirControleFolicular = false;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
+      builder: (ctx) {
+        
+        return StatefulBuilder(
         builder: (modalContext, setModalState) {
           void filterMedicamentos(String query) {
             setModalState(() {
@@ -1239,29 +1445,29 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       context: context,
                       tipo: manejo.tipo,
                       setModalState: setModalState,
-                      onDataHoraInseminacaoChange: (val) => setModalState(() => dataHoraInseminacao = val),
-                      onMedicamentoChange: (val) => setModalState(() => medicamentoSelecionado = val),
-                      onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
-                      onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
-                      onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
-                      onIdadeEmbriaoChange: (val) => setModalState(() => idadeEmbriaoSelecionada = val),
-                      onDoadoraChange: (val) => setModalState(() => doadoraSelecionada = val),
-                      onResultadoChange: (val) => setModalState(() => resultadoDiagnostico = val),
                       garanhaoController: garanhaoController,
                       dataHoraInseminacao: dataHoraInseminacao,
+                      onDataHoraInseminacaoChange: (val) => setModalState(() => dataHoraInseminacao = val),
                       litrosController: litrosController,
                       medicamentoSelecionado: medicamentoSelecionado,
+                      onMedicamentoChange: (val) => setModalState(() => medicamentoSelecionado = val),
                       allMeds: todosMedicamentos,
                       ovarioDirOp: ovarioDirOp,
+                      onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
                       ovarioEsqOp: ovarioEsqOp,
+                      onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
                       ovarioDirTamanhoController: ovarioDirTamanhoController,
                       ovarioEsqTamanhoController: ovarioEsqTamanhoController,
                       edemaSelecionado: edemaSelecionado,
+                      onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
                       uteroController: uteroController,
                       idadeEmbriao: idadeEmbriaoSelecionada,
+                      onIdadeEmbriaoChange: (val) => setModalState(() => idadeEmbriaoSelecionada = val),
                       doadoraSelecionada: doadoraSelecionada,
+                      onDoadoraChange: (val) => setModalState(() => doadoraSelecionada = val),
                       avaliacaoUterinaController: avaliacaoUterinaController,
                       resultadoDiagnostico: resultadoDiagnostico,
+                      onResultadoChange: (val) => setModalState(() => resultadoDiagnostico = val),
                       diasPrenheController: diasPrenheController,
                       medicamentoSearchController: medicamentoSearchController,
                       filterMedicamentos: filterMedicamentos,
@@ -1269,6 +1475,30 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       onShowMedicamentoListChange: (show) => setModalState(() => _showMedicamentoList = show),
                       filteredMedicamentos: _filteredMedicamentos,
                     ),
+
+                     if (manejo.tipo != 'Controle Folicular') ...[
+                      const Divider(height: 20, thickness: 1),
+                      Text("Incluir Controle Folicular?", style: Theme.of(context).textTheme.titleMedium),
+                      Row(
+                        children: [
+                          Expanded(child: RadioListTile<bool>(title: const Text("Sim"), value: true, groupValue: _incluirControleFolicular, onChanged: (val) => setModalState(() => _incluirControleFolicular = val!))),
+                          Expanded(child: RadioListTile<bool>(title: const Text("Não"), value: false, groupValue: _incluirControleFolicular, onChanged: (val) => setModalState(() => _incluirControleFolicular = val!))),
+                        ],
+                      ),
+                      if (_incluirControleFolicular)
+                        _buildControleFolicularInputs(
+                          setModalState: setModalState,
+                          ovarioDirOp: ovarioDirOp,
+                          onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
+                          ovarioDirTamanhoController: ovarioDirTamanhoController,
+                          ovarioEsqOp: ovarioEsqOp,
+                          onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
+                          ovarioEsqTamanhoController: ovarioEsqTamanhoController,
+                          edemaSelecionado: edemaSelecionado,
+                          onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
+                          uteroController: uteroController,
+                        ),
+                    ],
 
                     if (manejo.tipo == 'Controle Folicular') ...[
                       const Divider(height: 20, thickness: 1),
@@ -1328,20 +1558,52 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       const SizedBox(height: 10),
                       TextFormField(
                         readOnly: true,
-                        decoration: InputDecoration(
+                        controller: TextEditingController(
+                          text: dataHoraInducao == null ? '' : DateFormat('dd/MM/yyyy HH:mm').format(dataHoraInducao!),
+                        ),
+                        decoration: const InputDecoration(
                             labelText: "Data e Hora da Indução",
-                            hintText: dataHoraInducao == null ? 'Selecione' : DateFormat('dd/MM/yyyy HH:mm').format(dataHoraInducao!),
+                            hintText: 'Selecione',
                         ),
                         onTap: () async {
                            final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
                            if (date == null) return;
-                           final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-                           if (time == null) return;
-                           setModalState(() => dataHoraInducao = DateTime(date.year, date.month, date.day, time.hour, time.minute));
-                           if(inducaoSelecionada != null) {
-                             validator: (v) => v == null ? "Selecione a data e hora da indução" : null;
+                           TimeOfDay? time;
+                           await showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: const Text("Selecione a Hora"),
+                                content: TimePickerSpinner(
+                                  is24HourMode: true,
+                                  minutesInterval: 5,
+                                  onTimeChange: (dateTime) {
+                                    time = TimeOfDay.fromDateTime(dateTime);
+                                  },
+                                ),
+                                actions: <Widget>[
+                                  TextButton(
+                                    child: const Text("CANCELAR"),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                  ),
+                                  TextButton(
+                                    child: const Text("OK"),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                           if (time != null) {
+                              setModalState(() => dataHoraInducao = DateTime(date.year, date.month, date.day, time!.hour, time!.minute));
                            }
                         },
+                        validator: (v) {
+                          if (inducaoSelecionada != null && dataHoraInducao == null) {
+                            return "Campo obrigatório";
+                          }
+                          return null;
+                        },  
                       ),
                     ],
                     
@@ -1370,11 +1632,13 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                     const SizedBox(height: 10),
                     TextFormField(
                       readOnly: true,
-                      decoration: InputDecoration(
+                      controller: TextEditingController(
+                        text: DateFormat('dd/MM/yyyy').format(dataFinalManejo)
+                      ),
+                      decoration: const InputDecoration(
                           labelText: "Data da Conclusão",
                           prefixIcon: Icon(Icons.calendar_today_outlined),
-                          hintText:
-                              DateFormat('dd/MM/yyyy').format(dataFinalManejo)),
+                          hintText: 'Toque para selecionar a data'),
                       onTap: () async {
                         final pickedDate = await showDatePicker(
                             context: context,
@@ -1395,6 +1659,15 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                             final Map<String, dynamic> detalhes = manejo.detalhes;
                             detalhes['observacao'] = obsController.text;
 
+                            if (_incluirControleFolicular && manejo.tipo != 'Controle Folicular') {
+                                detalhes['ovarioDireito'] = ovarioDirOp;
+                                detalhes['ovarioDireitoTamanho'] = ovarioDirTamanhoController.text;
+                                detalhes['ovarioEsquerdo'] = ovarioEsqOp;
+                                detalhes['ovarioEsquerdoTamanho'] = ovarioEsqTamanhoController.text;
+                                detalhes['edema'] = edemaSelecionado;
+                                detalhes['utero'] = uteroController.text;
+                            }
+
                             if (manejo.tipo == 'Controle Folicular') {
                                manejo.medicamentoId = medicamentoSelecionado?.id;
                                manejo.inducao = inducaoSelecionada;
@@ -1413,10 +1686,10 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                                 final eguaAtualizada = _currentEgua.copyWith(
                                     statusReprodutivo: 'Prenhe',
                                     diasPrenhe: dias,
+                                    cobertura: garanhaoController.text,
                                     statusSync: 'pending_update');
                                 await SQLiteHelper.instance.updateEgua(eguaAtualizada);
                                 if(mounted) setState(() => _currentEgua = eguaAtualizada);
-
                               } else {
                                 final eguaAtualizada = _currentEgua.copyWith(
                                     statusReprodutivo: 'Vazia',
@@ -1450,6 +1723,10 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                             if (mounted) Navigator.of(ctx).pop();
                             _refreshData();
                           }
+                          
+                          if (manejo.tipo == "Inseminação") {
+                            _promptForDiagnosticSchedule(dataHoraInseminacao ?? dataFinalManejo);
+                          }
                         },
                         child: const Text("Salvar Conclusão"),
                       ),
@@ -1461,7 +1738,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             ),
           );
         },
-      ),
+        );
+      },
     );
   }
 
@@ -1520,12 +1798,15 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     } else {
       concluidoPorSelecionado = allUsersList.firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
     }
+    
+    bool _incluirControleFolicular = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (modalContext, setModalState) {
+      builder: (ctx) { 
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
           void filterMedicamentos(String query) {
             setModalState(() {
               _filteredMedicamentos = query.isEmpty
@@ -1594,29 +1875,29 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                         context: context,
                         tipo: tipoManejoSelecionado!,
                         setModalState: setModalState,
-                        onDataHoraInseminacaoChange: (val) => setModalState(() => dataHoraInseminacao = val),
-                        onMedicamentoChange: (val) => setModalState(() => medicamentoSelecionado = val),
-                        onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
-                        onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
-                        onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
-                        onIdadeEmbriaoChange: (val) => setModalState(() => idadeEmbriaoSelecionada = val),
-                        onDoadoraChange: (val) => setModalState(() => doadoraSelecionada = val),
-                        onResultadoChange: (val) => setModalState(() => resultadoDiagnostico = val),
                         garanhaoController: garanhaoController,
                         dataHoraInseminacao: dataHoraInseminacao,
+                        onDataHoraInseminacaoChange: (val) => setModalState(() => dataHoraInseminacao = val),
                         litrosController: litrosController,
                         medicamentoSelecionado: medicamentoSelecionado,
+                        onMedicamentoChange: (val) => setModalState(() => medicamentoSelecionado = val),
                         allMeds: todosMedicamentos,
                         ovarioDirOp: ovarioDirOp,
+                        onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
                         ovarioEsqOp: ovarioEsqOp,
+                        onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
                         ovarioDirTamanhoController: ovarioDirTamanhoController,
                         ovarioEsqTamanhoController: ovarioEsqTamanhoController,
                         edemaSelecionado: edemaSelecionado,
+                        onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
                         uteroController: uteroController,
                         idadeEmbriao: idadeEmbriaoSelecionada,
+                        onIdadeEmbriaoChange: (val) => setModalState(() => idadeEmbriaoSelecionada = val),
                         doadoraSelecionada: doadoraSelecionada,
+                        onDoadoraChange: (val) => setModalState(() => doadoraSelecionada = val),
                         avaliacaoUterinaController: avaliacaoUterinaController,
                         resultadoDiagnostico: resultadoDiagnostico,
+                        onResultadoChange: (val) => setModalState(() => resultadoDiagnostico = val),
                         diasPrenheController: diasPrenheController,
                         medicamentoSearchController: medicamentoSearchController,
                         filterMedicamentos: filterMedicamentos,
@@ -1624,6 +1905,29 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                         onShowMedicamentoListChange: (show) => setModalState(() => _showMedicamentoList = show),
                         filteredMedicamentos: _filteredMedicamentos,
                       ),
+                      if (tipoManejoSelecionado != 'Controle Folicular') ...[
+                        const Divider(height: 20, thickness: 1),
+                        Text("Incluir Controle Folicular?", style: Theme.of(context).textTheme.titleMedium),
+                        Row(
+                          children: [
+                            Expanded(child: RadioListTile<bool>(title: const Text("Sim"), value: true, groupValue: _incluirControleFolicular, onChanged: (val) => setModalState(() => _incluirControleFolicular = val!))),
+                            Expanded(child: RadioListTile<bool>(title: const Text("Não"), value: false, groupValue: _incluirControleFolicular, onChanged: (val) => setModalState(() => _incluirControleFolicular = val!))),
+                          ],
+                        ),
+                        if (_incluirControleFolicular)
+                          _buildControleFolicularInputs(
+                            setModalState: setModalState,
+                            ovarioDirOp: ovarioDirOp,
+                            onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
+                            ovarioDirTamanhoController: ovarioDirTamanhoController,
+                            ovarioEsqOp: ovarioEsqOp,
+                            onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
+                            ovarioEsqTamanhoController: ovarioEsqTamanhoController,
+                            edemaSelecionado: edemaSelecionado,
+                            onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
+                            uteroController: uteroController,
+                          ),
+                      ],
                     ],
 
                     if (tipoManejoSelecionado == 'Controle Folicular') ...[
@@ -1676,7 +1980,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       const SizedBox(height: 10),
                       DropdownButtonFormField<String>(
                         value: inducaoSelecionada,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: "Tipo de Indução",
                           prefixIcon: Icon(Icons.healing_outlined)
                         ),
@@ -1689,17 +1993,45 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       const SizedBox(height: 10),
                       TextFormField(
                         readOnly: true,
-                        decoration: InputDecoration(
+                        controller: TextEditingController(
+                          text: dataHoraInducao == null ? '' : DateFormat('dd/MM/yyyy HH:mm').format(dataHoraInducao!),
+                        ),
+                        decoration: const InputDecoration(
                             labelText: "Data e Hora da Indução",
-                            prefixIcon: Icon(Icons.calendar_today_outlined),
-                            hintText: dataHoraInducao == null ? 'Selecione' : DateFormat('dd/MM/yyyy HH:mm').format(dataHoraInducao!),
+                            hintText: 'Selecione',
                         ),
                         onTap: () async {
                            final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
                            if (date == null) return;
-                           final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-                           if (time == null) return;
-                           setModalState(() => dataHoraInducao = DateTime(date.year, date.month, date.day, time.hour, time.minute));
+                           TimeOfDay? time;
+                            await showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: const Text("Selecione a Hora"),
+                                  content: TimePickerSpinner(
+                                    is24HourMode: true,
+                                    minutesInterval: 5,
+                                    onTimeChange: (dateTime) {
+                                      time = TimeOfDay.fromDateTime(dateTime);
+                                    },
+                                  ),
+                                  actions: <Widget>[
+                                    TextButton(
+                                      child: const Text("CANCELAR"),
+                                      onPressed: () => Navigator.of(context).pop(),
+                                    ),
+                                    TextButton(
+                                      child: const Text("OK"),
+                                      onPressed: () => Navigator.of(context).pop(),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                           if (time != null) {
+                              setModalState(() => dataHoraInducao = DateTime(date.year, date.month, date.day, time!.hour, time!.minute));
+                           }
                         },
                         validator: (v) {
                           if (inducaoSelecionada != null && dataHoraInducao == null) {
@@ -1735,11 +2067,13 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                     const SizedBox(height: 10),
                     TextFormField(
                       readOnly: true,
-                      decoration: InputDecoration(
+                      controller: TextEditingController(
+                        text: DateFormat('dd/MM/yyyy').format(dataFinalManejo)
+                      ),
+                      decoration: const InputDecoration(
                           labelText: "Data da Conclusão",
                           prefixIcon: Icon(Icons.calendar_today_outlined),
-                          hintText:
-                              DateFormat('dd/MM/yyyy').format(dataFinalManejo)),
+                          hintText: 'Toque para selecionar a data'),
                       onTap: () async {
                         final pickedDate = await showDatePicker(
                             context: context,
@@ -1760,6 +2094,15 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                             final Map<String, dynamic> detalhes = {
                               'observacao': obsController.text
                             };
+
+                            if (_incluirControleFolicular && tipoManejoSelecionado != 'Controle Folicular') {
+                              detalhes['ovarioDireito'] = ovarioDirOp;
+                              detalhes['ovarioDireitoTamanho'] = ovarioDirTamanhoController.text;
+                              detalhes['ovarioEsquerdo'] = ovarioEsqOp;
+                              detalhes['ovarioEsquerdoTamanho'] = ovarioEsqTamanhoController.text;
+                              detalhes['edema'] = edemaSelecionado;
+                              detalhes['utero'] = uteroController.text;
+                            }
 
                             if (tipoManejoSelecionado == 'Diagnóstico') {
                               detalhes['resultado'] = resultadoDiagnostico;
@@ -1840,6 +2183,9 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                               Navigator.of(ctx).pop();
                               _autoSync();
                             }
+                            if (tipoManejoSelecionado == "Inseminação" && !isEditing) {
+                                _promptForDiagnosticSchedule(dataHoraInseminacao ?? dataFinalManejo);
+                            }
                           }
                         },
                         child: Text(isEditing ? "Salvar Alterações" : "Salvar no Histórico"),
@@ -1852,7 +2198,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             ),
           );
         },
-      ),
+      );
+      },
     );
   }
 
@@ -1865,25 +2212,25 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     required Function(DateTime?) onDataHoraInseminacaoChange,
     required TextEditingController litrosController,
     required Medicamento? medicamentoSelecionado,
-    required List<Medicamento> allMeds,
     required Function(Medicamento?) onMedicamentoChange,
+    required List<Medicamento> allMeds,
     required String? ovarioDirOp,
+    required Function(String?) onOvarioDirChange,
     required String? ovarioEsqOp,
+    required Function(String?) onOvarioEsqChange,
     required TextEditingController ovarioDirTamanhoController,
     required TextEditingController ovarioEsqTamanhoController,
-    required Function(String?) onOvarioDirChange,
-    required Function(String?) onOvarioEsqChange,
     required String? edemaSelecionado,
-    required TextEditingController uteroController,
     required Function(String?) onEdemaChange,
+    required TextEditingController uteroController,
     required String? idadeEmbriao,
-    required Egua? doadoraSelecionada,
-    required TextEditingController avaliacaoUterinaController,
     required Function(String?) onIdadeEmbriaoChange,
+    required Egua? doadoraSelecionada,
     required Function(Egua?) onDoadoraChange,
+    required TextEditingController avaliacaoUterinaController,
     required String? resultadoDiagnostico,
-    required TextEditingController diasPrenheController,
     required Function(String?) onResultadoChange,
+    required TextEditingController diasPrenheController,
     required TextEditingController medicamentoSearchController,
     required void Function(String) filterMedicamentos,
     required bool showMedicamentoList,
@@ -1898,7 +2245,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
           DropdownButtonFormField<String>(
             value: resultadoDiagnostico,
             hint: const Text("Resultado do Diagnóstico"),
-            items: ["Indeterminado", "Prenhe", "Vazia"]
+            items: ["Indeterminado", "Prenhe", "Vazia", "Pariu"]
                 .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                 .toList(),
             onChanged: (val) => setModalState(() => onResultadoChange(val)),
@@ -1915,9 +2262,70 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             const SizedBox(height: 10),
             TextFormField(
               controller: garanhaoController,
-              decoration: const InputDecoration(labelText: "Cobertura"),
-              validator: (v) => v!.isEmpty ? "Informe a cobertura" : null,
+              decoration: const InputDecoration(labelText: "Padreador"),
+              validator: (v) => v!.isEmpty ? "Informe o padreador" : null,
             ),
+          ],
+          if (resultadoDiagnostico == 'Pariu') ...[
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: garanhaoController,
+              decoration: const InputDecoration(labelText: "Padreador"),
+              validator: (v) => v!.isEmpty ? "Informe o padreador" : null,
+            ),
+            TextFormField(
+              readOnly: true,
+            controller: TextEditingController(
+              text: dataHoraInseminacao == null
+                  ? ''
+                  : DateFormat('dd/MM/yyyy HH:mm', 'pt_BR').format(dataHoraInseminacao),
+            ),
+            decoration: const InputDecoration(
+                labelText: "Data/Hora da Inseminação",
+                prefixIcon: Icon(Icons.calendar_today_outlined),
+                hintText: 'Toque para selecionar'),
+            onTap: () async {
+              final date = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now());
+              if (date == null) return;
+              TimeOfDay? time;
+                await showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: const Text("Selecione a Hora"),
+                      content: TimePickerSpinner(
+                        is24HourMode: true,
+                        minutesInterval: 5,
+                        onTimeChange: (dateTime) {
+                          time = TimeOfDay.fromDateTime(dateTime);
+                        },
+                      ),
+                      actions: <Widget>[
+                        TextButton(
+                          child: const Text("CANCELAR"),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                        TextButton(
+                          child: const Text("OK"),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+              if (time != null) {
+                 onDataHoraInseminacaoChange(DateTime(
+                    date.year, date.month, date.day, time!.hour, time!.minute));
+              }
+            },
+            validator: (v) =>
+                dataHoraInseminacao == null ? "Obrigatório" : null,
+            )
           ]
         ];
       case "Inseminação":
@@ -1930,13 +2338,15 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
           const SizedBox(height: 10),
           TextFormField(
             readOnly: true,
-            decoration: InputDecoration(
+            controller: TextEditingController(
+              text: dataHoraInseminacao == null
+                  ? ''
+                  : DateFormat('dd/MM/yyyy HH:mm', 'pt_BR').format(dataHoraInseminacao),
+            ),
+            decoration: const InputDecoration(
                 labelText: "Data/Hora da Inseminação",
                 prefixIcon: Icon(Icons.calendar_today_outlined),
-                hintText: dataHoraInseminacao == null
-                    ? 'Selecione a Data/Hora'
-                    : DateFormat('dd/MM/yyyy HH:mm', 'pt_BR')
-                        .format(dataHoraInseminacao)),
+                hintText: 'Toque para selecionar'),
             onTap: () async {
               final date = await showDatePicker(
                   context: context,
@@ -1944,12 +2354,40 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                   firstDate: DateTime(2020),
                   lastDate: DateTime.now());
               if (date == null) return;
-              final time = await showTimePicker(
-                  context: context, initialTime: TimeOfDay.now());
-              if (time == null) return;
-              onDataHoraInseminacaoChange(DateTime(
-                  date.year, date.month, date.day, time.hour, time.minute));
+              TimeOfDay? time;
+                await showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: const Text("Selecione a Hora"),
+                      content: TimePickerSpinner(
+                        is24HourMode: true,
+                        minutesInterval: 5,
+                        onTimeChange: (dateTime) {
+                          time = TimeOfDay.fromDateTime(dateTime);
+                        },
+                      ),
+                      actions: <Widget>[
+                        TextButton(
+                          child: const Text("CANCELAR"),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                        TextButton(
+                          child: const Text("OK"),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+              if (time != null) {
+                 onDataHoraInseminacaoChange(DateTime(
+                    date.year, date.month, date.day, time!.hour, time!.minute));
+              }
             },
+            validator: (v) =>
+                dataHoraInseminacao == null ? "Obrigatório" : null,
           ),
         ];
       case "Lavado":
@@ -2013,14 +2451,14 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
               Expanded(
                   child: DropdownButtonFormField<String>(
                       value: ovarioDirOp,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: "Ovário Direito",
                         prefixIcon: Icon(Icons.join_right_outlined)
                       ),
                       items: ovarioOptions
                           .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                           .toList(),
-                      onChanged: onOvarioDirChange)),
+                      onChanged: (val) => setModalState(() => onOvarioDirChange(val)))),
               const SizedBox(width: 10),
               SizedBox(
                 width: 120,
@@ -2039,14 +2477,14 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
               Expanded(
                   child: DropdownButtonFormField<String>(
                       value: ovarioEsqOp,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: "Ovário Esquerdo",
                         prefixIcon: Icon(Icons.join_left_outlined)
                       ),
                       items: ovarioOptions
                           .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                           .toList(),
-                      onChanged: onOvarioEsqChange)),
+                      onChanged: (val) => setModalState(() => onOvarioEsqChange(val)))),
               const SizedBox(width: 10),
               SizedBox(
                 width: 120,
@@ -2060,14 +2498,14 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
             value: edemaSelecionado,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: "Edema",
               prefixIcon: Icon(Icons.numbers_outlined)
             ),
             items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
-            onChanged: onEdemaChange,
+            onChanged: (val) => setModalState(() => onEdemaChange(val)),
           ),
           const SizedBox(height: 10),
           TextFormField(
@@ -2085,28 +2523,28 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                 return const Center(child: CircularProgressIndicator());
               return DropdownButtonFormField<Egua>(
                 value: doadoraSelecionada,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: "Doadora",
                   prefixIcon: Icon(Icons.volunteer_activism_outlined)
                 ),
                 items: snapshot.data!
                     .map((e) => DropdownMenuItem(value: e, child: Text(e.nome)))
                     .toList(),
-                onChanged: onDoadoraChange,
+                onChanged: (val) => setModalState(() => onDoadoraChange(val)),
               );
             },
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
             value: idadeEmbriao,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: "Idade do Embrião",
               prefixIcon: Icon(Icons.hourglass_bottom_outlined)
             ),
             items: idadeEmbriaoOptions
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
-            onChanged: onIdadeEmbriaoChange,
+            onChanged: (val) => setModalState(() => onIdadeEmbriaoChange(val)),
           ),
           const SizedBox(height: 10),
           TextFormField(
@@ -2120,14 +2558,14 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
         return [
           DropdownButtonFormField<String>(
             value: idadeEmbriao,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: "Idade do Embrião",
               prefixIcon: Icon(Icons.hourglass_bottom_outlined)
             ),
             items: idadeEmbriaoOptions
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
-            onChanged: onIdadeEmbriaoChange,
+            onChanged: (val) => setModalState(() => onIdadeEmbriaoChange(val)),
           )
         ];
       default:
@@ -2318,10 +2756,13 @@ class _EditEguaFormState extends State<_EditEguaForm> {
                     children: [
                       TextFormField(
                         readOnly: true,
-                        decoration: InputDecoration(
+                        controller: TextEditingController(
+                          text: _dataParto == null ? '' : DateFormat('dd/MM/yyyy').format(_dataParto!),
+                        ),
+                        decoration: const InputDecoration(
                           labelText: "Data do Parto",
                           prefixIcon: Icon(Icons.calendar_today_outlined),
-                          hintText: _dataParto == null ? 'Selecione a data' : DateFormat('dd/MM/yyyy').format(_dataParto!),
+                          hintText: 'Selecione a data',
                         ),
                         onTap: () async {
                           final pickedDate = await showDatePicker(context: context, initialDate: _dataParto ?? DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime.now());

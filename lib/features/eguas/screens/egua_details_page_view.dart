@@ -40,7 +40,6 @@ class _EguaDetailsPageViewState extends State<EguaDetailsPageView> {
       setState(() {
         _currentEguasList.removeAt(index);
       });
-      // Se a lista ficar vazia, volta para a tela anterior.
       if (_currentEguasList.isEmpty) {
         Navigator.of(context).pop();
       }

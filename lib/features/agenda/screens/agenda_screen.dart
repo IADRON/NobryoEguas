@@ -215,6 +215,102 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
     return Colors.grey;
   }
 
+  Widget _buildControleFolicularInputs({
+    required StateSetter setModalState,
+    required String? ovarioDirOp,
+    required Function(String?) onOvarioDirChange,
+    required TextEditingController ovarioDirTamanhoController,
+    required String? ovarioEsqOp,
+    required Function(String?) onOvarioEsqChange,
+    required TextEditingController ovarioEsqTamanhoController,
+    required String? edemaSelecionado,
+    required Function(String?) onEdemaChange,
+    required TextEditingController uteroController,
+  }) {
+    final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+        Text("Dados do Controle Folicular", style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 15),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: ovarioDirOp,
+                decoration: const InputDecoration(
+                  labelText: "Ovário Direito",
+                  prefixIcon: Icon(Icons.join_right_outlined)
+                ),
+                items: ovarioOptions
+                    .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+                    .toList(),
+                onChanged: onOvarioDirChange,
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 120,
+              child: TextFormField(
+                controller: ovarioDirTamanhoController,
+                decoration: const InputDecoration(labelText: "Tamanho (mm)"),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: ovarioEsqOp,
+                decoration: const InputDecoration(
+                  labelText: "Ovário Esquerdo",
+                  prefixIcon: Icon(Icons.join_left_outlined)
+                ),
+                items: ovarioOptions
+                    .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+                    .toList(),
+                onChanged: onOvarioEsqChange,
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 120,
+              child: TextFormField(
+                controller: ovarioEsqTamanhoController,
+                decoration: const InputDecoration(labelText: "Tamanho (mm)"),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+            )
+          ],
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          value: edemaSelecionado,
+          decoration: const InputDecoration(
+            labelText: "Edema",
+            prefixIcon: Icon(Icons.numbers_outlined)
+          ),
+          items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: onEdemaChange,
+        ),
+        const SizedBox(height: 10),
+        TextFormField(
+            controller: uteroController,
+            decoration: const InputDecoration(
+                labelText: "Útero",
+                prefixIcon: Icon(Icons.notes_outlined))),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final username = _authService.currentUserNotifier.value?.username;
@@ -550,21 +646,58 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
     );
   }
 
-  void _showAddAgendamentoModal(BuildContext context) async {
+  Future<void> _promptForDiagnosticScheduleOnAgenda(
+      DateTime inseminationDate, Egua egua, Propriedade propriedade) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Agendamento Automático"),
+        content: Text(
+            "Inseminação concluída para a égua ${egua.nome}. Deseja agendar o diagnóstico de prenhez para daqui a 14 dias?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text("Não"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text("Sim"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      _showAddAgendamentoModal(
+        context,
+        propriedade: propriedade,
+        egua: egua,
+        preselectedType: "Diagnóstico",
+        preselectedDate: inseminationDate.add(const Duration(days: 14)),
+      );
+    }
+  }
+
+  void _showAddAgendamentoModal(BuildContext context,
+      {Propriedade? propriedade,
+      Egua? egua,
+      DateTime? preselectedDate,
+      String? preselectedType}) async {
     final currentUser = _authService.currentUserNotifier.value;
     if (currentUser == null) return;
 
     final formKey = GlobalKey<FormState>();
 
-    final TextEditingController propSearchController = TextEditingController();
-    Propriedade? propriedadeSelecionada;
+    final TextEditingController propSearchController =
+        TextEditingController(text: propriedade?.nome ?? '');
+    Propriedade? propriedadeSelecionada = propriedade;
     List<Propriedade> _allPropsWithEguas = [];
     List<Propriedade> _filteredProps = [];
     bool _showPropList = false;
 
-    Egua? eguaSelecionada;
-    DateTime? dataSelecionada;
-    String? tipoManejoSelecionado;
+    Egua? eguaSelecionada = egua;
+    DateTime? dataSelecionada = preselectedDate;
+    String? tipoManejoSelecionado = preselectedType;
     final detalhesController = TextEditingController();
     final tiposDeManejo = [
       "Controle Folicular", "Inseminação", "Lavado", "Diagnóstico",
@@ -720,18 +853,20 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                         Expanded(
                           child: TextFormField(
                             readOnly: true,
-                            decoration: InputDecoration(
+                            controller: TextEditingController(
+                                text: dataSelecionada == null
+                                    ? ''
+                                    : DateFormat('dd/MM/yyyy').format(dataSelecionada!),
+                              ),
+                            decoration: const InputDecoration(
                               labelText: "Data do Manejo",
-                              prefixIcon: const Icon(Icons.calendar_today_outlined),
-                              hintText: dataSelecionada == null
-                                  ? 'Toque para selecionar'
-                                  : DateFormat('dd/MM/yyyy')
-                                      .format(dataSelecionada!),
+                              prefixIcon: Icon(Icons.calendar_today_outlined),
+                              hintText: 'Toque para selecionar',
                             ),
                             onTap: () async {
                               final pickedDate = await showDatePicker(
                                   context: context,
-                                  initialDate: DateTime.now(),
+                                  initialDate: dataSelecionada ?? DateTime.now(),
                                   firstDate: DateTime(2020),
                                   lastDate: DateTime(2030));
                               if (pickedDate != null) {
@@ -740,11 +875,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                             },
                             validator: (v) =>
                                 dataSelecionada == null ? "Selecione a data" : null,
-                            controller: TextEditingController(
-                                text: dataSelecionada == null
-                                    ? ''
-                                    : DateFormat('dd/MM/yyyy').format(dataSelecionada!),
-                              ),
                           ),
                         ),
                       ],
@@ -1005,6 +1135,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                           Navigator.of(ctx).pop();
                           _showMarkAsCompleteModal(context, manejo, egua);
                         },
+
                         style: ElevatedButton.styleFrom(
                             backgroundColor:
                                 AppTheme.darkGreen,
@@ -1028,7 +1159,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
     final obsController =
         TextEditingController(text: manejo.detalhes['descricao'] ?? '');
 
-    // Fecha o modal de confirmação antes de abrir o de edição
     Navigator.of(mainContext).pop(); 
 
     showModalBottomSheet(
@@ -1140,7 +1270,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
     final diasPrenheController = TextEditingController();
     String? idadeEmbriaoSelecionada;
     
-    // --- Variáveis para seleção da Doadora ---
     Propriedade? propDoadoraSelecionada;
     Egua? doadoraSelecionada;
     final propDoadoraSearchController = TextEditingController();
@@ -1151,7 +1280,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
         .toList();
     List<Propriedade> _filteredPropsDoadora = _allPropsDoadora;
     bool _showPropDoadoraList = false;
-    // --- Fim das variáveis da Doadora ---
 
     final avaliacaoUterinaController = TextEditingController();
     Medicamento? medicamentoSelecionado;
@@ -1167,6 +1295,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
     AppUser? concluidoPorSelecionado = allUsersList.firstWhere(
         (u) => u.uid == currentUser.uid,
         orElse: () => allUsersList.first);
+    bool _incluirControleFolicular = false;
 
     showModalBottomSheet(
       context: context,
@@ -1174,7 +1303,8 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => StatefulBuilder(
+      builder: (ctx) {
+        return StatefulBuilder(
         builder: (modalContext, setModalState) {
           
           void filterMedicamentos(String query) {
@@ -1281,6 +1411,30 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                       onShowPropDoadoraListChange: (val) => setModalState(() => _showPropDoadoraList = val),
                       allPropsDoadora: _allPropsDoadora
                     ),
+
+                    if (manejo.tipo != 'Controle Folicular') ...[
+                      const Divider(height: 20, thickness: 1),
+                      Text("Incluir Controle Folicular?", style: Theme.of(context).textTheme.titleMedium),
+                      Row(
+                        children: [
+                          Expanded(child: RadioListTile<bool>(title: const Text("Sim"), value: true, groupValue: _incluirControleFolicular, onChanged: (val) => setModalState(() => _incluirControleFolicular = val!))),
+                          Expanded(child: RadioListTile<bool>(title: const Text("Não"), value: false, groupValue: _incluirControleFolicular, onChanged: (val) => setModalState(() => _incluirControleFolicular = val!))),
+                        ],
+                      ),
+                      if (_incluirControleFolicular)
+                        _buildControleFolicularInputs(
+                          setModalState: setModalState,
+                          ovarioDirOp: ovarioDirOp,
+                          onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
+                          ovarioDirTamanhoController: ovarioDirTamanhoController,
+                          ovarioEsqOp: ovarioEsqOp,
+                          onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
+                          ovarioEsqTamanhoController: ovarioEsqTamanhoController,
+                          edemaSelecionado: edemaSelecionado,
+                          onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
+                          uteroController: uteroController,
+                        ),
+                    ],
                     
                     const SizedBox(height: 15),
 
@@ -1348,26 +1502,54 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
 
                       TextFormField(
                         readOnly: true,
-                        decoration: InputDecoration(
+                        controller: TextEditingController(
+                          text: dataHoraInducao == null ? '' : DateFormat('dd/MM/yyyy HH:mm').format(dataHoraInducao!),
+                        ),
+                        decoration: const InputDecoration(
                           labelText: "Data e Hora da Indução",
-                          prefixIcon: const Icon(Icons.schedule_outlined),
-                          hintText: dataHoraInducao == null ? 'Toque para selecionar' : DateFormat('dd/MM/yyyy HH:mm').format(dataHoraInducao!),
+                          prefixIcon: Icon(Icons.schedule_outlined),
+                          hintText: 'Toque para selecionar',
                         ),
                         onTap: () async {
                           final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
                           if (date == null) return;
-                          final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-                          if (time == null) return;
-                          setModalState(() {
-                            dataHoraInducao = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-                          });
-                          // ignore: unused_label
-                          validator: (v) {
+                          TimeOfDay? time;
+                            await showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: const Text("Selecione a Hora"),
+                                  content: TimePickerSpinner(
+                                    is24HourMode: true,
+                                    minutesInterval: 5,
+                                    onTimeChange: (dateTime) {
+                                      time = TimeOfDay.fromDateTime(dateTime);
+                                    },
+                                  ),
+                                  actions: <Widget>[
+                                    TextButton(
+                                      child: const Text("CANCELAR"),
+                                      onPressed: () => Navigator.of(context).pop(),
+                                    ),
+                                    TextButton(
+                                      child: const Text("OK"),
+                                      onPressed: () => Navigator.of(context).pop(),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          if (time != null) {
+                            setModalState(() {
+                              dataHoraInducao = DateTime(date.year, date.month, date.day, time!.hour, time!.minute);
+                            });
+                          }
+                        },
+                        validator: (v) {
                           if (inducaoSelecionada != null && dataHoraInducao == null) {
                             return "Campo obrigatório";
                           }
                           return null;
-                          };
                         },
                       ),
                     ],
@@ -1392,10 +1574,13 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
 
                      TextFormField(
                       readOnly: true,
-                      decoration: InputDecoration(
+                      controller: TextEditingController(
+                        text: DateFormat('dd/MM/yyyy').format(dataFinalManejo)
+                      ),
+                      decoration: const InputDecoration(
                           labelText: "Data da Conclusão",
-                          prefixIcon: const Icon(Icons.event_available_outlined),
-                          hintText: DateFormat('dd/MM/yyyy').format(dataFinalManejo)),
+                          prefixIcon: Icon(Icons.event_available_outlined),
+                          hintText: 'Toque para selecionar a data'),
                       onTap: () async {
                         final pickedDate = await showDatePicker(
                             context: context,
@@ -1406,7 +1591,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                           setModalState(() => dataFinalManejo = pickedDate);
                         }
                       },
-                        controller: TextEditingController(text: DateFormat('dd/MM/yyyy').format(dataFinalManejo)),
                     ),
                     const SizedBox(height: 15),
 
@@ -1433,6 +1617,15 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                           if (formKey.currentState!.validate()) {
                             final Map<String, dynamic> detalhes = manejo.detalhes;
                             detalhes['observacao'] = obsController.text;
+
+                            if (_incluirControleFolicular && manejo.tipo != 'Controle Folicular') {
+                                detalhes['ovarioDireito'] = ovarioDirOp;
+                                detalhes['ovarioDireitoTamanho'] = ovarioDirTamanhoController.text;
+                                detalhes['ovarioEsquerdo'] = ovarioEsqOp;
+                                detalhes['ovarioEsquerdoTamanho'] = ovarioEsqTamanhoController.text;
+                                detalhes['edema'] = edemaSelecionado;
+                                detalhes['utero'] = uteroController.text;
+                            }
 
                             if (manejo.tipo == 'Controle Folicular') {
                                manejo.medicamentoId = medicamentoSelecionado?.id;
@@ -1497,7 +1690,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                               _autoSync();
                               Navigator.of(ctx).pop();
                               if (egua != null) {
-                                Navigator.push( // Usando push em vez de pushReplacement
+                                Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => EguaDetailsScreen(egua: egua),
@@ -1505,6 +1698,12 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                                 );
                               }
                             }
+
+                             if (manejo.tipo == "Inseminação") {
+                                if(egua != null && _allPropriedades[egua.propriedadeId] != null){
+                                    _promptForDiagnosticScheduleOnAgenda(dataHoraInseminacao ?? dataFinalManejo, egua, _allPropriedades[egua.propriedadeId]!);
+                                }
+                              }
                           }
                         },
                       ),
@@ -1516,7 +1715,8 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
             ),
           );
         },
-      ),
+      );
+      },
     );
   }
   
@@ -1552,25 +1752,25 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
     required Function(DateTime?) onDataHoraInseminacaoChange,
     required TextEditingController litrosController,
     required Medicamento? medicamentoSelecionado,
-    required List<Medicamento> allMeds,
     required Function(Medicamento?) onMedicamentoChange,
+    required List<Medicamento> allMeds,
     required String? ovarioDirOp,
+    required Function(String?) onOvarioDirChange,
     required String? ovarioEsqOp,
+    required Function(String?) onOvarioEsqChange,
     required TextEditingController ovarioDirTamanhoController,
     required TextEditingController ovarioEsqTamanhoController,
-    required Function(String?) onOvarioDirChange,
-    required Function(String?) onOvarioEsqChange,
     required String? edemaSelecionado,
-    required TextEditingController uteroController,
     required Function(String?) onEdemaChange,
+    required TextEditingController uteroController,
     required String? idadeEmbriao,
-    required Egua? doadoraSelecionada,
-    required TextEditingController avaliacaoUterinaController,
     required Function(String?) onIdadeEmbriaoChange,
+    required Egua? doadoraSelecionada,
     required Function(Egua?) onDoadoraChange,
+    required TextEditingController avaliacaoUterinaController,
     required String? resultadoDiagnostico,
-    required TextEditingController diasPrenheController,
     required Function(String?) onResultadoChange,
+    required TextEditingController diasPrenheController,
     required Propriedade? propDoadoraSelecionada,
     required TextEditingController propDoadoraSearchController,
     required Function(Propriedade?) onPropDoadoraChange,
@@ -1588,7 +1788,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
         DropdownButtonFormField<String>(
           value: resultadoDiagnostico,
           hint: const Text("Resultado do Diagnóstico"),
-          items: ["Indeterminado", "Prenhe", "Vazia"]
+          items: ["Indeterminado", "Prenhe", "Vazia", "Pariu"]
               .map((r) => DropdownMenuItem(value: r, child: Text(r)))
               .toList(),
           onChanged: (val) => setModalState(() => onResultadoChange(val)),
@@ -1608,6 +1808,67 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
             decoration: const InputDecoration(labelText: "Cobertura"),
             validator: (v) => v!.isEmpty ? "Informe a cobertura" : null,
           ),
+        ],
+        if (resultadoDiagnostico == 'Pariu') ...[
+          const SizedBox(height: 10),
+          TextFormField(
+            controller: garanhaoController,
+            decoration: const InputDecoration(labelText: "Padreador"),
+            validator: (v) => v!.isEmpty ? "Informe o padreador" : null,
+          ),
+          TextFormField(
+            readOnly: true,
+          controller: TextEditingController(
+            text: dataHoraInseminacao == null
+                ? ''
+                : DateFormat('dd/MM/yyyy HH:mm', 'pt_BR').format(dataHoraInseminacao),
+          ),
+          decoration: const InputDecoration(
+              labelText: "Data/Hora da Inseminação",
+              prefixIcon: Icon(Icons.calendar_today_outlined),
+              hintText: 'Toque para selecionar'),
+          onTap: () async {
+            final date = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime(2020),
+                lastDate: DateTime.now());
+            if (date == null) return;
+            TimeOfDay? time;
+              await showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: const Text("Selecione a Hora"),
+                    content: TimePickerSpinner(
+                      is24HourMode: true,
+                      minutesInterval: 5,
+                      onTimeChange: (dateTime) {
+                        time = TimeOfDay.fromDateTime(dateTime);
+                      },
+                    ),
+                    actions: <Widget>[
+                      TextButton(
+                        child: const Text("CANCELAR"),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      TextButton(
+                        child: const Text("OK"),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  );
+                },
+              );
+
+            if (time != null) {
+                onDataHoraInseminacaoChange(DateTime(
+                  date.year, date.month, date.day, time!.hour, time!.minute));
+            }
+          },
+          validator: (v) =>
+              dataHoraInseminacao == null ? "Obrigatório" : null,
+          )
         ]
       ];
       case "Inseminação":
@@ -1618,13 +1879,15 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
           const SizedBox(height: 15),
           TextFormField(
             readOnly: true,
-            decoration: InputDecoration(
+            controller: TextEditingController(
+              text: dataHoraInseminacao == null
+                  ? ''
+                  : DateFormat('dd/MM/yyyy HH:mm', 'pt_BR').format(dataHoraInseminacao),
+            ),
+            decoration: const InputDecoration(
                 labelText: "Data/Hora da Inseminação",
-                prefixIcon: const Icon(Icons.schedule_outlined),
-                hintText: dataHoraInseminacao == null
-                    ? 'Toque para selecionar'
-                    : DateFormat('dd/MM/yyyy HH:mm', 'pt_BR')
-                        .format(dataHoraInseminacao)),
+                prefixIcon: Icon(Icons.schedule_outlined),
+                hintText: 'Toque para selecionar'),
             onTap: () async {
               final date = await showDatePicker(
                   context: context,
@@ -1637,7 +1900,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                   context: context,
                   builder: (BuildContext context) {
                     return AlertDialog(
-                      title: Text("Selecione a Hora"),
+                      title: const Text("Selecione a Hora"),
                       content: TimePickerSpinner(
                         is24HourMode: true,
                         minutesInterval: 5,
@@ -1647,13 +1910,13 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                       ),
                       actions: <Widget>[
                         TextButton(
-                          child: Text("CANCELAR"),
+                          child: const Text("CANCELAR"),
                           onPressed: () {
                             Navigator.of(context).pop();
                           },
                         ),
                         TextButton(
-                          child: Text("OK"),
+                          child: const Text("OK"),
                           onPressed: () {
                             Navigator.of(context).pop();
                           },
@@ -1662,9 +1925,10 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                     );
                   },
                 );
-              if (time == null) return;
-              onDataHoraInseminacaoChange(DateTime(
-                  date.year, date.month, date.day, time!.hour, time!.minute));
+              if (time != null) {
+                onDataHoraInseminacaoChange(DateTime(
+                    date.year, date.month, date.day, time!.hour, time!.minute));
+              }
             },
           ),
         ];
