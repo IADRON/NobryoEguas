@@ -1723,7 +1723,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                             if (mounted) Navigator.of(ctx).pop();
                             _refreshData();
                           }
-                          
+
                           if (manejo.tipo == "Inseminação") {
                             _promptForDiagnosticSchedule(dataHoraInseminacao ?? dataFinalManejo);
                           }

@@ -561,6 +561,39 @@ class SQLiteHelper {
     return db.update('peoes', {'isDeleted': 1}, where: 'id = ?', whereArgs: [id]);
   }
 
+    Future<bool> hasPendingManejosForPropriedade(String propriedadeId) async {
+    final db = await instance.database;
+    final result = await db.rawQuery('''
+      SELECT 1 
+      FROM manejos 
+      WHERE propriedadeId = ? 
+      AND status = 'Agendado' 
+      AND isDeleted = 0 
+      LIMIT 1
+    ''', [propriedadeId]);
+    return result.isNotEmpty;
+  }
+
+    Future<bool> hasPendingManejosRecursive(String parentPropriedadeId) async {
+    final db = await instance.database;
+    
+    final subPropriedades = await readSubPropriedades(parentPropriedadeId);
+    final allPropriedadeIds = [parentPropriedadeId, ...subPropriedades.map((p) => p.id)];
+    
+    final placeholders = allPropriedadeIds.map((_) => '?').join(',');
+    
+    final result = await db.rawQuery('''
+      SELECT 1
+      FROM manejos
+      WHERE propriedadeId IN ($placeholders)
+      AND status = 'Agendado'
+      AND isDeleted = 0
+      LIMIT 1
+    ''', allPropriedadeIds);
+
+    return result.isNotEmpty;
+  }
+
   Future close() async {
     final db = await instance.database;
     _database = null;

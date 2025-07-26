@@ -17,6 +17,9 @@ class SubPropriedadesScreen extends StatefulWidget {
 class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
   bool _isLoading = true;
   List<Propriedade> _subPropriedades = [];
+  
+  // NOVO: Mapa para guardar o status de manejos pendentes
+  Map<String, bool> _hasPendingManejosMap = {};
 
   @override
   void initState() {
@@ -30,9 +33,18 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
     try {
       final subProps = await SQLiteHelper.instance
           .readSubPropriedades(widget.propriedadePai.id);
+          
+      // NOVO: Verifica manejos pendentes para cada lote
+      final Map<String, bool> pendingMap = {};
+      for (final subProp in subProps) {
+        // A função hasPendingManejosForPropriedade deve ser implementada no seu SQLiteHelper
+        pendingMap[subProp.id] = await SQLiteHelper.instance.hasPendingManejosForPropriedade(subProp.id);
+      }
+
       if (mounted) {
         setState(() {
           _subPropriedades = subProps;
+          _hasPendingManejosMap = pendingMap;
           _isLoading = false;
         });
       }
@@ -68,8 +80,17 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
                   itemCount: _subPropriedades.length,
                   itemBuilder: (context, index) {
                     final subProp = _subPropriedades[index];
+                    final hasPending = _hasPendingManejosMap[subProp.id] ?? false;
+
                     return Card(
                       child: ListTile(
+                        // NOVO: Indicador visual de manejo pendente
+                        leading: hasPending
+                          ? const CircleAvatar(
+                              radius: 6,
+                              backgroundColor: AppTheme.statusPrenhe,
+                            )
+                          : const SizedBox(width: 12), // Espaço para alinhar
                         title: Text(subProp.nome,
                             style: const TextStyle(
                                 color: AppTheme.darkText,

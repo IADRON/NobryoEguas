@@ -6,6 +6,7 @@ import 'package:nobryo_final/core/services/auth_service.dart';
 import 'package:nobryo_final/core/services/sync_service.dart';
 import 'package:nobryo_final/features/auth/screens/manage_users_screen.dart';
 import 'package:nobryo_final/features/auth/widgets/user_profile_modal.dart';
+import 'package:nobryo_final/shared/widgets/loading_screen.dart';
 import 'package:nobryo_final/features/propriedades/screens/sub_propriedades_screen.dart';
 import 'package:nobryo_final/shared/theme/theme.dart';
 import 'package:provider/provider.dart';
@@ -24,8 +25,11 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
   List<Propriedade> _filteredTopLevelPropriedades = [];
   final TextEditingController _searchController = TextEditingController();
 
-  // Instância do AuthService para ser usada na tela
+  // NOVO: Mapa para guardar o status de manejos pendentes
+  Map<String, bool> _hasPendingManejosMap = {};
+
   final AuthService _authService = AuthService();
+  final SyncService _syncService = SyncService();
 
   @override
   void initState() {
@@ -48,10 +52,20 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
     setState(() => _isLoading = true);
     try {
       final propriedades = await SQLiteHelper.instance.readTopLevelPropriedades();
+      
+      // NOVO: Verifica manejos pendentes para cada propriedade
+      final Map<String, bool> pendingMap = {};
+      for (final prop in propriedades) {
+        // A função hasPendingManejosRecursive deve ser implementada no seu SQLiteHelper
+        // para verificar a propriedade pai e todos os seus lotes filhos.
+        pendingMap[prop.id] = await SQLiteHelper.instance.hasPendingManejosRecursive(prop.id);
+      }
+      
       if (mounted) {
         setState(() {
           _allTopLevelPropriedades = propriedades;
           _filteredTopLevelPropriedades = List.from(_allTopLevelPropriedades);
+          _hasPendingManejosMap = pendingMap;
           _filterData();
         });
       }
@@ -79,136 +93,158 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
     });
   }
 
+  Future<void> _manualSync() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => const LoadingScreen(),
+    );
+
+    final bool online = await _syncService.syncData(isManual: true);
+    
+    if (mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+            online ? "Sincronização concluída!" : "Sem conexão com a internet."),
+        backgroundColor: online ? Colors.green : Colors.orange,
+      ));
+    }
+    _refreshData();
+  }
+
   @override
- Widget build(BuildContext context) {
-   // Usando ValueListenableBuilder para reagir a mudanças no usuário logado
-   return ValueListenableBuilder(
-     valueListenable: _authService.currentUserNotifier,
-     builder: (context, currentUser, child) {
-       final bool isAdmin =
-           currentUser?.username == 'admin' || currentUser?.username == 'Bruna';
- 
-       return Scaffold(
-         appBar: AppBar(
-        title: const Text("AGENDA"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.sync),
-            tooltip: "Sincronizar Dados",
-            onPressed: () {}, //MANUAL SYNC
-          ),
-          if (isAdmin)
-            IconButton(
-              icon: const Icon(Icons.group_outlined),
-              tooltip: "Gerenciar Usuários",
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const ManageUsersScreen()),
-                );
-              },
-            ),
-          if (currentUser != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: GestureDetector(
-                onTap: () => showUserProfileModal(context),
-                child: CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppTheme.lightGrey,
-                  backgroundImage: (currentUser.photoUrl != null &&
-                          currentUser.photoUrl!.isNotEmpty)
-                      ? FileImage(File(currentUser.photoUrl!)) as ImageProvider
-                      : null,
-                  child: (currentUser.photoUrl == null ||
-                          currentUser.photoUrl!.isEmpty)
-                      ? const Icon(Icons.person, color: AppTheme.darkGreen)
-                      : null,
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder(
+      valueListenable: _authService.currentUserNotifier,
+      builder: (context, currentUser, child) {
+        final bool isAdmin =
+            currentUser?.username == 'admin' || currentUser?.username == 'Bruna';
+  
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text("PROPRIEDADES"),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.sync),
+                tooltip: "Sincronizar Dados",
+                onPressed: _manualSync,
+              ),
+              if (isAdmin)
+                IconButton(
+                  icon: const Icon(Icons.group_outlined),
+                  tooltip: "Gerenciar Usuários",
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const ManageUsersScreen()),
+                    );
+                  },
                 ),
+              if (currentUser != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: GestureDetector(
+                    onTap: () => showUserProfileModal(context),
+                    child: CircleAvatar(
+                      radius: 20,
+                      backgroundColor: AppTheme.lightGrey,
+                      backgroundImage: (currentUser.photoUrl != null &&
+                              currentUser.photoUrl!.isNotEmpty)
+                          ? FileImage(File(currentUser.photoUrl!)) as ImageProvider
+                          : null,
+                      child: (currentUser.photoUrl == null ||
+                              currentUser.photoUrl!.isEmpty)
+                          ? const Icon(Icons.person, color: AppTheme.darkGreen)
+                          : null,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          body: child,
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _showAddPropriedadeModal(context),
+            backgroundColor: AppTheme.darkGreen,
+            child: const Icon(Icons.add, color: Colors.white),
+            tooltip: "Adicionar Propriedade",
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: "Buscar por propriedade...",
+                prefixIcon: Icon(Icons.search, color: Colors.grey),
               ),
             ),
-        ],
+            const SizedBox(height: 20),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filteredTopLevelPropriedades.isEmpty
+                      ? const Center(
+                          child: Text(
+                          "Nenhuma propriedade encontrada.\nClique no '+' para adicionar a primeira.",
+                          textAlign: TextAlign.center,
+                        ))
+                      : ListView.builder(
+                          itemCount: _filteredTopLevelPropriedades.length,
+                          itemBuilder: (context, index) {
+                            final prop = _filteredTopLevelPropriedades[index];
+                            final hasPending = _hasPendingManejosMap[prop.id] ?? false;
+  
+                            return Card(
+                              elevation: 2,
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                              child: ListTile(
+                                // NOVO: Indicador visual de manejo pendente
+                                leading: hasPending
+                                  ? const CircleAvatar(
+                                      radius: 6,
+                                      backgroundColor: AppTheme.statusPrenhe,
+                                    )
+                                  : const SizedBox(width: 12), // Espaço para alinhar
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                title: Text(
+                                  prop.nome,
+                                  style: const TextStyle(
+                                      color: AppTheme.darkText,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                                subtitle: Text(prop.dono,
+                                    style: TextStyle(color: Colors.grey[600])),
+                                trailing: const Icon(Icons.chevron_right,
+                                    color: Colors.grey),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          SubPropriedadesScreen(
+                                        propriedadePai: prop,
+                                      ),
+                                    ),
+                                  ).then((_) {
+                                    _refreshData();
+                                  });
+                                },
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
       ),
-         body: child, // O body é o child do builder para não ser reconstruído desnecessariamente
-         
-         // ## CORREÇÃO ##
-         // O FloatingActionButton foi movido para dentro do Scaffold.
-         floatingActionButton: FloatingActionButton(
-           onPressed: () => _showAddPropriedadeModal(context),
-           backgroundColor: AppTheme.darkGreen,
-           child: const Icon(Icons.add, color: Colors.white),
-           tooltip: "Adicionar Propriedade",
-         ),
-       );
-     },
-     // O child do ValueListenableBuilder é a parte da UI que não precisa
-     // ser reconstruída quando o 'currentUser' muda.
-     child: Padding(
-       padding: const EdgeInsets.all(20.0),
-       child: Column(
-         children: [
-           TextField(
-             controller: _searchController,
-             decoration: const InputDecoration(
-               hintText: "Buscar por propriedade...",
-               prefixIcon: Icon(Icons.search, color: Colors.grey),
-             ),
-           ),
-           const SizedBox(height: 20),
-           Expanded(
-             child: _isLoading
-                 ? const Center(child: CircularProgressIndicator())
-                 : _filteredTopLevelPropriedades.isEmpty
-                     ? const Center(
-                         child: Text(
-                         "Nenhuma propriedade encontrada.\nClique no '+' para adicionar a primeira.",
-                         textAlign: TextAlign.center,
-                       ))
-                     : ListView.builder(
-                         itemCount: _filteredTopLevelPropriedades.length,
-                         itemBuilder: (context, index) {
-                           final prop = _filteredTopLevelPropriedades[index];
- 
-                           return Card(
-                             elevation: 2,
-                             margin: const EdgeInsets.symmetric(vertical: 8),
-                             child: ListTile(
-                               contentPadding: const EdgeInsets.symmetric(
-                                   horizontal: 16, vertical: 8),
-                               title: Text(
-                                 prop.nome,
-                                 style: const TextStyle(
-                                     color: AppTheme.darkText,
-                                     fontWeight: FontWeight.w600),
-                               ),
-                               subtitle: Text(prop.dono,
-                                   style: TextStyle(color: Colors.grey[600])),
-                               trailing: const Icon(Icons.chevron_right,
-                                   color: Colors.grey),
-                               onTap: () {
-                                 Navigator.push(
-                                   context,
-                                   MaterialPageRoute(
-                                     builder: (context) =>
-                                         SubPropriedadesScreen(
-                                       propriedadePai: prop,
-                                     ),
-                                   ),
-                                 ).then((_) {
-                                   _refreshData();
-                                 });
-                               },
-                             ),
-                           );
-                         },
-                       ),
-           ),
-         ],
-       ),
-     ),
-   );
- }
+    );
+  }
 
   void _showAddPropriedadeModal(BuildContext context) {
     final formKey = GlobalKey<FormState>();
