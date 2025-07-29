@@ -25,7 +25,6 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
   List<Propriedade> _filteredTopLevelPropriedades = [];
   final TextEditingController _searchController = TextEditingController();
 
-  // NOVO: Mapa para guardar o status de manejos pendentes
   Map<String, bool> _hasPendingManejosMap = {};
 
   final AuthService _authService = AuthService();
@@ -53,11 +52,8 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
     try {
       final propriedades = await SQLiteHelper.instance.readTopLevelPropriedades();
       
-      // NOVO: Verifica manejos pendentes para cada propriedade
       final Map<String, bool> pendingMap = {};
       for (final prop in propriedades) {
-        // A função hasPendingManejosRecursive deve ser implementada no seu SQLiteHelper
-        // para verificar a propriedade pai e todos os seus lotes filhos.
         pendingMap[prop.id] = await SQLiteHelper.instance.hasPendingManejosRecursive(prop.id);
       }
       
@@ -66,8 +62,9 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
           _allTopLevelPropriedades = propriedades;
           _filteredTopLevelPropriedades = List.from(_allTopLevelPropriedades);
           _hasPendingManejosMap = pendingMap;
-          _filterData();
+          _isLoading = false; // <<< ALTERAÇÃO: Movido para antes do filtro
         });
+        _filterData(); // Chama o filtro após carregar os dados
       }
     } catch (e) {
       if (mounted) {
@@ -78,19 +75,54 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
         );
       }
     } finally {
-      if (mounted) {
+      if (mounted && _isLoading) { // Garante que não desative o loading duas vezes
         setState(() => _isLoading = false);
       }
     }
   }
 
-  void _filterData() {
+  Future<void> _filterData() async {
     final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredTopLevelPropriedades = _allTopLevelPropriedades.where((prop) {
-        return prop.nome.toLowerCase().contains(query);
-      }).toList();
-    });
+    if (query.isEmpty) {
+      setState(() {
+        _filteredTopLevelPropriedades = List.from(_allTopLevelPropriedades);
+      });
+      return;
+    }
+
+    // Para evitar múltiplas buscas no banco, primeiro pegamos todas as éguas.
+    final allEguas = await SQLiteHelper.instance.getAllEguas();
+    List<Propriedade> filtered = [];
+
+    for (final prop in _allTopLevelPropriedades) {
+      // 1. Procura por nome da propriedade
+      if (prop.nome.toLowerCase().contains(query)) {
+        if (!filtered.contains(prop)) {
+          filtered.add(prop);
+        }
+        continue; // Continua para a próxima propriedade para evitar duplicatas
+      }
+
+      // 2. Procura por éguas dentro da propriedade e seus lotes
+      final subProps = await SQLiteHelper.instance.readSubPropriedades(prop.id);
+      final allPropIds = [prop.id, ...subProps.map((p) => p.id)];
+      
+      final eguaEncontrada = allEguas.any((egua) =>
+          allPropIds.contains(egua.propriedadeId) &&
+          (egua.nome.toLowerCase().contains(query) || egua.rp.toLowerCase().contains(query)));
+      
+      if (eguaEncontrada) {
+        if (!filtered.contains(prop)) {
+          filtered.add(prop);
+        }
+      }
+    }
+    
+    if (mounted) {
+      setState(() {
+        _filteredTopLevelPropriedades = filtered;
+      });
+    }
   }
 
   Future<void> _manualSync() async {
@@ -179,7 +211,7 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
             TextField(
               controller: _searchController,
               decoration: const InputDecoration(
-                hintText: "Buscar por propriedade...",
+                hintText: "Buscar por propriedade ou égua...", // <<< HINTTEXT ATUALIZADO
                 prefixIcon: Icon(Icons.search, color: Colors.grey),
               ),
             ),
@@ -203,13 +235,6 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
                               elevation: 2,
                               margin: const EdgeInsets.symmetric(vertical: 8),
                               child: ListTile(
-                                // NOVO: Indicador visual de manejo pendente
-                                leading: hasPending
-                                  ? const CircleAvatar(
-                                      radius: 6,
-                                      backgroundColor: AppTheme.statusPrenhe,
-                                    )
-                                  : const SizedBox(width: 12), // Espaço para alinhar
                                 contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 16, vertical: 8),
                                 title: Text(
@@ -220,8 +245,12 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
                                 ),
                                 subtitle: Text(prop.dono,
                                     style: TextStyle(color: Colors.grey[600])),
-                                trailing: const Icon(Icons.chevron_right,
-                                    color: Colors.grey),
+                                trailing: hasPending
+                                  ? const CircleAvatar(
+                                      radius: 6,
+                                      backgroundColor: AppTheme.statusPrenhe,
+                                    )
+                                  : const SizedBox(width: 12),
                                 onTap: () {
                                   Navigator.push(
                                     context,
@@ -307,7 +336,7 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
                             .createPropriedade(novaPropriedade);
                         if (mounted) {
                           Navigator.of(ctx).pop();
-                          _refreshData();
+                          _manualSync();
                         }
                       }
                     },

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart'; // NOVO: Importar Firebase Auth
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:nobryo_final/core/database/sqlite_helper.dart';
@@ -15,6 +16,8 @@ class AuthService {
   AuthService._internal();
 
   final SQLiteHelper _dbHelper = SQLiteHelper.instance;
+  // NOVO: Instância do Firebase Auth
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   
   final ValueNotifier<AppUser?> currentUserNotifier = ValueNotifier(null);
 
@@ -28,6 +31,16 @@ class AuthService {
     try {
       final user = await _dbHelper.getUserByUsernameAndPassword(username, password);
       if (user != null) {
+        
+        // NOVO: Fazer login anônimo no Firebase
+        try {
+          await _firebaseAuth.signInAnonymously();
+          print("Firebase anonymous sign-in successful. UID: ${_firebaseAuth.currentUser?.uid}");
+        } catch (e) {
+          print("Firebase anonymous sign-in failed: $e");
+          return 'Falha ao conectar com o serviço online. Tente novamente.';
+        }
+
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_sessionTimestampKey, DateTime.now().toIso8601String());
         await prefs.setString(_sessionUserIdKey, user.uid);
@@ -46,6 +59,9 @@ class AuthService {
   }
 
   Future<void> signOut(BuildContext context) async {
+    // NOVO: Fazer logout do Firebase
+    await _firebaseAuth.signOut();
+    print("Firebase session signed out.");
 
     Provider.of<RealtimeSyncService>(context, listen: false).stopListeners();
 

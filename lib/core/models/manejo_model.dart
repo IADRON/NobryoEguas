@@ -12,13 +12,16 @@ class Manejo {
   String eguaId;
   String propriedadeId;
   
-  String responsavelId;
+  String? responsavelId;
   String? concluidoPorId;
+
+  String? responsavelPeaoId;
+  String? concluidoPorPeaoId;
 
   String statusSync;
   bool isDeleted;
+  bool isAtrasado; // <-- NOV
 
-  // Campos adicionados para "Controle Folicular"
   String? medicamentoId;
   String? inducao;
   DateTime? dataHoraInducao;
@@ -33,15 +36,19 @@ class Manejo {
     required this.detalhes,
     required this.eguaId,
     required this.propriedadeId,
-    required this.responsavelId,
+    this.responsavelId,
     this.concluidoPorId,
+    this.responsavelPeaoId,
+    this.concluidoPorPeaoId,
     this.statusSync = 'pending_create',
     this.isDeleted = false,
+    this.isAtrasado = false, // <-- VALOR PADRÃO
     this.medicamentoId,
     this.inducao,
     this.dataHoraInducao,
   });
 
+  // Método para o banco de dados local (SQLite)
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -54,8 +61,11 @@ class Manejo {
       'propriedadeId': propriedadeId,
       'responsavelId': responsavelId,
       'concluidoPorId': concluidoPorId,
+      'responsavelPeaoId': responsavelPeaoId,
+      'concluidoPorPeaoId': concluidoPorPeaoId,
       'statusSync': statusSync,
       'isDeleted': isDeleted ? 1 : 0,
+      'isAtrasado': isAtrasado ? 1 : 0,
       'medicamentoId': medicamentoId,
       'inducao': inducao,
       'dataHoraInducao': dataHoraInducao?.toIso8601String(),
@@ -73,10 +83,13 @@ class Manejo {
           map['detalhes'] is String ? jsonDecode(map['detalhes']) : map['detalhes'],
       eguaId: map['eguaId'],
       propriedadeId: map['propriedadeId'],
-      responsavelId: map['responsavelId'] ?? '',
+      responsavelId: map['responsavelId'],
       concluidoPorId: map['concluidoPorId'],
+      responsavelPeaoId: map['responsavelPeaoId'],
+      concluidoPorPeaoId: map['concluidoPorPeaoId'],
       statusSync: map['statusSync'],
       isDeleted: map['isDeleted'] == 1,
+      isAtrasado: map['isAtrasado'] == 1,
       medicamentoId: map['medicamentoId'],
       inducao: map['inducao'],
       dataHoraInducao: map['dataHoraInducao'] != null ? DateTime.parse(map['dataHoraInducao']) : null,
@@ -84,7 +97,6 @@ class Manejo {
   }
 
   Map<String, dynamic> toMapForFirebase(String eguaFirebaseId) {
-    // Adiciona os novos campos ao mapa do Firebase
     final firebaseMap = {
       'idLocal': id,
       'tipo': tipo,
@@ -95,17 +107,13 @@ class Manejo {
       'propriedadeId': propriedadeId,
       'responsavelId': responsavelId,
       'concluidoPorId': concluidoPorId,
+      'responsavelPeaoId': responsavelPeaoId,
+      'concluidoPorPeaoId': concluidoPorPeaoId,
     };
 
-    if (medicamentoId != null) {
-      firebaseMap['medicamentoId'] = medicamentoId;
-    }
-    if (inducao != null) {
-      firebaseMap['inducao'] = inducao;
-    }
-    if (dataHoraInducao != null) {
-      firebaseMap['dataHoraInducao'] = dataHoraInducao;
-    }
+    if (medicamentoId != null) firebaseMap['medicamentoId'] = medicamentoId;
+    if (inducao != null) firebaseMap['inducao'] = inducao;
+    if (dataHoraInducao != null) firebaseMap['dataHoraInducao'] = dataHoraInducao;
 
     return firebaseMap;
   }
@@ -121,10 +129,11 @@ class Manejo {
       dataAgendada: (map['dataAgendada'] as Timestamp).toDate(),
       status: map['status'] ?? 'Agendado',
       detalhes: map['detalhes'] ?? {},
-      responsavelId: map['responsavelId'] ?? '',
+      responsavelId: map['responsavelId'],
       concluidoPorId: map['concluidoPorId'],
+      responsavelPeaoId: map['responsavelPeaoId'],
+      concluidoPorPeaoId: map['concluidoPorPeaoId'],
       statusSync: 'synced',
-      // Adiciona os novos campos vindos do Firebase
       medicamentoId: map['medicamentoId'],
       inducao: map['inducao'],
       dataHoraInducao: (map['dataHoraInducao'] as Timestamp?)?.toDate(),
@@ -142,8 +151,11 @@ class Manejo {
     String? propriedadeId,
     String? responsavelId,
     String? concluidoPorId,
+    String? responsavelPeaoId,
+    String? concluidoPorPeaoId,
     String? statusSync,
     bool? isDeleted,
+    bool? isAtrasado,
     String? medicamentoId,
     String? inducao,
     DateTime? dataHoraInducao,
@@ -159,8 +171,11 @@ class Manejo {
       propriedadeId: propriedadeId ?? this.propriedadeId,
       responsavelId: responsavelId ?? this.responsavelId,
       concluidoPorId: concluidoPorId ?? this.concluidoPorId,
+      responsavelPeaoId: responsavelPeaoId ?? this.responsavelPeaoId,
+      concluidoPorPeaoId: concluidoPorPeaoId ?? this.concluidoPorPeaoId,
       statusSync: statusSync ?? this.statusSync,
       isDeleted: isDeleted ?? this.isDeleted,
+      isAtrasado: isAtrasado ?? this.isAtrasado,
       medicamentoId: medicamentoId ?? this.medicamentoId,
       inducao: inducao ?? this.inducao,
       dataHoraInducao: dataHoraInducao ?? this.dataHoraInducao,

@@ -5,11 +5,13 @@ import 'package:nobryo_final/features/eguas/screens/egua_details_screen.dart';
 class EguaDetailsPageView extends StatefulWidget {
   final List<Egua> eguas;
   final int initialIndex;
+  final String propriedadeMaeId;
 
   const EguaDetailsPageView({
     super.key,
     required this.eguas,
     required this.initialIndex,
+    required this.propriedadeMaeId,
   });
 
   @override
@@ -63,6 +65,7 @@ class _EguaDetailsPageViewState extends State<EguaDetailsPageView> {
         return EguaDetailsScreen(
           egua: _currentEguasList[index],
           onEguaDeleted: (deletedEguaId) => _onEguaDeleted(deletedEguaId),
+          propriedadeMaeId: widget.propriedadeMaeId, 
         );
       },
     );

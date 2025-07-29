@@ -6,6 +6,7 @@ class Propriedade {
   String nome;
   String dono;
   String? parentId;
+  int deslocamentos;
   String statusSync;
   bool isDeleted;
 
@@ -15,6 +16,7 @@ class Propriedade {
     required this.nome,
     required this.dono,
     this.parentId,
+    this.deslocamentos = 0,
     this.statusSync = 'pending_create',
     this.isDeleted = false,
   });
@@ -26,6 +28,7 @@ class Propriedade {
       'nome': nome,
       'dono': dono,
       'parentId': parentId,
+      'deslocamentos': deslocamentos,
       'statusSync': statusSync,
       'isDeleted': isDeleted ? 1 : 0,
     };
@@ -38,6 +41,7 @@ class Propriedade {
       nome: map['nome'],
       dono: map['dono'],
       parentId: map['parentId'],
+      deslocamentos: map['deslocamentos'] ?? 0,
       statusSync: map['statusSync'],
       isDeleted: map['isDeleted'] == 1,
     );
@@ -49,6 +53,7 @@ class Propriedade {
       'nome': nome,
       'dono': dono,
       'parentId': parentId,
+      'deslocamentos': deslocamentos,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -61,6 +66,7 @@ class Propriedade {
       nome: map['nome'] ?? '',
       dono: map['dono'] ?? '',
       parentId: map['parentId'],
+      deslocamentos: map['deslocamentos'] ?? 0,
       statusSync: 'synced',
     );
   }
@@ -71,6 +77,7 @@ class Propriedade {
     String? nome,
     String? dono,
     String? parentId,
+    int? deslocamentos,
     String? statusSync,
     bool? isDeleted,
   }) {
@@ -80,6 +87,7 @@ class Propriedade {
       nome: nome ?? this.nome,
       dono: dono ?? this.dono,
       parentId: parentId ?? this.parentId,
+      deslocamentos: deslocamentos ?? this.deslocamentos,
       statusSync: statusSync ?? this.statusSync,
       isDeleted: isDeleted ?? this.isDeleted,
     );

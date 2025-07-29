@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:nobryo_final/core/models/egua_model.dart';
 import 'package:nobryo_final/core/models/manejo_model.dart';
+import 'package:nobryo_final/core/models/propriedade_model.dart';
 import 'package:open_file/open_file.dart'; 
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -13,7 +14,7 @@ import 'package:printing/printing.dart';
 class ExportService {
 
   Future<void> exportarPropriedadeParaPdf(
-    String nomePropriedade,
+    Propriedade propriedade, // ALTERADO DE String PARA Propriedade
     Map<Egua, List<Manejo>> dadosCompletos,
     BuildContext context,
   ) async {
@@ -31,7 +32,7 @@ class ExportService {
           header: (pw.Context ctx) => pw.Container(
             alignment: pw.Alignment.centerRight,
             child: pw.Text(
-              'Histórico Completo - Propriedade: $nomePropriedade',
+              'Histórico Completo - Propriedade: ${propriedade.nome}',
               style: pw.Theme.of(ctx).defaultTextStyle.copyWith(color: PdfColors.grey),
             ),
           ),
@@ -41,6 +42,14 @@ class ExportService {
               'Histórico Completo da Propriedade',
               style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 24),
             ));
+            
+            // NOVO: Adiciona contagem de deslocamentos
+            widgets.add(pw.SizedBox(height: 8));
+            widgets.add(pw.Text(
+              'Deslocamentos: ${propriedade.deslocamentos}',
+              style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700),
+            ));
+
             widgets.add(pw.Divider(thickness: 2, height: 30));
 
             if (dadosCompletos.values.every((list) => list.isEmpty)) {
@@ -69,7 +78,7 @@ class ExportService {
       );
 
       final bytes = await pdf.save();
-      final filePath = await _salvarArquivo(bytes, nomePropriedade, 'pdf');
+      final filePath = await _salvarArquivo(bytes, propriedade.nome, 'pdf');
       _abrirArquivo(filePath, "PDF", context);
     } catch (e) {
       _mostrarErro("PDF da Propriedade", e, context);
@@ -77,7 +86,7 @@ class ExportService {
   }
 
   Future<void> exportarPropriedadeParaExcel(
-    String nomePropriedade,
+    Propriedade propriedade, // ALTERADO DE String PARA Propriedade
     Map<Egua, List<Manejo>> dadosCompletos,
     BuildContext context,
   ) async {
@@ -85,17 +94,22 @@ class ExportService {
       final excel = Excel.createExcel();
       final Sheet sheet = excel[excel.getDefaultSheet()!];
       
-      sheet.cell(CellIndex.indexByString("A1")).value = "Histórico Completo - Propriedade: $nomePropriedade";
+      sheet.cell(CellIndex.indexByString("A1")).value = "Histórico Completo - Propriedade: ${propriedade.nome}";
       sheet.merge(CellIndex.indexByString("A1"), CellIndex.indexByString("F1"));
+
+      // NOVO: Adiciona contagem de deslocamentos
+      sheet.cell(CellIndex.indexByString("A2")).value = "Deslocamentos: ${propriedade.deslocamentos}";
+      sheet.merge(CellIndex.indexByString("A2"), CellIndex.indexByString("F2"));
 
       final headers = ["Égua", "RP", "Data", "Tipo de Manejo", "Detalhes", "Observações"];
       for (var i = 0; i < headers.length; i++) {
-        final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 2));
+        // Aumenta o rowIndex para acomodar a nova linha
+        final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 3));
         cell.value = headers[i];
         cell.cellStyle = CellStyle(bold: true, backgroundColorHex: "#FF4CAF50", fontColorHex: "#FFFFFFFF", textWrapping: TextWrapping.WrapText);
       }
 
-      int rowIndex = 3;
+      int rowIndex = 4; // Inicia na linha 4
       dadosCompletos.forEach((egua, manejos) {
         for (final manejo in manejos) {
           final detalhesString = _getFormattedDetalhesExcel(manejo.detalhes);
@@ -115,7 +129,7 @@ class ExportService {
 
       final List<int>? bytes = excel.save();
       if (bytes != null) {
-        final filePath = await _salvarArquivo(bytes, nomePropriedade, 'xlsx');
+        final filePath = await _salvarArquivo(bytes, propriedade.nome, 'xlsx');
         _abrirArquivo(filePath, "Excel", context);
       } else {
         throw Exception("Falha ao gerar os bytes do arquivo Excel.");

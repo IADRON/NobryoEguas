@@ -1,3 +1,5 @@
+// lib/features/eguas/screens/eguas_list_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:nobryo_final/core/database/sqlite_helper.dart';
@@ -8,18 +10,22 @@ import 'package:nobryo_final/core/services/export_service.dart';
 import 'package:nobryo_final/core/services/sync_service.dart';
 import 'package:nobryo_final/features/eguas/screens/egua_details_page_view.dart';
 import 'package:nobryo_final/shared/theme/theme.dart';
-import 'package:nobryo_final/features/propriedades/widgets/peoes_management_widget.dart';
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
+
+// --- CORREÇÃO: Notificador para avisar sobre a movimentação de éguas ---
+final ValueNotifier<bool> eguasMovedNotifier = ValueNotifier(false);
 
 class EguasListScreen extends StatefulWidget {
   final String propriedadeId;
   final String propriedadeNome;
+  final String? propriedadeMaeId;
 
   const EguasListScreen({
     super.key,
     required this.propriedadeId,
     required this.propriedadeNome,
+    this.propriedadeMaeId,
   });
 
   @override
@@ -27,10 +33,15 @@ class EguasListScreen extends StatefulWidget {
 }
 
 class _EguasListScreenState extends State<EguasListScreen> {
-  List<Egua> _eguas = [];
+  List<Egua> _allEguas = [];
+  List<Egua> _filteredEguas = [];
+  final TextEditingController _searchController = TextEditingController();
   bool _isLoading = true;
   Map<String, DateTime?> _previsaoPartoMap = {};
   Map<String, Manejo?> _proximoManejoMap = {};
+
+  bool _isSelectionMode = false;
+  final Set<String> _selectedEguas = <String>{};
 
   final ExportService _exportService = ExportService();
   final SyncService _syncService = SyncService();
@@ -43,15 +54,53 @@ class _EguasListScreenState extends State<EguasListScreen> {
     super.initState();
     _currentPropriedadeNome = widget.propriedadeNome;
     _refreshEguasList();
-    Provider.of<SyncService>(context, listen: false)
-        .addListener(_refreshEguasList);
+    Provider.of<SyncService>(context, listen: false).addListener(_refreshEguasList);
+    _searchController.addListener(_filterEguas);
   }
 
   @override
   void dispose() {
-    Provider.of<SyncService>(context, listen: false)
-        .removeListener(_refreshEguasList);
+    Provider.of<SyncService>(context, listen: false).removeListener(_refreshEguasList);
+    _searchController.removeListener(_filterEguas);
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _filterEguas() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredEguas = _allEguas.where((egua) {
+        return egua.nome.toLowerCase().contains(query) ||
+               egua.rp.toLowerCase().contains(query);
+      }).toList();
+    });
+  }
+
+  void _toggleSelection(String eguaId) {
+    setState(() {
+      if (_selectedEguas.contains(eguaId)) {
+        _selectedEguas.remove(eguaId);
+      } else {
+        _selectedEguas.add(eguaId);
+      }
+      if (_selectedEguas.isEmpty) {
+        _isSelectionMode = false;
+      }
+    });
+  }
+
+  void _enterSelectionMode(String eguaId) {
+    setState(() {
+      _isSelectionMode = true;
+      _selectedEguas.add(eguaId);
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedEguas.clear();
+    });
   }
 
   Future<void> _refreshEguasList() async {
@@ -77,9 +126,10 @@ class _EguasListScreenState extends State<EguasListScreen> {
       setState(() {
         _propriedade = prop;
         if (prop != null) _currentPropriedadeNome = prop.nome;
-        _eguas = updatedEguas;
+        _allEguas = updatedEguas;
         _isLoading = false;
       });
+      _filterEguas();
       _calcularPrevisoesDeParto(updatedEguas);
       _calcularProximosManejos(updatedEguas);
     }
@@ -184,20 +234,32 @@ class _EguasListScreenState extends State<EguasListScreen> {
   }
 
   Future<void> _onReorder(int oldIndex, int newIndex) async {
+    if (_isSelectionMode) return;
+
+    final Egua movedEgua = _filteredEguas[oldIndex];
+    int realOldIndex = _allEguas.indexOf(movedEgua);
+
     if (newIndex > oldIndex) {
       newIndex -= 1;
     }
 
-    final Egua item = _eguas.removeAt(oldIndex);
-    _eguas.insert(newIndex, item);
-    setState(() {});
+    final Egua targetEgua = _filteredEguas[newIndex];
+    int realNewIndex = _allEguas.indexOf(targetEgua);
 
-    await SQLiteHelper.instance.updateEguasOrder(_eguas);
+    final Egua item = _allEguas.removeAt(realOldIndex);
+    _allEguas.insert(realNewIndex, item);
+
+    setState(() {
+      _filteredEguas.removeAt(oldIndex);
+      _filteredEguas.insert(newIndex, item);
+    });
+
+    await SQLiteHelper.instance.updateEguasOrder(_allEguas);
     _autoSync();
   }
 
   void _exportarRelatorioCompleto(
-    Future<void> Function(String, Map<Egua, List<Manejo>>, BuildContext)
+    Future<void> Function(Propriedade, Map<Egua, List<Manejo>>, BuildContext)
         exportFunction,
   ) async {
     setState(() => _isLoading = true);
@@ -207,7 +269,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
     ));
 
     try {
-      if (_eguas.isEmpty) {
+      if (_allEguas.isEmpty || _propriedade == null) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text("Não há éguas neste local para exportar."),
         ));
@@ -217,7 +279,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
 
       final Map<Egua, List<Manejo>> dadosCompletos = {};
 
-      for (final egua in _eguas) {
+      for (final egua in _allEguas) {
         final List<Manejo> historico =
             await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
         dadosCompletos[egua] = historico;
@@ -229,7 +291,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
           backgroundColor: Colors.orange,
         ));
       } else {
-        await exportFunction(_currentPropriedadeNome, dadosCompletos, context);
+        await exportFunction(_propriedade!, dadosCompletos, context);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -249,14 +311,6 @@ class _EguasListScreenState extends State<EguasListScreen> {
       builder: (ctx) {
         return Wrap(
           children: <Widget>[
-            ListTile(
-              leading: const Icon(Icons.group_outlined),
-              title: const Text('Gerenciar Peões'),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _showPeoesWidget();
-              },
-            ),
             ListTile(
               leading: const Icon(Icons.download_outlined),
               title: const Text('Exportar Relatório do Local'),
@@ -432,74 +486,85 @@ class _EguasListScreenState extends State<EguasListScreen> {
     );
   }
 
-  void _showPeoesWidget() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.75,
-          minChildSize: 0.5,
-          maxChildSize: 0.9,
-          builder: (_, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: AppTheme.pageBackground,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: PeoesManagementWidget(
-                propriedadeId: widget.propriedadeId,
-                scrollController: scrollController,
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppTheme.darkGreen,
-        foregroundColor: AppTheme.lightGrey,
-        title: Text(
-          _currentPropriedadeNome.toUpperCase(),
-          style: const TextStyle(fontSize: 18, color: AppTheme.lightGrey),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () => _showOptionsModal(context),
-            tooltip: "Mais Opções",
-          ),
-        ],
-      ),
+      appBar: _isSelectionMode ? _buildSelectionAppBar() : _buildDefaultAppBar(),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _eguas.isEmpty
-              ? const Center(
-                  child: Text(
-                    "Nenhuma égua cadastrada.\nClique no '+' para adicionar a primeira.",
-                    textAlign: TextAlign.center,
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      hintText: 'Buscar por nome ou RP da égua...',
+                      prefixIcon: Icon(Icons.search),
+                    ),
                   ),
-                )
-              : ReorderableListView.builder(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: _eguas.length,
-                  itemBuilder: (context, index) {
-                    final egua = _eguas[index];
-                    return _buildEguaCard(egua, index);
-                  },
-                  onReorder: _onReorder,
                 ),
+                Expanded(
+                  child: _filteredEguas.isEmpty
+                      ? const Center(
+                          child: Text(
+                            "Nenhuma égua encontrada.",
+                            textAlign: TextAlign.center,
+                          ),
+                        )
+                      : ReorderableListView.builder(
+                          padding: const EdgeInsets.all(20),
+                          itemCount: _filteredEguas.length,
+                          itemBuilder: (context, index) {
+                            final egua = _filteredEguas[index];
+                            return _buildEguaCard(egua, index);
+                          },
+                          onReorder: _onReorder,
+                        ),
+                ),
+              ],
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddOrEditEguaModal(context),
         child: const Icon(Icons.add),
         tooltip: "Adicionar Égua",
       ),
+    );
+  }
+
+  AppBar _buildDefaultAppBar() {
+    return AppBar(
+      backgroundColor: AppTheme.darkGreen,
+      foregroundColor: AppTheme.lightGrey,
+      title: Text(
+        _currentPropriedadeNome.toUpperCase(),
+        style: const TextStyle(fontSize: 18, color: AppTheme.lightGrey),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.more_vert),
+          onPressed: () => _showOptionsModal(context),
+          tooltip: "Mais Opções",
+        ),
+      ],
+    );
+  }
+
+  AppBar _buildSelectionAppBar() {
+    return AppBar(
+      backgroundColor: AppTheme.brown,
+      leading: IconButton(
+        icon: const Icon(Icons.close),
+        onPressed: _exitSelectionMode,
+      ),
+      title: Text("${_selectedEguas.length} selecionada(s)"),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.swap_horiz),
+          onPressed: _showMoveEguasModal,
+          tooltip: "Mover Éguas",
+        ),
+      ],
     );
   }
 
@@ -509,28 +574,51 @@ class _EguasListScreenState extends State<EguasListScreen> {
         : AppTheme.statusVazia;
     final previsaoParto = _previsaoPartoMap[egua.id];
     final proximoManejo = _proximoManejoMap[egua.id];
+    final isSelected = _selectedEguas.contains(egua.id);
 
     return Card(
       key: ValueKey(egua.id),
+      color: isSelected ? AppTheme.brown.withOpacity(0.2) : null,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
+        onLongPress: () {
+          if (!_isSelectionMode) {
+            _enterSelectionMode(egua.id);
+          }
+        },
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EguaDetailsPageView(
-                eguas: _eguas,
-                initialIndex: index,
+          if (_isSelectionMode) {
+            _toggleSelection(egua.id);
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EguaDetailsPageView(
+                  eguas: _filteredEguas,
+                  initialIndex: index,
+                  propriedadeMaeId: widget.propriedadeMaeId ?? widget.propriedadeId,
+                ),
               ),
-            ),
-          ).then((_) {
-            _refreshEguasList();
-          });
+            ).then((_) {
+              _refreshEguasList();
+            });
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
+              if (_isSelectionMode)
+                Padding(
+                  padding: const EdgeInsets.only(right: 12.0),
+                  child: Checkbox(
+                    value: isSelected,
+                    onChanged: (bool? value) {
+                      _toggleSelection(egua.id);
+                    },
+                    activeColor: AppTheme.brown,
+                  ),
+                ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -624,6 +712,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
                   ],
                 ),
               ),
+              if (!_isSelectionMode)
               ReorderableDragStartListener(
                 index: index,
                 child: const Icon(Icons.drag_handle, color: Colors.grey),
@@ -632,6 +721,25 @@ class _EguasListScreenState extends State<EguasListScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showMoveEguasModal() async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return MoveEguasWidget(
+          currentPropriedadeId: widget.propriedadeId,
+          selectedEguas: _selectedEguas,
+          onMoveConfirmed: () {
+            _exitSelectionMode();
+            _autoSync();
+            // --- CORREÇÃO: Notifica que éguas foram movidas ---
+            eguasMovedNotifier.value = !eguasMovedNotifier.value;
+          },
+        );
+      },
     );
   }
 
@@ -844,7 +952,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                     : 'pending_create',
                                 orderIndex: isEditing
                                     ? egua.orderIndex
-                                    : _eguas.length,
+                                    : _allEguas.length,
                               );
 
                               if (isEditing) {
@@ -874,6 +982,178 @@ class _EguasListScreenState extends State<EguasListScreen> {
           },
         );
       },
+    );
+  }
+}
+
+class MoveEguasWidget extends StatefulWidget {
+  final String currentPropriedadeId;
+  final Set<String> selectedEguas;
+  final VoidCallback onMoveConfirmed;
+
+  const MoveEguasWidget({
+    super.key,
+    required this.currentPropriedadeId,
+    required this.selectedEguas,
+    required this.onMoveConfirmed,
+  });
+
+  @override
+  _MoveEguasWidgetState createState() => _MoveEguasWidgetState();
+}
+
+class _MoveEguasWidgetState extends State<MoveEguasWidget> {
+  int _step = 0;
+  Propriedade? _selectedPropriedadeMae;
+  
+  List<Propriedade> _topLevelProps = [];
+  List<Propriedade> _subProps = [];
+  List<Propriedade> _filteredList = [];
+  
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTopLevelProps();
+    _searchController.addListener(_filterList);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_filterList);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadTopLevelProps() async {
+    final props = await SQLiteHelper.instance.readTopLevelPropriedades();
+    if (mounted) {
+      setState(() {
+        _topLevelProps = props;
+        _filteredList = props;
+      });
+    }
+  }
+
+  Future<void> _loadSubProps(String parentId) async {
+    final lotes = await SQLiteHelper.instance.readSubPropriedades(parentId);
+    if (mounted) {
+      setState(() {
+        _subProps = lotes.where((lote) => lote.id != widget.currentPropriedadeId).toList();
+        _filteredList = _subProps;
+      });
+    }
+  }
+
+  void _filterList() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      if (_step == 0) {
+        _filteredList = _topLevelProps.where((prop) => prop.nome.toLowerCase().contains(query)).toList();
+      } else {
+        _filteredList = _subProps.where((lote) => lote.nome.toLowerCase().contains(query)).toList();
+      }
+    });
+  }
+
+  void _handleSelection(Propriedade prop) {
+    if (_step == 0) {
+      setState(() {
+        _step = 1;
+        _selectedPropriedadeMae = prop;
+        _searchController.clear();
+      });
+      _loadSubProps(prop.id);
+    } else {
+      _confirmAndMove(prop);
+    }
+  }
+
+  void _confirmAndMove(Propriedade destLote) async {
+    Navigator.of(context).pop(); 
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text("Confirmar Movimentação"),
+        content: Text("Deseja mover ${widget.selectedEguas.length} égua(s) para o lote \"${destLote.nome}\"?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogCtx).pop(false), child: const Text("Cancelar")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
+            onPressed: () => Navigator.of(dialogCtx).pop(true), child: const Text("Mover")),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final eguasToMove = await SQLiteHelper.instance.readEguasByPropriedade(widget.currentPropriedadeId);
+      for (String eguaId in widget.selectedEguas) {
+        final egua = eguasToMove.firstWhere((e) => e.id == eguaId);
+        final updatedEgua = egua.copyWith(
+          propriedadeId: destLote.id,
+          statusSync: 'pending_update',
+        );
+        await SQLiteHelper.instance.updateEgua(updatedEgua);
+      }
+      widget.onMoveConfirmed();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              if (_step == 1)
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    setState(() {
+                      _step = 0;
+                      _selectedPropriedadeMae = null;
+                      _searchController.clear();
+                      _filteredList = _topLevelProps;
+                    });
+                  },
+                ),
+              Expanded(
+                child: Text(
+                  _step == 0 ? "Selecione a Propriedade" : "Selecione o Lote em \"${_selectedPropriedadeMae!.nome}\"",
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _searchController,
+            decoration: const InputDecoration(
+              hintText: "Buscar...",
+              prefixIcon: Icon(Icons.search),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: _filteredList.isEmpty
+                ? Center(child: Text(_step == 0 ? "Nenhuma propriedade encontrada." : "Nenhum lote disponível."))
+                : ListView.builder(
+                    itemCount: _filteredList.length,
+                    itemBuilder: (context, index) {
+                      final prop = _filteredList[index];
+                      return ListTile(
+                        title: Text(prop.nome),
+                        onTap: () => _handleSelection(prop),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
