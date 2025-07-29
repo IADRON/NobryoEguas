@@ -1,4 +1,4 @@
-  import 'package:nobryo_final/core/models/egua_model.dart';
+import 'package:nobryo_final/core/models/egua_model.dart';
   import 'package:nobryo_final/core/models/manejo_model.dart';
   import 'package:nobryo_final/core/models/medicamento_model.dart';
   import 'package:nobryo_final/core/models/peao_model.dart';
@@ -25,7 +25,7 @@
 
       return await openDatabase(
         path,
-        version: 21,
+        version: 22, // VERSÃO INCREMENTADA
         onCreate: _createDB,
         onUpgrade: _onUpgrade,
         onConfigure: (db) async {
@@ -108,6 +108,9 @@
       if (oldVersion < 21) {
         await db.execute('ALTER TABLE manejos ADD COLUMN isAtrasado INTEGER DEFAULT 0 NOT NULL');
       }
+      if (oldVersion < 22) { // NOVA ATUALIZAÇÃO
+        await db.execute('ALTER TABLE propriedades ADD COLUMN hasLotes INTEGER DEFAULT 1 NOT NULL');
+      }
     }
 
     Future _createDB(Database db, int version) async {
@@ -159,7 +162,8 @@
         CREATE TABLE IF NOT EXISTS propriedades (
           id TEXT PRIMARY KEY, firebaseId TEXT, nome TEXT NOT NULL,
           dono TEXT NOT NULL, parentId TEXT, 
-          deslocamentos INTEGER DEFAULT 0 NOT NULL, -- ADICIONADO
+          deslocamentos INTEGER DEFAULT 0 NOT NULL,
+          hasLotes INTEGER DEFAULT 1 NOT NULL, -- ADICIONADO
           statusSync TEXT NOT NULL,
           isDeleted INTEGER DEFAULT 0 NOT NULL
         )

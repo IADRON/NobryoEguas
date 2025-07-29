@@ -1205,7 +1205,6 @@ void _showAddAgendamentoModal(BuildContext context,
                   _buildDetailRow(
                       Icons.home_work_outlined, "Propriedade", propriedadePai?.nome ?? lote?.nome ?? '...'),
                   
-                  // Mostra o Lote apenas se for diferente da Propriedade principal
                   if(propriedadePai != null) ...[
                      const SizedBox(height: 16),
                     _buildDetailRow(Icons.location_on_outlined, "Lote", lote?.nome ?? '...'),

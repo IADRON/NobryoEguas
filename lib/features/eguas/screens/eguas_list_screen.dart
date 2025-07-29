@@ -412,7 +412,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
                   controller: donoController,
                   decoration: const InputDecoration(
                       labelText: "Dono",
-                      prefixIcon: Icon(Icons.person_outlined)),
+                      prefixIcon: Icon(Icons.person_outline)),
                   validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                 ),
                 const SizedBox(height: 20),
@@ -839,25 +839,15 @@ class _EguasListScreenState extends State<EguasListScreen> {
                           ),
                         ),
                       const SizedBox(height: 15),
-                      const Text("Parto?",
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      Row(
-                        children: [
-                          Expanded(
-                              child: RadioListTile<bool>(
-                                  title: const Text("Sim"),
-                                  value: true,
-                                  groupValue: teveParto,
-                                  onChanged: (val) =>
-                                      setModalState(() => teveParto = val!))),
-                          Expanded(
-                              child: RadioListTile<bool>(
-                                  title: const Text("Não"),
-                                  value: false,
-                                  groupValue: teveParto,
-                                  onChanged: (val) =>
-                                      setModalState(() => teveParto = val!))),
-                        ],
+                      SwitchListTile(
+                        title: const Text("Teve Parto?"),
+                        value: teveParto,
+                        onChanged: (bool value) {
+                          setModalState(() {
+                            teveParto = value;
+                          });
+                        },
+                        activeColor: AppTheme.darkGreen,
                       ),
                       if (teveParto)
                         Container(

@@ -1550,13 +1550,17 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
 
                       if (manejo.tipo != 'Controle Folicular') ...[
                       const Divider(height: 20, thickness: 1),
-                      Text("Incluir Controle Folicular?", style: Theme.of(context).textTheme.titleMedium),
-                      Row(
-                        children: [
-                          Expanded(child: RadioListTile<bool>(title: const Text("Sim"), value: true, groupValue: _incluirControleFolicular, onChanged: (val) => setModalState(() => _incluirControleFolicular = val!))),
-                          Expanded(child: RadioListTile<bool>(title: const Text("Não"), value: false, groupValue: _incluirControleFolicular, onChanged: (val) => setModalState(() => _incluirControleFolicular = val!))),
-                        ],
+                      SwitchListTile(
+                        title: const Text("Incluir Controle Folicular?"),
+                        value: _incluirControleFolicular,
+                        onChanged: (bool value) {
+                          setModalState(() {
+                            _incluirControleFolicular = value;
+                          });
+                        },
+                        activeColor: AppTheme.darkGreen,
                       ),
+
                       if (_incluirControleFolicular)
                         _buildControleFolicularInputs(
                           setModalState: setModalState,
@@ -1688,7 +1692,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       hint: const Text("Responsável pela conclusão"),
                       decoration: const InputDecoration(
                         labelText: "Concluído por",
-                        prefixIcon: Icon(Icons.person_outlined)),
+                        prefixIcon: Icon(Icons.person_outline)),
                     items: [
                       const DropdownMenuItem<dynamic>(
                       enabled: false,
@@ -2013,12 +2017,15 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       ),
                       if (tipoManejoSelecionado != 'Controle Folicular') ...[
                         const Divider(height: 20, thickness: 1),
-                        Text("Incluir Controle Folicular?", style: Theme.of(context).textTheme.titleMedium),
-                        Row(
-                          children: [
-                            Expanded(child: RadioListTile<bool>(title: const Text("Sim"), value: true, groupValue: _incluirControleFolicular, onChanged: (val) => setModalState(() => _incluirControleFolicular = val!))),
-                            Expanded(child: RadioListTile<bool>(title: const Text("Não"), value: false, groupValue: _incluirControleFolicular, onChanged: (val) => setModalState(() => _incluirControleFolicular = val!))),
-                          ],
+                        SwitchListTile(
+                        title: const Text("Incluir Controle Folicular?"),
+                        value: _incluirControleFolicular,
+                        onChanged: (bool value) {
+                          setModalState(() {
+                            _incluirControleFolicular = value;
+                          });
+                        },
+                        activeColor: AppTheme.darkGreen,
                         ),
                         if (_incluirControleFolicular)
                           _buildControleFolicularInputs(
@@ -2157,7 +2164,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       hint: const Text("Responsável pela conclusão"),
                       decoration: const InputDecoration(
                         labelText: "Concluído por",
-                        prefixIcon: Icon(Icons.person_outlined)),
+                        prefixIcon: Icon(Icons.person_outline)),
                       items: [
                         const DropdownMenuItem<dynamic>(
                           enabled: false,
@@ -2926,12 +2933,15 @@ class _EditEguaFormState extends State<_EditEguaForm> {
                   ),
                 ),
               const SizedBox(height: 15),
-              const Text("Parto?", style: TextStyle(fontWeight: FontWeight.bold)),
-              Row(
-                children: [
-                  Expanded(child: RadioListTile<bool>(title: const Text("Sim"), value: true, groupValue: _teveParto, onChanged: (val) => setState(() => _teveParto = val!))),
-                  Expanded(child: RadioListTile<bool>(title: const Text("Não"), value: false, groupValue: _teveParto, onChanged: (val) => setState(() => _teveParto = val!))),
-                ],
+              SwitchListTile(
+                title: const Text("Teve Parto?"),
+                value: _teveParto,
+                onChanged: (bool value) {
+                  setModalState(() {
+                    _teveParto = value;
+                  });
+                },
+                activeColor: AppTheme.darkGreen,
               ),
               if (_teveParto)
                 Container(

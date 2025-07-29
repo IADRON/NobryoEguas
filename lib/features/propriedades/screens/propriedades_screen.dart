@@ -6,6 +6,7 @@ import 'package:nobryo_final/core/services/auth_service.dart';
 import 'package:nobryo_final/core/services/sync_service.dart';
 import 'package:nobryo_final/features/auth/screens/manage_users_screen.dart';
 import 'package:nobryo_final/features/auth/widgets/user_profile_modal.dart';
+import 'package:nobryo_final/features/eguas/screens/eguas_list_screen.dart';
 import 'package:nobryo_final/shared/widgets/loading_screen.dart';
 import 'package:nobryo_final/features/propriedades/screens/sub_propriedades_screen.dart';
 import 'package:nobryo_final/shared/theme/theme.dart';
@@ -62,9 +63,9 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
           _allTopLevelPropriedades = propriedades;
           _filteredTopLevelPropriedades = List.from(_allTopLevelPropriedades);
           _hasPendingManejosMap = pendingMap;
-          _isLoading = false; // <<< ALTERAÇÃO: Movido para antes do filtro
+          _isLoading = false; 
         });
-        _filterData(); // Chama o filtro após carregar os dados
+        _filterData(); 
       }
     } catch (e) {
       if (mounted) {
@@ -75,7 +76,7 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
         );
       }
     } finally {
-      if (mounted && _isLoading) { // Garante que não desative o loading duas vezes
+      if (mounted && _isLoading) { 
         setState(() => _isLoading = false);
       }
     }
@@ -90,20 +91,17 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
       return;
     }
 
-    // Para evitar múltiplas buscas no banco, primeiro pegamos todas as éguas.
     final allEguas = await SQLiteHelper.instance.getAllEguas();
     List<Propriedade> filtered = [];
 
     for (final prop in _allTopLevelPropriedades) {
-      // 1. Procura por nome da propriedade
       if (prop.nome.toLowerCase().contains(query)) {
         if (!filtered.contains(prop)) {
           filtered.add(prop);
         }
-        continue; // Continua para a próxima propriedade para evitar duplicatas
+        continue; 
       }
 
-      // 2. Procura por éguas dentro da propriedade e seus lotes
       final subProps = await SQLiteHelper.instance.readSubPropriedades(prop.id);
       final allPropIds = [prop.id, ...subProps.map((p) => p.id)];
       
@@ -142,6 +140,12 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
         backgroundColor: online ? Colors.green : Colors.orange,
       ));
     }
+    _refreshData();
+  }
+
+  Future<void> _autoSync() async {
+    final bool _ = await _syncService.syncData(isManual: false);
+    if (mounted) {}
     _refreshData();
   }
 
@@ -198,7 +202,7 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
           body: child,
           floatingActionButton: FloatingActionButton(
             onPressed: () => _showAddPropriedadeModal(context),
-            backgroundColor: AppTheme.darkGreen,
+            backgroundColor: AppTheme.brown,
             child: const Icon(Icons.add, color: Colors.white),
             tooltip: "Adicionar Propriedade",
           ),
@@ -211,7 +215,7 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
             TextField(
               controller: _searchController,
               decoration: const InputDecoration(
-                hintText: "Buscar por propriedade ou égua...", // <<< HINTTEXT ATUALIZADO
+                hintText: "Buscar por propriedade ou égua...",
                 prefixIcon: Icon(Icons.search, color: Colors.grey),
               ),
             ),
@@ -252,17 +256,31 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
                                     )
                                   : const SizedBox(width: 12),
                                 onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          SubPropriedadesScreen(
-                                        propriedadePai: prop,
+                                  if (prop.hasLotes) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            SubPropriedadesScreen(
+                                          propriedadePai: prop,
+                                        ),
                                       ),
-                                    ),
-                                  ).then((_) {
-                                    _refreshData();
-                                  });
+                                    ).then((_) {
+                                      _refreshData();
+                                    });
+                                  } else {
+                                     Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => EguasListScreen(
+                                          propriedadeId: prop.id,
+                                          propriedadeNome: prop.nome,
+                                        ),
+                                      ),
+                                    ).then((_) {
+                                      _refreshData();
+                                    });
+                                  }
                                 },
                               ),
                             );
@@ -279,77 +297,115 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
     final formKey = GlobalKey<FormState>();
     final nomeController = TextEditingController();
     final donoController = TextEditingController();
+    bool hasLotes = true;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-            top: 20,
-            left: 20,
-            right: 20),
-        child: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Nova Propriedade",
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const Divider(height: 30, thickness: 1),
-                TextFormField(
-                  controller: nomeController,
-                  decoration:
-                      const InputDecoration(labelText: "Nome da Propriedade"),
-                  validator: (value) =>
-                      value!.isEmpty ? "Este campo não pode ser vazio" : null,
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: donoController,
-                  decoration: const InputDecoration(labelText: "Dono"),
-                  validator: (value) =>
-                      value!.isEmpty ? "Este campo não pode ser vazio" : null,
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.darkGreen,
-                        padding: const EdgeInsets.symmetric(vertical: 12)),
-                    onPressed: () async {
-                      if (formKey.currentState!.validate()) {
-                        final novaPropriedade = Propriedade(
-                          id: const Uuid().v4(),
-                          nome: nomeController.text,
-                          dono: donoController.text,
-                          parentId: null,
-                          statusSync: 'pending_create',
-                        );
-                        await SQLiteHelper.instance
-                            .createPropriedade(novaPropriedade);
-                        if (mounted) {
-                          Navigator.of(ctx).pop();
-                          _manualSync();
-                        }
-                      }
-                    },
-                    child: const Text("Salvar",
-                        style: TextStyle(color: Colors.white)),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                top: 20,
+                left: 20,
+                right: 20),
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 10),
+                  Text("Adicionar Propriedade",
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  const Divider(height: 30, thickness: 1),
+                      TextFormField(
+                        controller: nomeController,
+                        decoration: const InputDecoration(
+                            labelText: "Nome da Propriedade",
+                            prefixIcon: Icon(Icons.home_work_outlined)),
+                        validator: (value) => value!.isEmpty
+                            ? "Este campo não pode ser vazio"
+                            : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: donoController,
+                        decoration: const InputDecoration(
+                          labelText: "Dono",
+                          prefixIcon: Icon(Icons.person_outline)),
+                        validator: (value) => value!.isEmpty
+                            ? "Este campo não pode ser vazio"
+                            : null,
+                      ),
+                      const SizedBox(height: 15),
+                      SwitchListTile(
+                        title: const Text("Possui Lotes?"),
+                        value: hasLotes,
+                        onChanged: (bool value) {
+                          setModalState(() {
+                            hasLotes = value;
+                          });
+                        },
+                        activeColor: AppTheme.darkGreen,
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.darkGreen,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12)),
+                          onPressed: () async {
+                            if (formKey.currentState!.validate()) {
+                              final novaPropriedade = Propriedade(
+                                id: const Uuid().v4(),
+                                nome: nomeController.text,
+                                dono: donoController.text,
+                                hasLotes: hasLotes,
+                                parentId: null,
+                                statusSync: 'pending_create',
+                              );
+                              await SQLiteHelper.instance
+                                  .createPropriedade(novaPropriedade);
+                              if (mounted) {
+                                Navigator.of(ctx).pop();
+                                _autoSync();
+                              }
+                            }
+                          },
+                          child: const Text("Salvar",
+                              style: TextStyle(color: Colors.white)),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
-        ),
-      ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

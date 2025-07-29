@@ -1,5 +1,3 @@
-// lib/features/propriedades/screens/sub_propriedades_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:nobryo_final/core/database/sqlite_helper.dart';
 import 'package:nobryo_final/core/models/egua_model.dart';
@@ -7,11 +5,13 @@ import 'package:nobryo_final/core/models/manejo_model.dart';
 import 'package:nobryo_final/core/models/propriedade_model.dart';
 import 'package:nobryo_final/core/services/export_service.dart';
 import 'package:nobryo_final/core/services/sync_service.dart';
-import 'package:nobryo_final/features/eguas/screens/eguas_list_screen.dart'; // Verifique se este import está correto
+import 'package:nobryo_final/features/eguas/screens/eguas_list_screen.dart'; 
 import 'package:nobryo_final/features/propriedades/widgets/peoes_management_widget.dart';
 import 'package:nobryo_final/shared/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+
+final ValueNotifier<bool> eguasMovedNotifier = ValueNotifier(false);
 
 class SubPropriedadesScreen extends StatefulWidget {
   final Propriedade propriedadePai;
@@ -141,8 +141,6 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
       }
     }
   }
-
-  // O restante do seu código em sub_propriedades_screen.dart permanece o mesmo...
 
   @override
   Widget build(BuildContext context) {
@@ -453,86 +451,154 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
     final formKey = GlobalKey<FormState>();
     final nomeController = TextEditingController(text: _currentPropriedadePai.nome);
     final donoController = TextEditingController(text: _currentPropriedadePai.dono);
+    bool hasLotes = _currentPropriedadePai.hasLotes;
+    bool canEditHasLotes = _allSubPropriedades.length <= 1;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-            top: 20,
-            left: 20,
-            right: 20),
-        child: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Editar Propriedade",
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.delete_outlined, color: Colors.red[700]),
-                      onPressed: () => _showDeletePropriedadeConfirmationDialog(ctx),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                TextFormField(
-                  controller: nomeController,
-                  decoration: const InputDecoration(
-                      labelText: "Nome",
-                      prefixIcon: Icon(Icons.home_work_outlined)),
-                  validator: (v) => v!.isEmpty ? "Obrigatório" : null,
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: donoController,
-                  decoration: const InputDecoration(
-                      labelText: "Dono",
-                      prefixIcon: Icon(Icons.person_outlined)),
-                  validator: (v) => v!.isEmpty ? "Obrigatório" : null,
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.darkGreen),
-                    onPressed: () async {
-                      if (formKey.currentState!.validate()) {
-                        final updatedProp = _currentPropriedadePai.copyWith(
-                          nome: nomeController.text,
-                          dono: donoController.text,
-                          statusSync: 'pending_update',
-                        );
-                        await SQLiteHelper.instance
-                            .updatePropriedade(updatedProp);
-                        if (mounted) {
-                          Navigator.of(ctx).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text("Propriedade atualizada!"),
-                            backgroundColor: Colors.green,
-                          ));
-                          _autoSync();
-                        }
-                      }
-                    },
-                    child: const Text("Salvar Alterações"),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                  top: 20,
+                  left: 20,
+                  right: 20),
+              child: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Editar Propriedade",
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.delete_outlined,
+                                color: Colors.red[700]),
+                            onPressed: () =>
+                                _showDeletePropriedadeConfirmationDialog(ctx),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: nomeController,
+                        decoration: const InputDecoration(
+                            labelText: "Nome",
+                            prefixIcon: Icon(Icons.home_work_outlined)),
+                        validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: donoController,
+                        decoration: const InputDecoration(
+                            labelText: "Dono",
+                            prefixIcon: Icon(Icons.person_outline)),
+                        validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                      ),
+                      const SizedBox(height: 15),
+                      SwitchListTile(
+                        title: const Text("Possui Lotes?"),
+                        subtitle: !canEditHasLotes
+                            ? Text(
+                                "Remova os lotes extras para alterar esta opção.",
+                                style: TextStyle(color: Colors.red[700]),
+                              )
+                            : null,
+                        value: hasLotes,
+                        onChanged: canEditHasLotes
+                            ? (bool value) {
+                                setModalState(() {
+                                  hasLotes = value;
+                                });
+                              }
+                            : null,
+                        activeColor: AppTheme.darkGreen,
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.darkGreen),
+                          onPressed: () async {
+                            if (formKey.currentState!.validate()) {
+                              if (_currentPropriedadePai.hasLotes &&
+                                  !hasLotes &&
+                                  _allSubPropriedades.length == 1) {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (dialogCtx) => AlertDialog(
+                                    title: const Text("Atenção"),
+                                    content: Text(
+                                        "Ao desativar os lotes, todas as éguas do lote '${_allSubPropriedades.first.nome}' serão movidas para a propriedade principal e o lote será excluído. Deseja continuar?"),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(dialogCtx).pop(false),
+                                        child: const Text("Cancelar"),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () =>
+                                            Navigator.of(dialogCtx).pop(true),
+                                        child: const Text("Continuar"),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirm != true) return;
+
+                                final lote = _allSubPropriedades.first;
+                                final eguasDoLote = await SQLiteHelper.instance.readEguasByPropriedade(lote.id);
+                                for (var egua in eguasDoLote) {
+                                  await SQLiteHelper.instance.updateEgua(egua.copyWith(propriedadeId: _currentPropriedadePai.id));
+                                }
+                                await SQLiteHelper.instance.softDeletePropriedade(lote.id);
+                              }
+                              final updatedProp =
+                                  _currentPropriedadePai.copyWith(
+                                nome: nomeController.text,
+                                dono: donoController.text,
+                                hasLotes: hasLotes,
+                                statusSync: 'pending_update',
+                              );
+                              await SQLiteHelper.instance
+                                  .updatePropriedade(updatedProp);
+                              if (mounted) {
+                                Navigator.of(ctx).pop();
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(const SnackBar(
+                                  content: Text("Propriedade atualizada!"),
+                                  backgroundColor: Colors.green,
+                                ));
+                                _autoSync();
+                              }
+                            }
+                          },
+                          child: const Text("Salvar Alterações"),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
-        ),
-      ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -576,24 +642,41 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
       isScrollControlled: true,
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-            top: 20, left: 20, right: 20),
-        child: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Adicionar Lote em ${widget.propriedadePai.nome}",
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const Divider(height: 30, thickness: 1),
-                TextFormField(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                top: 20,
+                left: 20,
+                right: 20),
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 10),
+                  Text("Adicionar Lote em ${widget.propriedadePai.nome}",
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  const Divider(height: 30, thickness: 1),
+                  TextFormField(
                   controller: nomeController,
-                  decoration: const InputDecoration(labelText: "Nome do Lote"),
+                  decoration: const InputDecoration(
+                    labelText: "Nome do Lote",
+                    prefixIcon: Icon(Icons.location_on_outlined)),
                   validator: (value) =>
                       value!.isEmpty ? "Este campo não pode ser vazio" : null,
                 ),
@@ -601,7 +684,9 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
                 TextFormField(
                   controller: donoController,
                   decoration:
-                      const InputDecoration(labelText: "Dono do Lote"),
+                      const InputDecoration(
+                      labelText: "Dono do Lote",
+                      prefixIcon: Icon(Icons.person_outline)),
                   validator: (value) =>
                       value!.isEmpty ? "Este campo não pode ser vazio" : null,
                 ),

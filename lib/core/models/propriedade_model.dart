@@ -7,6 +7,7 @@ class Propriedade {
   String dono;
   String? parentId;
   int deslocamentos;
+  bool hasLotes; // NOVO CAMPO
   String statusSync;
   bool isDeleted;
 
@@ -17,6 +18,7 @@ class Propriedade {
     required this.dono,
     this.parentId,
     this.deslocamentos = 0,
+    this.hasLotes = true, // VALOR PADRÃO
     this.statusSync = 'pending_create',
     this.isDeleted = false,
   });
@@ -29,6 +31,7 @@ class Propriedade {
       'dono': dono,
       'parentId': parentId,
       'deslocamentos': deslocamentos,
+      'hasLotes': hasLotes ? 1 : 0, // NOVO CAMPO
       'statusSync': statusSync,
       'isDeleted': isDeleted ? 1 : 0,
     };
@@ -42,6 +45,7 @@ class Propriedade {
       dono: map['dono'],
       parentId: map['parentId'],
       deslocamentos: map['deslocamentos'] ?? 0,
+      hasLotes: map['hasLotes'] == 1, // NOVO CAMPO
       statusSync: map['statusSync'],
       isDeleted: map['isDeleted'] == 1,
     );
@@ -54,6 +58,7 @@ class Propriedade {
       'dono': dono,
       'parentId': parentId,
       'deslocamentos': deslocamentos,
+      'hasLotes': hasLotes, // NOVO CAMPO
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -67,6 +72,7 @@ class Propriedade {
       dono: map['dono'] ?? '',
       parentId: map['parentId'],
       deslocamentos: map['deslocamentos'] ?? 0,
+      hasLotes: map['hasLotes'] ?? true, // NOVO CAMPO
       statusSync: 'synced',
     );
   }
@@ -78,6 +84,7 @@ class Propriedade {
     String? dono,
     String? parentId,
     int? deslocamentos,
+    bool? hasLotes, // NOVO CAMPO
     String? statusSync,
     bool? isDeleted,
   }) {
@@ -88,6 +95,7 @@ class Propriedade {
       dono: dono ?? this.dono,
       parentId: parentId ?? this.parentId,
       deslocamentos: deslocamentos ?? this.deslocamentos,
+      hasLotes: hasLotes ?? this.hasLotes, // NOVO CAMPO
       statusSync: statusSync ?? this.statusSync,
       isDeleted: isDeleted ?? this.isDeleted,
     );
