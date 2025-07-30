@@ -356,11 +356,27 @@ class _EguasListScreenState extends State<EguasListScreen> {
   }
 
   void _showExportOptions(BuildContext context) async {
-    final result = await showDialog<Map<String, dynamic>>(
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
-        return ExportOptionsDialog(
-          eguas: _allEguas,
+        return DraggableScrollableSheet(
+          initialChildSize: 0.8,
+          maxChildSize: 0.9,
+          minChildSize: 0.5,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppTheme.pageBackground,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: ExportOptionsModal(
+                eguas: _allEguas,
+                scrollController: scrollController,
+              ),
+            );
+          },
         );
       },
     );
@@ -788,10 +804,14 @@ class _EguasListScreenState extends State<EguasListScreen> {
         TextEditingController(text: egua?.cobertura ?? '');
     final obsController =
         TextEditingController(text: egua?.observacao ?? '');
+    // ALTERAÇÃO: Controller para o campo de data de parto
+    final dataPartoController = TextEditingController(
+        text: egua?.dataParto == null
+            ? ''
+            : DateFormat('dd/MM/yyyy').format(egua!.dataParto!));
 
     String categoriaSelecionada = egua?.categoria ?? 'Matriz';
     bool teveParto = egua?.dataParto != null;
-    DateTime? dataParto = egua?.dataParto;
     String? sexoPotro = egua?.sexoPotro;
 
     showModalBottomSheet(
@@ -896,29 +916,26 @@ class _EguasListScreenState extends State<EguasListScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // ALTERAÇÃO: Campo de texto para data do parto
                               TextFormField(
-                                readOnly: true,
-                                controller: TextEditingController(
-                                  text: dataParto == null
-                                      ? ''
-                                      : DateFormat('dd/MM/yyyy')
-                                          .format(dataParto!),
-                                ),
+                                controller: dataPartoController,
                                 decoration: const InputDecoration(
                                   labelText: "Data do Parto",
+                                  hintText: "dd/mm/aaaa",
                                   prefixIcon:
                                       Icon(Icons.calendar_today_outlined),
-                                  hintText: 'Selecione a data',
                                 ),
-                                onTap: () async {
-                                  final pickedDate = await showDatePicker(
-                                      context: context,
-                                      initialDate: dataParto ?? DateTime.now(),
-                                      firstDate: DateTime(2000),
-                                      lastDate: DateTime.now());
-                                  if (pickedDate != null) {
-                                    setModalState(
-                                        () => dataParto = pickedDate);
+                                keyboardType: TextInputType.datetime,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Por favor, insira uma data.';
+                                  }
+                                  try {
+                                    DateFormat('dd/MM/yyyy')
+                                        .parseStrict(value);
+                                    return null;
+                                  } catch (e) {
+                                    return 'Formato inválido (use dd/mm/aaaa).';
                                   }
                                 },
                               ),
@@ -927,21 +944,46 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                   style:
                                       TextStyle(fontWeight: FontWeight.bold)),
                               Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
                                 children: [
-                                  Expanded(
-                                      child: RadioListTile<String>(
-                                          title: const Text("Macho"),
-                                          value: "Macho",
-                                          groupValue: sexoPotro,
-                                          onChanged: (val) => setModalState(
-                                              () => sexoPotro = val))),
-                                  Expanded(
-                                      child: RadioListTile<String>(
-                                          title: const Text("Fêmea"),
-                                          value: "Fêmea",
-                                          groupValue: sexoPotro,
-                                          onChanged: (val) => setModalState(
-                                              () => sexoPotro = val))),
+                                  Text("Macho",
+                                      style: TextStyle(
+                                          fontWeight: sexoPotro == "Macho"
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: sexoPotro == "Macho"
+                                              ? AppTheme.darkGreen
+                                              : Colors.grey[600])),
+                                  Switch(
+                                    value: sexoPotro == "Fêmea",
+                                    onChanged: (value) {
+                                      setModalState(() {
+                                        sexoPotro = value ? "Fêmea" : "Macho";
+                                      });
+                                    },
+                                    activeColor: Colors.pink[200],
+                                    inactiveThumbColor: AppTheme.darkGreen,
+                                    inactiveTrackColor:
+                                        AppTheme.darkGreen.withOpacity(0.5),
+                                    thumbColor:
+                                        MaterialStateProperty.resolveWith(
+                                            (states) {
+                                      if (states
+                                          .contains(MaterialState.selected)) {
+                                        return Colors.pink[200];
+                                      }
+                                      return AppTheme.darkGreen;
+                                    }),
+                                  ),
+                                  Text("Fêmea",
+                                      style: TextStyle(
+                                          fontWeight: sexoPotro == "Fêmea"
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: sexoPotro == "Fêmea"
+                                              ? Colors.pink[300]
+                                              : Colors.grey[600])),
                                 ],
                               ),
                             ],
@@ -962,6 +1004,17 @@ class _EguasListScreenState extends State<EguasListScreen> {
                               backgroundColor: AppTheme.darkGreen),
                           onPressed: () async {
                             if (formKey.currentState!.validate()) {
+                              DateTime? dataPartoFinal;
+                              if (teveParto) {
+                                try {
+                                  dataPartoFinal = DateFormat('dd/MM/yyyy')
+                                      .parseStrict(dataPartoController.text);
+                                } catch (e) {
+                                  // Validação já trata, mas é uma segurança extra
+                                  return;
+                                }
+                              }
+
                               final eguaData = Egua(
                                 id: isEditing ? egua.id : const Uuid().v4(),
                                 firebaseId: egua?.firebaseId,
@@ -972,7 +1025,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                 cobertura: categoriaSelecionada == 'Matriz'
                                     ? coberturaController.text
                                     : null,
-                                dataParto: teveParto ? dataParto : null,
+                                dataParto: dataPartoFinal,
                                 sexoPotro: teveParto ? sexoPotro : null,
                                 observacao: obsController.text,
                                 statusReprodutivo:
@@ -1000,7 +1053,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
                               }
                             }
                           },
-                          child: Text(isEditing ? "Salvar Alterações" : "Salvar"),
+                          child:
+                              Text(isEditing ? "Salvar Alterações" : "Salvar"),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -1016,16 +1070,18 @@ class _EguasListScreenState extends State<EguasListScreen> {
   }
 }
 
-class ExportOptionsDialog extends StatefulWidget {
+class ExportOptionsModal extends StatefulWidget {
   final List<Egua> eguas;
+  final ScrollController scrollController;
 
-  const ExportOptionsDialog({super.key, required this.eguas});
+  const ExportOptionsModal(
+      {super.key, required this.eguas, required this.scrollController});
 
   @override
-  _ExportOptionsDialogState createState() => _ExportOptionsDialogState();
+  _ExportOptionsModalState createState() => _ExportOptionsModalState();
 }
 
-class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
+class _ExportOptionsModalState extends State<ExportOptionsModal> {
   Set<String> _selectedEguas = {};
   DateTime? _startDate;
   DateTime? _endDate;
@@ -1033,7 +1089,6 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
   @override
   void initState() {
     super.initState();
-    // Initially select all eguas
     _selectedEguas = widget.eguas.map((e) => e.id).toSet();
   }
 
@@ -1076,82 +1131,101 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Opções de Exportação'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Selecionar Éguas',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            CheckboxListTile(
-              title: const Text('Selecionar Todas'),
-              value: _selectedEguas.length == widget.eguas.length,
-              onChanged: _toggleSelectAll,
-            ),
-            const Divider(),
-            SizedBox(
-              height: 200,
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: widget.eguas.length,
-                itemBuilder: (context, index) {
-                  final egua = widget.eguas[index];
-                  return CheckboxListTile(
-                    title: Text(egua.nome),
-                    value: _selectedEguas.contains(egua.id),
-                    onChanged: (bool? value) {
-                      _toggleEguaSelection(egua.id);
-                    },
-                  );
-                },
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
-            const SizedBox(height: 20),
-            const Text('Selecionar Período',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            ListTile(
-              leading: const Icon(Icons.calendar_today),
-              title: Text(_startDate == null || _endDate == null
-                  ? 'Todo o período'
-                  : '${DateFormat('dd/MM/yyyy').format(_startDate!)} - ${DateFormat('dd/MM/yyyy').format(_endDate!)}'),
-              onTap: _selectDateRange,
+          ),
+          const SizedBox(height: 16),
+          Text('Opções de Exportação',
+              style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 16),
+          const Text('Selecionar Éguas',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          CheckboxListTile(
+            title: const Text('Selecionar Todas'),
+            value: _selectedEguas.length == widget.eguas.length,
+            onChanged: _toggleSelectAll,
+            controlAffinity: ListTileControlAffinity.leading,
+          ),
+          const Divider(),
+          Expanded(
+            child: ListView.builder(
+              controller: widget.scrollController,
+              itemCount: widget.eguas.length,
+              itemBuilder: (context, index) {
+                final egua = widget.eguas[index];
+                return CheckboxListTile(
+                  title: Text(egua.nome),
+                  value: _selectedEguas.contains(egua.id),
+                  onChanged: (bool? value) {
+                    _toggleEguaSelection(egua.id);
+                  },
+                  controlAffinity: ListTileControlAffinity.leading,
+                );
+              },
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 20),
+          const Text('Selecionar Período',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          ListTile(
+            leading: const Icon(Icons.calendar_today),
+            title: Text(_startDate == null || _endDate == null
+                ? 'Todo o período'
+                : '${DateFormat('dd/MM/yyyy').format(_startDate!)} - ${DateFormat('dd/MM/yyyy').format(_endDate!)}'),
+            onTap: _selectDateRange,
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                child: const Text('Cancelar'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.table_chart_outlined),
+                label: const Text('Excel'),
+                onPressed: () {
+                  Navigator.of(context).pop({
+                    'selectedEguas': _selectedEguas,
+                    'startDate': _startDate,
+                    'endDate': _endDate,
+                    'format': 'excel',
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('PDF'),
+                onPressed: () {
+                  Navigator.of(context).pop({
+                    'selectedEguas': _selectedEguas,
+                    'startDate': _startDate,
+                    'endDate': _endDate,
+                    'format': 'pdf',
+                  });
+                },
+              ),
+            ],
+          )
+        ],
       ),
-      actions: <Widget>[
-        TextButton(
-          child: const Text('Cancelar'),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        ElevatedButton.icon(
-          icon: const Icon(Icons.table_chart_outlined),
-          label: const Text('Excel'),
-          onPressed: () {
-            Navigator.of(context).pop({
-              'selectedEguas': _selectedEguas,
-              'startDate': _startDate,
-              'endDate': _endDate,
-              'format': 'excel',
-            });
-          },
-        ),
-        ElevatedButton.icon(
-          icon: const Icon(Icons.picture_as_pdf_outlined),
-          label: const Text('PDF'),
-          onPressed: () {
-            Navigator.of(context).pop({
-              'selectedEguas': _selectedEguas,
-              'startDate': _startDate,
-              'endDate': _endDate,
-              'format': 'pdf',
-            });
-          },
-        ),
-      ],
     );
   }
 }

@@ -3,6 +3,11 @@ histórico:
     deslocamentos mensais nos relatórios 
     filtro de estações
 
+parto:
+
+    partos no histórico
+    
+    diagnóstico com opção "Pariu"
 
 notificações:
 
@@ -16,5 +21,3 @@ notificações:
     conclusão de indução:
         verificar em qual dia bate a inseminação e dar um alert se deseja marcar uma inseminação
         após 36 hrs da conclusão, notificar para realizar a inseminação
-
-função limpar campos (todos)

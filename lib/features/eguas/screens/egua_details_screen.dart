@@ -1045,18 +1045,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       decoration: InputDecoration(
                           labelText: "Tipo de Manejo",
                           prefixIcon: Icon(Icons.edit_note_outlined),
-                           suffixIcon: tipoManejoSelecionado != null
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 20),
-                              onPressed: () {
-                                setModalState(() {
-                                  tipoManejoSelecionado = null;
-                                });
-                              },
-                            )
-                          : null,
                           ),
-                      hint: const Text("Selecione o Tipo de Manejo"),
+                      hint: const Text("Obrigatório"),
                       items: tiposDeManejo
                           .map((tipo) =>
                               DropdownMenuItem(value: tipo, child: Text(tipo)))
@@ -1071,16 +1061,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       decoration: InputDecoration(
                           labelText: "Responsável",
                           prefixIcon: Icon(Icons.person_outline),
-                          suffixIcon: responsavelSelecionado != null
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 20),
-                              onPressed: () {
-                                setModalState(() {
-                                  responsavelSelecionado = null;
-                                });
-                              },
-                            )
-                          : null,
                           ),
                       items: [
                         const DropdownMenuItem<dynamic>(
@@ -1112,7 +1092,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                           setModalState(() => responsavelSelecionado = value);
                       },
                       validator: (v) =>
-                          v == null ? "Selecione um responsável" : null,
+                          v == null ? "Obrigatório" : null,
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
@@ -1700,7 +1680,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                         },
                         validator: (v) {
                           if (inducaoSelecionada != null && dataHoraInducao == null) {
-                            return "Campo obrigatório";
+                            return "Obrigatório se indução foi selecionada";
                           }
                           return null;
                         },  
@@ -1717,16 +1697,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       decoration: InputDecoration(
                         labelText: "Concluído por",
                         prefixIcon: Icon(Icons.person_outline),
-                        suffixIcon: concluidoPorSelecionado != null
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 20),
-                              onPressed: () {
-                                setModalState(() {
-                                  concluidoPorSelecionado = null;
-                                });
-                              },
-                            )
-                          : null,
                         ),
                     items: [
                       const DropdownMenuItem<dynamic>(
@@ -1746,7 +1716,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       onChanged: (value) {
                         if (value != null) setModalState(() => concluidoPorSelecionado = value);
                       },
-                      validator: (v) => v == null ? "Selecione um responsável" : null,
+                      validator: (v) => v == null ? "Obrigatório" : null,
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
@@ -2000,18 +1970,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                         prefixIcon: Icon(Icons.edit_note_outlined),
                         filled: isEditing,
                         fillColor: isEditing ? Colors.grey[200] : null,
-                         suffixIcon: tipoManejoSelecionado != null
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 20),
-                              onPressed: () {
-                                setModalState(() {
-                                  tipoManejoSelecionado = null;
-                                });
-                              },
-                            )
-                          : null,
                       ),
-                      hint: const Text("Selecione o Tipo de Manejo"),
+                      hint: const Text("Obrigatório"),
                       items: [
                         "Controle Folicular", "Inseminação", "Lavado", "Diagnóstico",
                         "Transferência de Embrião", "Coleta de Embrião", "Outros Manejos"
@@ -2141,9 +2101,19 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       const SizedBox(height: 10),
                       DropdownButtonFormField<String>(
                         value: inducaoSelecionada,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: "Tipo de Indução",
-                          prefixIcon: Icon(Icons.healing_outlined)
+                          prefixIcon: Icon(Icons.healing_outlined),
+                          suffixIcon: inducaoSelecionada != null
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
+                                  setModalState(() {
+                                    inducaoSelecionada = null;
+                                  });
+                                },
+                              )
+                            : null,
                         ),
                         hint: const Text("Indução"),
                         items: ["HCG", "DESLO", "HCG+DESLO"]
@@ -2196,7 +2166,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                         },
                         validator: (v) {
                           if (inducaoSelecionada != null && dataHoraInducao == null) {
-                            return "Campo obrigatório";
+                            return "Obrigatório se indução foi selecionada";
                           }
                           return null;
                         },  
@@ -2213,21 +2183,11 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       decoration: InputDecoration(
                         labelText: "Concluído por",
                         prefixIcon: Icon(Icons.person_outline),
-                        suffixIcon: concluidoPorSelecionado != null
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 20),
-                              onPressed: () {
-                                setModalState(() {
-                                  concluidoPorSelecionado = null;
-                                });
-                              },
-                            )
-                          : null,
-                        ),
+                      ),
                       items: [
                         const DropdownMenuItem<dynamic>(
                           enabled: false,
-                          child: Text("Usuários", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
+                          child: Text("Usuários", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.brown)),
                         ),
                         ...allUsersList.map((user) => DropdownMenuItem<dynamic>(value: user, child: Text(user.nome))),
                         if (peoesDaPropriedade.isNotEmpty) ...[
@@ -2242,7 +2202,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       onChanged: (value) {
                         if (value != null) setModalState(() => concluidoPorSelecionado = value);
                       },
-                      validator: (v) => v == null ? "Selecione um responsável" : null,
+                      validator: (v) => v == null ? "Obrigatório" : null,
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
@@ -2262,6 +2222,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                           labelText: "Data da Conclusão",
                           prefixIcon: Icon(Icons.calendar_today_outlined),
                           hintText: 'Toque para selecionar a data'),
+                      validator: (v) => v == null ? "Obrigatório" : null,
                       onTap: () async {
                         final pickedDate = await showDatePicker(
                             context: context,
@@ -2443,19 +2404,9 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                 .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                 .toList(),
             onChanged: (val) => setModalState(() => onResultadoChange(val)),
-            validator: (v) => v == null ? "Selecione um resultado" : null,
+            validator: (v) => v == null ? "Obrigatório" : null,
              decoration: InputDecoration(
-              labelText: "Resultado do Diagnóstico",
-               suffixIcon: resultadoDiagnostico != null
-                ? IconButton(
-                    icon: const Icon(Icons.clear, size: 20),
-                    onPressed: () {
-                      setModalState(() {
-                        onResultadoChange(null);
-                      });
-                    },
-                  )
-                : null,
+             labelText: "Resultado do Diagnóstico",
             ),
           ),
           if (resultadoDiagnostico == 'Prenhe') ...[
@@ -2464,13 +2415,13 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
               controller: diasPrenheController,
               decoration: const InputDecoration(labelText: "Dias de Prenhez"),
               keyboardType: TextInputType.number,
-              validator: (v) => v!.isEmpty ? "Informe os dias" : null,
+              validator: (v) => v!.isEmpty ? "Obrigatório" : null,
             ),
             const SizedBox(height: 10),
             TextFormField(
               controller: garanhaoController,
-              decoration: const InputDecoration(labelText: "Cobertura"),
-              validator: (v) => v!.isEmpty ? "Informe a cobertura" : null,
+              decoration: const InputDecoration(labelText: "Padreador"),
+              validator: (v) => v!.isEmpty ? "Obrigatório" : null,
             ),
           ]
         ];
@@ -2480,30 +2431,22 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
               controller: garanhaoController,
               decoration: const InputDecoration(
                   labelText: "Garanhão",
-                  prefixIcon: Icon(Icons.male_outlined))),
+                  prefixIcon: Icon(Icons.male_outlined)),
+            validator: (v) => v == null ? "Obrigatório" : null,
+          ),
           const SizedBox(height: 10),
            DropdownButtonFormField<String>(
             value: tipoSememSelecionado,
             decoration: InputDecoration(
                 labelText: "Tipo de Sêmen",
                 prefixIcon: Icon(Icons.science_outlined),
-                 suffixIcon: tipoSememSelecionado != null
-                ? IconButton(
-                    icon: const Icon(Icons.clear, size: 20),
-                    onPressed: () {
-                      setModalState(() {
-                        onTipoSememChange(null);
-                      });
-                    },
-                  )
-                : null,
                 ),
             hint: const Text("Selecione o tipo"),
             items: tiposSemem
                 .map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo)))
                 .toList(),
             onChanged: (val) => setModalState(() => onTipoSememChange(val)),
-            validator: (v) => v == null ? "Selecione o tipo de sêmen" : null,
+            validator: (v) => v == null ? "Obrigatório" : null,
           ),
           const SizedBox(height: 10),
           TextFormField(
@@ -2516,7 +2459,9 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             decoration: const InputDecoration(
                 labelText: "Data/Hora da Inseminação",
                 prefixIcon: Icon(Icons.calendar_today_outlined),
-                hintText: 'Toque para selecionar'),
+                hintText: 'Toque para selecionar',
+                ),
+            validator: (v) => v == null ? "Obrigatório" : null,
             onTap: () async {
               final date = await showDatePicker(
                   context: context,
@@ -2623,6 +2568,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                         labelText: "Ovário Direito",
                         prefixIcon: Icon(Icons.join_right_outlined)
                       ),
+                      validator: (v) => v == null ? "Obrigatório" : null,
                       items: ovarioOptions
                           .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                           .toList(),
@@ -2649,6 +2595,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                         labelText: "Ovário Esquerdo",
                         prefixIcon: Icon(Icons.join_left_outlined)
                       ),
+                      validator: (v) => v == null ? "Obrigatório" : null,
                       items: ovarioOptions
                           .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                           .toList(),
@@ -2670,6 +2617,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
               labelText: "Edema",
               prefixIcon: Icon(Icons.numbers_outlined)
             ),
+            validator: (v) => v == null ? "Obrigatório" : null,
             items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
@@ -2705,6 +2653,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       )
                     : null,
                 ),
+                validator: (v) => v == null ? "Obrigatório" : null,
                 items: snapshot.data!
                     .map((e) => DropdownMenuItem(value: e, child: Text(e.nome)))
                     .toList(),
@@ -2808,9 +2757,19 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             Expanded(
               child: DropdownButtonFormField<String>(
                 value: ovarioDirOp,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: "Ovário Direito",
-                  prefixIcon: Icon(Icons.join_right_outlined)
+                  prefixIcon: Icon(Icons.join_right_outlined),
+                    suffixIcon: ovarioDirOp != null
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          setModalState(() {
+                            onOvarioDirChange(null);
+                          });
+                        },
+                      )
+                    : null,
                 ),
                 items: ovarioOptions
                     .map((o) => DropdownMenuItem(value: o, child: Text(o)))
@@ -2836,9 +2795,19 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             Expanded(
               child: DropdownButtonFormField<String>(
                 value: ovarioEsqOp,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: "Ovário Esquerdo",
-                  prefixIcon: Icon(Icons.join_left_outlined)
+                  prefixIcon: Icon(Icons.join_left_outlined),
+                    suffixIcon: ovarioEsqOp != null
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          setModalState(() {
+                            onOvarioEsqChange(null);
+                          });
+                        },
+                      )
+                    : null,
                 ),
                 items: ovarioOptions
                     .map((o) => DropdownMenuItem(value: o, child: Text(o)))
@@ -2860,9 +2829,19 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
           value: edemaSelecionado,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: "Edema",
-            prefixIcon: Icon(Icons.numbers_outlined)
+            prefixIcon: Icon(Icons.numbers_outlined),
+              suffixIcon: edemaSelecionado != null
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          setModalState(() {
+                            onEdemaChange(null);
+                          });
+                        },
+                      )
+                    : null,
           ),
           items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
               .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -3019,15 +2998,7 @@ class _EditEguaFormState extends State<_EditEguaForm> {
                 decoration: InputDecoration(
                   labelText: "Categoria",
                   prefixIcon: Icon(Icons.category_outlined),
-                  suffixIcon: _categoriaSelecionada != 'Matriz' ? IconButton(
-                    icon: Icon(Icons.clear, size: 20),
-                    onPressed: (){
-                      setState(() {
-                        _categoriaSelecionada = 'Matriz';
-                      });
-                    },
-                  ) : null,
-                ),
+                  ),
                 items: ['Matriz', 'Doadora', 'Receptora']
                     .map((label) => DropdownMenuItem(
                           child: Text(label),
