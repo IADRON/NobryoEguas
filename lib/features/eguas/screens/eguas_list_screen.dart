@@ -13,8 +13,7 @@ import 'package:nobryo_final/shared/theme/theme.dart';
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
 
-// --- CORREÇÃO: Notificador para avisar sobre a movimentação de éguas ---
-final ValueNotifier<bool> eguasMovedNotifier = ValueNotifier(false);
+final ValueNotifier<bool> eguasMovedNotifier = ValueNotifier<bool>(false);
 
 class EguasListScreen extends StatefulWidget {
   final String propriedadeId;
@@ -54,13 +53,15 @@ class _EguasListScreenState extends State<EguasListScreen> {
     super.initState();
     _currentPropriedadeNome = widget.propriedadeNome;
     _refreshEguasList();
-    Provider.of<SyncService>(context, listen: false).addListener(_refreshEguasList);
+    Provider.of<SyncService>(context, listen: false)
+        .addListener(_refreshEguasList);
     _searchController.addListener(_filterEguas);
   }
 
   @override
   void dispose() {
-    Provider.of<SyncService>(context, listen: false).removeListener(_refreshEguasList);
+    Provider.of<SyncService>(context, listen: false)
+        .removeListener(_refreshEguasList);
     _searchController.removeListener(_filterEguas);
     _searchController.dispose();
     super.dispose();
@@ -71,7 +72,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
     setState(() {
       _filteredEguas = _allEguas.where((egua) {
         return egua.nome.toLowerCase().contains(query) ||
-               egua.rp.toLowerCase().contains(query);
+            egua.rp.toLowerCase().contains(query);
       }).toList();
     });
   }
@@ -117,9 +118,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
     final prop = results[0] as Propriedade?;
     final initialEguas = results[1] as List<Egua>;
 
-    final List<Future<Egua>> updateFutures = initialEguas
-        .map((egua) => _getEguaWithUpdatedDiasPrenhe(egua))
-        .toList();
+    final List<Future<Egua>> updateFutures =
+        initialEguas.map((egua) => _getEguaWithUpdatedDiasPrenhe(egua)).toList();
     final updatedEguas = await Future.wait(updateFutures);
 
     if (mounted) {
@@ -138,7 +138,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
   Future<void> _calcularProximosManejos(List<Egua> eguas) async {
     final Map<String, Manejo?> newMap = {};
     for (final egua in eguas) {
-      final agendados = await SQLiteHelper.instance.readAgendadosByEgua(egua.id);
+      final agendados =
+          await SQLiteHelper.instance.readAgendadosByEgua(egua.id);
       if (agendados.isNotEmpty) {
         newMap[egua.id] = agendados.first;
       }
@@ -154,13 +155,15 @@ class _EguasListScreenState extends State<EguasListScreen> {
     final Map<String, DateTime?> newMap = {};
     for (final egua in eguas) {
       if (egua.statusReprodutivo.toLowerCase() == 'prenhe') {
-        final historico = await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
+        final historico =
+            await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
         historico.sort((a, b) => b.dataAgendada.compareTo(a.dataAgendada));
 
         Manejo? diagnosticoPositivo;
         for (var manejo in historico) {
           if (manejo.tipo.toLowerCase() == 'diagnóstico' &&
-              manejo.detalhes['resultado']?.toString().toLowerCase() == 'prenhe') {
+              manejo.detalhes['resultado']?.toString().toLowerCase() ==
+                  'prenhe') {
             diagnosticoPositivo = manejo;
             break;
           }
@@ -170,7 +173,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
           Manejo? ultimaInseminacao;
           for (var manejo in historico) {
             if (manejo.tipo.toLowerCase() == 'inseminação' &&
-                manejo.dataAgendada.isBefore(diagnosticoPositivo.dataAgendada)) {
+                manejo.dataAgendada
+                    .isBefore(diagnosticoPositivo.dataAgendada)) {
               ultimaInseminacao = manejo;
               break;
             }
@@ -178,7 +182,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
 
           if (ultimaInseminacao != null) {
             final dataInseminacao = ultimaInseminacao.dataAgendada;
-            final previsao = DateTime(dataInseminacao.year, dataInseminacao.month + 11, dataInseminacao.day);
+            final previsao = DateTime(dataInseminacao.year,
+                dataInseminacao.month + 11, dataInseminacao.day);
             newMap[egua.id] = previsao;
           }
         }
@@ -214,7 +219,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
 
     if (ultimoDiagnosticoPrenhe != null) {
       final diasNoDiagnostico = int.tryParse(
-              ultimoDiagnosticoPrenhe.detalhes['diasPrenhe']?.toString() ?? '0') ??
+              ultimoDiagnosticoPrenhe.detalhes['diasPrenhe']?.toString() ??
+                  '0') ??
           0;
       final dataDiagnostico = ultimoDiagnosticoPrenhe.dataAgendada;
       final diasDesdeDiagnostico =
@@ -229,7 +235,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
   Future<void> _autoSync() async {
     await _syncService.syncData(isManual: false);
     if (mounted) {
-       _refreshEguasList();
+      _refreshEguasList();
     }
   }
 
@@ -259,9 +265,12 @@ class _EguasListScreenState extends State<EguasListScreen> {
   }
 
   void _exportarRelatorioCompleto(
-    Future<void> Function(Propriedade, Map<Egua, List<Manejo>>, BuildContext)
-        exportFunction,
-  ) async {
+      Future<void> Function(
+              Propriedade, Map<Egua, List<Manejo>>, BuildContext)
+          exportFunction,
+      {Set<String>? eguasSelecionadas,
+      DateTime? dataInicio,
+      DateTime? dataFim}) async {
     setState(() => _isLoading = true);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
       content: Text("Buscando todos os dados do local..."),
@@ -279,15 +288,28 @@ class _EguasListScreenState extends State<EguasListScreen> {
 
       final Map<Egua, List<Manejo>> dadosCompletos = {};
 
-      for (final egua in _allEguas) {
-        final List<Manejo> historico =
-            await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
+      final eguasParaExportar = eguasSelecionadas != null
+          ? _allEguas.where((egua) => eguasSelecionadas.contains(egua.id)).toList()
+          : _allEguas;
+
+      for (final egua in eguasParaExportar) {
+        List<Manejo> historico = await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
+
+        if (dataInicio != null && dataFim != null) {
+          historico = historico
+              .where((manejo) =>
+                  !manejo.dataAgendada.isBefore(dataInicio) &&
+                  !manejo.dataAgendada.isAfter(dataFim))
+              .toList();
+        }
+
         dadosCompletos[egua] = historico;
       }
 
       if (dadosCompletos.values.every((list) => list.isEmpty)) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Nenhum manejo encontrado para exportar neste local."),
+          content:
+              Text("Nenhum manejo encontrado para exportar neste local."),
           backgroundColor: Colors.orange,
         ));
       } else {
@@ -333,34 +355,38 @@ class _EguasListScreenState extends State<EguasListScreen> {
     );
   }
 
-  void _showExportOptions(BuildContext context) {
-    showModalBottomSheet(
+  void _showExportOptions(BuildContext context) async {
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) {
-        return Wrap(
-          children: <Widget>[
-            ListTile(
-              leading: const Icon(Icons.table_chart_outlined),
-              title: const Text('Exportar para Excel (.xlsx)'),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _exportarRelatorioCompleto(
-                    _exportService.exportarPropriedadeParaExcel);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.picture_as_pdf_outlined),
-              title: const Text('Exportar para PDF (.pdf)'),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _exportarRelatorioCompleto(
-                    _exportService.exportarPropriedadeParaPdf);
-              },
-            ),
-          ],
+      builder: (BuildContext context) {
+        return ExportOptionsDialog(
+          eguas: _allEguas,
         );
       },
     );
+
+    if (result != null) {
+      final eguasSelecionadas = result['selectedEguas'] as Set<String>;
+      final dataInicio = result['startDate'] as DateTime?;
+      final dataFim = result['endDate'] as DateTime?;
+      final format = result['format'] as String;
+
+      if (format == 'excel') {
+        _exportarRelatorioCompleto(
+          _exportService.exportarPropriedadeParaExcel,
+          eguasSelecionadas: eguasSelecionadas,
+          dataInicio: dataInicio,
+          dataFim: dataFim,
+        );
+      } else if (format == 'pdf') {
+        _exportarRelatorioCompleto(
+          _exportService.exportarPropriedadeParaPdf,
+          eguasSelecionadas: eguasSelecionadas,
+          dataInicio: dataInicio,
+          dataFim: dataFim,
+        );
+      }
+    }
   }
 
   void _showEditPropriedadeModal(BuildContext context) {
@@ -391,11 +417,16 @@ class _EguasListScreenState extends State<EguasListScreen> {
                   children: [
                     Text(
                       "Editar Local",
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     IconButton(
-                      icon: Icon(Icons.delete_outlined, color: Colors.red[700]),
-                      onPressed: () => _showDeletePropriedadeConfirmationDialog(ctx),
+                      icon:
+                          Icon(Icons.delete_outlined, color: Colors.red[700]),
+                      onPressed: () =>
+                          _showDeletePropriedadeConfirmationDialog(ctx),
                     ),
                   ],
                 ),
@@ -432,7 +463,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
                             .updatePropriedade(updatedProp);
                         if (mounted) {
                           Navigator.of(ctx).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(const SnackBar(
                             content: Text("Local atualizado!"),
                             backgroundColor: Colors.green,
                           ));
@@ -473,7 +505,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
             onPressed: () async {
               Navigator.of(dialogCtx).pop();
               Navigator.of(modalContext).pop();
-              await SQLiteHelper.instance.softDeletePropriedade(_propriedade!.id);
+              await SQLiteHelper.instance
+                  .softDeletePropriedade(_propriedade!.id);
               if (mounted) {
                 Navigator.of(context).pop();
                 _autoSync();
@@ -489,7 +522,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _isSelectionMode ? _buildSelectionAppBar() : _buildDefaultAppBar(),
+      appBar:
+          _isSelectionMode ? _buildSelectionAppBar() : _buildDefaultAppBar(),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
@@ -596,7 +630,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
                 builder: (context) => EguaDetailsPageView(
                   eguas: _filteredEguas,
                   initialIndex: index,
-                  propriedadeMaeId: widget.propriedadeMaeId ?? widget.propriedadeId,
+                  propriedadeMaeId:
+                      widget.propriedadeMaeId ?? widget.propriedadeId,
                 ),
               ),
             ).then((_) {
@@ -631,34 +666,33 @@ class _EguasListScreenState extends State<EguasListScreen> {
                     Text("RP: ${egua.rp}",
                         style:
                             TextStyle(fontSize: 14, color: Colors.grey[600])),
-
                     if (proximoManejo != null)
                       Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppTheme.statusDiagnostico,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.calendar_month_outlined, size: 14, color: AppTheme.darkGreen),
-                            const SizedBox(width: 4),
-                            Text(
-                            "Próximo manejo: ${DateFormat('dd/MM/yy').format(proximoManejo.dataAgendada)}",
-                            style: const TextStyle(
-                              color: Color.fromARGB(255, 250, 250, 250),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.statusDiagnostico,
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                          ),
-                        ]
-                      ),
-                    )
-                  ),
-                  const SizedBox(height: 8),
+                            child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.calendar_month_outlined,
+                                      size: 14, color: AppTheme.darkGreen),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "Próximo manejo: ${DateFormat('dd/MM/yy').format(proximoManejo.dataAgendada)}",
+                                    style: const TextStyle(
+                                      color: Color.fromARGB(255, 250, 250, 250),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ]),
+                          )),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 8.0,
                       runSpacing: 6.0,
@@ -713,10 +747,10 @@ class _EguasListScreenState extends State<EguasListScreen> {
                 ),
               ),
               if (!_isSelectionMode)
-              ReorderableDragStartListener(
-                index: index,
-                child: const Icon(Icons.drag_handle, color: Colors.grey),
-              ),
+                ReorderableDragStartListener(
+                  index: index,
+                  child: const Icon(Icons.drag_handle, color: Colors.grey),
+                ),
             ],
           ),
         ),
@@ -748,10 +782,12 @@ class _EguasListScreenState extends State<EguasListScreen> {
     final formKey = GlobalKey<FormState>();
     final nomeController = TextEditingController(text: egua?.nome ?? '');
     final rpController = TextEditingController(text: egua?.rp ?? '');
-    final pelagemController = TextEditingController(text: egua?.pelagem ?? '');
+    final pelagemController =
+        TextEditingController(text: egua?.pelagem ?? '');
     final coberturaController =
         TextEditingController(text: egua?.cobertura ?? '');
-    final obsController = TextEditingController(text: egua?.observacao ?? '');
+    final obsController =
+        TextEditingController(text: egua?.observacao ?? '');
 
     String categoriaSelecionada = egua?.categoria ?? 'Matriz';
     bool teveParto = egua?.dataParto != null;
@@ -791,7 +827,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
                           decoration: const InputDecoration(
                               labelText: "Nome da Égua",
                               prefixIcon: Icon(Icons.female_outlined)),
-                          validator: (v) => v!.isEmpty ? "Obrigatório" : null),
+                          validator: (v) =>
+                              v!.isEmpty ? "Obrigatório" : null),
                       const SizedBox(height: 10),
                       TextFormField(
                         controller: rpController,
@@ -805,7 +842,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
                           decoration: const InputDecoration(
                               labelText: "Pelagem",
                               prefixIcon: Icon(Icons.pets_outlined)),
-                          validator: (v) => v!.isEmpty ? "Obrigatório" : null),
+                          validator: (v) =>
+                              v!.isEmpty ? "Obrigatório" : null),
                       const SizedBox(height: 10),
                       DropdownButtonFormField<String>(
                         value: categoriaSelecionada,
@@ -861,7 +899,10 @@ class _EguasListScreenState extends State<EguasListScreen> {
                               TextFormField(
                                 readOnly: true,
                                 controller: TextEditingController(
-                                  text: dataParto == null ? '' : DateFormat('dd/MM/yyyy').format(dataParto!),
+                                  text: dataParto == null
+                                      ? ''
+                                      : DateFormat('dd/MM/yyyy')
+                                          .format(dataParto!),
                                 ),
                                 decoration: const InputDecoration(
                                   labelText: "Data do Parto",
@@ -959,8 +1000,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
                               }
                             }
                           },
-                          child: Text(
-                              isEditing ? "Salvar Alterações" : "Salvar"),
+                          child: Text(isEditing ? "Salvar Alterações" : "Salvar"),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -972,6 +1012,146 @@ class _EguasListScreenState extends State<EguasListScreen> {
           },
         );
       },
+    );
+  }
+}
+
+class ExportOptionsDialog extends StatefulWidget {
+  final List<Egua> eguas;
+
+  const ExportOptionsDialog({super.key, required this.eguas});
+
+  @override
+  _ExportOptionsDialogState createState() => _ExportOptionsDialogState();
+}
+
+class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
+  Set<String> _selectedEguas = {};
+  DateTime? _startDate;
+  DateTime? _endDate;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initially select all eguas
+    _selectedEguas = widget.eguas.map((e) => e.id).toSet();
+  }
+
+  void _toggleEguaSelection(String eguaId) {
+    setState(() {
+      if (_selectedEguas.contains(eguaId)) {
+        _selectedEguas.remove(eguaId);
+      } else {
+        _selectedEguas.add(eguaId);
+      }
+    });
+  }
+
+  void _toggleSelectAll(bool? value) {
+    setState(() {
+      if (value == true) {
+        _selectedEguas = widget.eguas.map((e) => e.id).toSet();
+      } else {
+        _selectedEguas.clear();
+      }
+    });
+  }
+
+  Future<void> _selectDateRange() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: _startDate != null && _endDate != null
+          ? DateTimeRange(start: _startDate!, end: _endDate!)
+          : null,
+    );
+    if (picked != null) {
+      setState(() {
+        _startDate = picked.start;
+        _endDate = picked.end;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Opções de Exportação'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Selecionar Éguas',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            CheckboxListTile(
+              title: const Text('Selecionar Todas'),
+              value: _selectedEguas.length == widget.eguas.length,
+              onChanged: _toggleSelectAll,
+            ),
+            const Divider(),
+            SizedBox(
+              height: 200,
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: widget.eguas.length,
+                itemBuilder: (context, index) {
+                  final egua = widget.eguas[index];
+                  return CheckboxListTile(
+                    title: Text(egua.nome),
+                    value: _selectedEguas.contains(egua.id),
+                    onChanged: (bool? value) {
+                      _toggleEguaSelection(egua.id);
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text('Selecionar Período',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            ListTile(
+              leading: const Icon(Icons.calendar_today),
+              title: Text(_startDate == null || _endDate == null
+                  ? 'Todo o período'
+                  : '${DateFormat('dd/MM/yyyy').format(_startDate!)} - ${DateFormat('dd/MM/yyyy').format(_endDate!)}'),
+              onTap: _selectDateRange,
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          child: const Text('Cancelar'),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.table_chart_outlined),
+          label: const Text('Excel'),
+          onPressed: () {
+            Navigator.of(context).pop({
+              'selectedEguas': _selectedEguas,
+              'startDate': _startDate,
+              'endDate': _endDate,
+              'format': 'excel',
+            });
+          },
+        ),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.picture_as_pdf_outlined),
+          label: const Text('PDF'),
+          onPressed: () {
+            Navigator.of(context).pop({
+              'selectedEguas': _selectedEguas,
+              'startDate': _startDate,
+              'endDate': _endDate,
+              'format': 'pdf',
+            });
+          },
+        ),
+      ],
     );
   }
 }
@@ -995,11 +1175,11 @@ class MoveEguasWidget extends StatefulWidget {
 class _MoveEguasWidgetState extends State<MoveEguasWidget> {
   int _step = 0;
   Propriedade? _selectedPropriedadeMae;
-  
+
   List<Propriedade> _topLevelProps = [];
   List<Propriedade> _subProps = [];
   List<Propriedade> _filteredList = [];
-  
+
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -1030,7 +1210,9 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
     final lotes = await SQLiteHelper.instance.readSubPropriedades(parentId);
     if (mounted) {
       setState(() {
-        _subProps = lotes.where((lote) => lote.id != widget.currentPropriedadeId).toList();
+        _subProps = lotes
+            .where((lote) => lote.id != widget.currentPropriedadeId)
+            .toList();
         _filteredList = _subProps;
       });
     }
@@ -1040,9 +1222,13 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
     final query = _searchController.text.toLowerCase();
     setState(() {
       if (_step == 0) {
-        _filteredList = _topLevelProps.where((prop) => prop.nome.toLowerCase().contains(query)).toList();
+        _filteredList = _topLevelProps
+            .where((prop) => prop.nome.toLowerCase().contains(query))
+            .toList();
       } else {
-        _filteredList = _subProps.where((lote) => lote.nome.toLowerCase().contains(query)).toList();
+        _filteredList = _subProps
+            .where((lote) => lote.nome.toLowerCase().contains(query))
+            .toList();
       }
     });
   }
@@ -1061,23 +1247,29 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
   }
 
   void _confirmAndMove(Propriedade destLote) async {
-    Navigator.of(context).pop(); 
+    Navigator.of(context).pop();
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
         title: const Text("Confirmar Movimentação"),
-        content: Text("Deseja mover ${widget.selectedEguas.length} égua(s) para o lote \"${destLote.nome}\"?"),
+        content: Text(
+            "Deseja mover ${widget.selectedEguas.length} égua(s) para o lote \"${destLote.nome}\"?"),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogCtx).pop(false), child: const Text("Cancelar")),
+          TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: const Text("Cancelar")),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
-            onPressed: () => Navigator.of(dialogCtx).pop(true), child: const Text("Mover")),
+              style:
+                  ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              child: const Text("Mover")),
         ],
       ),
     );
 
     if (confirmed == true) {
-      final eguasToMove = await SQLiteHelper.instance.readEguasByPropriedade(widget.currentPropriedadeId);
+      final eguasToMove = await SQLiteHelper.instance
+          .readEguasByPropriedade(widget.currentPropriedadeId);
       for (String eguaId in widget.selectedEguas) {
         final egua = eguasToMove.firstWhere((e) => e.id == eguaId);
         final updatedEgua = egua.copyWith(
@@ -1113,7 +1305,9 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
                 ),
               Expanded(
                 child: Text(
-                  _step == 0 ? "Selecione a Propriedade" : "Selecione o Lote em \"${_selectedPropriedadeMae!.nome}\"",
+                  _step == 0
+                      ? "Selecione a Propriedade"
+                      : "Selecione o Lote em \"${_selectedPropriedadeMae!.nome}\"",
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
@@ -1130,7 +1324,10 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
           const SizedBox(height: 16),
           Expanded(
             child: _filteredList.isEmpty
-                ? Center(child: Text(_step == 0 ? "Nenhuma propriedade encontrada." : "Nenhum lote disponível."))
+                ? Center(
+                    child: Text(_step == 0
+                        ? "Nenhuma propriedade encontrada."
+                        : "Nenhum lote disponível."))
                 : ListView.builder(
                     itemCount: _filteredList.length,
                     itemBuilder: (context, index) {

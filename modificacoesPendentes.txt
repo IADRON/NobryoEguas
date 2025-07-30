@@ -3,15 +3,6 @@ histórico:
     deslocamentos mensais nos relatórios 
     filtro de estações
 
-    
-
-eguaslist:
-
-    widget para selecionar data para exportar relatório
-
-propriedadeslist:
-
-    widget para selecionar data para exportar relatório
 
 notificações:
 

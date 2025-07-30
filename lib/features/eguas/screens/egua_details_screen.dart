@@ -1915,8 +1915,10 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     final todosMedicamentos = await SQLiteHelper.instance.readAllMedicamentos();
     Medicamento? medicamentoSelecionado;
      if (manejo?.medicamentoId != null) {
+       // ignore: null_check_always_fails
        medicamentoSelecionado = todosMedicamentos.firstWhere((med) => med.id == manejo!.medicamentoId, orElse: () => todosMedicamentos.isNotEmpty ? todosMedicamentos.first : null!);
      } else if (manejo?.detalhes['medicamento'] != null) {
+       // ignore: null_check_always_fails
        medicamentoSelecionado = todosMedicamentos.firstWhere((med) => med.nome == manejo!.detalhes['medicamento'], orElse: () => todosMedicamentos.isNotEmpty ? todosMedicamentos.first : null!);
      }
     
@@ -1928,6 +1930,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     Egua? doadoraSelecionada;
     if (manejo?.detalhes['doadora'] != null) {
         final allEguas = await SQLiteHelper.instance.getAllEguas();
+        // ignore: null_check_always_fails
         doadoraSelecionada = allEguas.firstWhere((e) => e.nome == manejo!.detalhes['doadora'], orElse: () => allEguas.isNotEmpty ? allEguas.first : null!);
     }
 
@@ -3086,6 +3089,7 @@ class _EditEguaFormState extends State<_EditEguaForm> {
                         },
                       ),
                       const SizedBox(height: 10),
+                        const Text("Sexo do Potro"),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [

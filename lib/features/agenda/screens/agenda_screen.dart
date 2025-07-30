@@ -1532,12 +1532,15 @@ void _showAddAgendamentoModal(BuildContext context,
 
                     if (manejo.tipo != 'Controle Folicular') ...[
                       const Divider(height: 20, thickness: 1),
-                      Text("Incluir Controle Folicular?", style: Theme.of(context).textTheme.titleMedium),
-                      Row(
-                        children: [
-                          Expanded(child: RadioListTile<bool>(title: const Text("Sim"), value: true, groupValue: _incluirControleFolicular, onChanged: (val) => setModalState(() => _incluirControleFolicular = val!))),
-                          Expanded(child: RadioListTile<bool>(title: const Text("Não"), value: false, groupValue: _incluirControleFolicular, onChanged: (val) => setModalState(() => _incluirControleFolicular = val!))),
-                        ],
+                      SwitchListTile(
+                        title: const Text("Incluir Controle Folicular?"),
+                        value: _incluirControleFolicular,
+                        onChanged: (bool value) {
+                          setModalState(() {
+                            _incluirControleFolicular = value;
+                          });
+                        },
+                        activeColor: AppTheme.darkGreen,
                       ),
                       if (_incluirControleFolicular)
                         _buildControleFolicularInputs(
