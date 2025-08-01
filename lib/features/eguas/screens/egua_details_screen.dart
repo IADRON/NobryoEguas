@@ -459,6 +459,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: _buildInfoItem("Nome:", egua.nome)),
+              if (egua.rp.isNotEmpty)
               Expanded(child: _buildInfoItem("RP:", egua.rp)),
             ],
           ),
@@ -1246,8 +1247,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                     PopupMenuButton<String>(
                       icon: const Icon(Icons.more_vert),
                       onSelected: (value) {
-                          if (value == 'edit_obs') {
-                              _showEditObservacaoModal(ctx, manejo);
+                          if (value == 'edit') {
+                              _showEditAgendamentoModal(ctx, manejo: manejo);
                           } else if (value == 'reschedule') {
                               reagendarLocal();
                           } else if (value == 'delete') {
@@ -1256,7 +1257,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       },
                       itemBuilder: (BuildContext popupContext) => <PopupMenuEntry<String>>[
                         const PopupMenuItem<String>(
-                            value: 'edit_obs',
+                            value: 'edit',
                             child: ListTile(
                                 leading: Icon(Icons.notes_outlined),
                                 title: Text('Editar Observação'),
@@ -1317,95 +1318,241 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     );
   }
 
-  void _showEditObservacaoModal(BuildContext context, Manejo manejo) {
+  void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) async {
+    final currentUser = _authService.currentUserNotifier.value;
+    if (currentUser == null) return;
+
+    final allUsersList = await SQLiteHelper.instance.getAllUsers();
     final formKey = GlobalKey<FormState>();
-    final obsController =
-        TextEditingController(text: manejo.detalhes['descricao'] ?? '');
+
+    final Egua? egua = _allEguas[manejo.eguaId];
+    final Propriedade? lote = _allPropriedades[manejo.propriedadeId];
+    final Propriedade? propriedadeMae = lote?.parentId != null ? _allPropriedades[lote!.parentId] : lote;
+
+    Egua? eguaSelecionada = egua;
+    DateTime? dataSelecionada = manejo.dataAgendada;
+    String? tipoManejoSelecionado = manejo.tipo;
+    final detalhesController = TextEditingController(text: manejo.detalhes['descricao'] ?? '');
+    final tiposDeManejo = [
+      "Controle Folicular", "Inseminação", "Lavado", "Diagnóstico",
+      "Transferência de Embrião", "Coleta de Embrião", "Outros Manejos"
+    ];
+
+    dynamic responsavelSelecionado;
+
+    // **INÍCIO DA CORREÇÃO**
+    if (manejo.responsavelId != null) {
+      // Procura o usuário na lista. Retorna null se não encontrar.
+      responsavelSelecionado = allUsersList.firstWhereOrNull((u) => u.uid == manejo.responsavelId);
+    } else if (manejo.responsavelPeaoId != null) {
+      // Busca os peões da propriedade e procura o peão específico.
+      final peoes = await SQLiteHelper.instance.readPeoesByPropriedade(propriedadeMae?.id ?? '');
+      responsavelSelecionado = peoes.firstWhereOrNull((p) => p.id == manejo.responsavelPeaoId);
+    }
+
+    // Se, após as buscas, nenhum responsável foi encontrado (ou se não havia um),
+    // define o usuário atual como padrão.
+    if (responsavelSelecionado == null) {
+      responsavelSelecionado = allUsersList.firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
+    }
+    // **FIM DA CORREÇÃO**
+
+    List<Peao> peoesDaPropriedade = [];
+    if (propriedadeMae != null) {
+      peoesDaPropriedade = await SQLiteHelper.instance.readPeoesByPropriedade(propriedadeMae.id);
+    }
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (editCtx) => Padding(
-        padding: EdgeInsets.only(
-            bottom: MediaQuery.of(editCtx).viewInsets.bottom,
-            top: 20,
-            left: 20,
-            right: 20),
-        child: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Stack(
-                  alignment: Alignment.center,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                top: 20,
+                left: 20,
+                right: 20),
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Center(
-                      child: Container(
-                        width: 40,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            width: 40,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
+                    const SizedBox(height: 10),
+                    Text("Editar Agendamento",
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                    const Divider(height: 30, thickness: 1),
+
+                    if (propriedadeMae != null)
+                      FutureBuilder<List<Egua>>(
+                        future: () async {
+                            final subPropriedades = await SQLiteHelper.instance.readSubPropriedades(propriedadeMae.id);
+                            final allPropIds = [propriedadeMae.id, ...subPropriedades.map((p) => p.id)];
+                            
+                            List<Egua> eguasDaPropriedade = [];
+                            for (final propId in allPropIds) {
+                                final eguasDoLote = await SQLiteHelper.instance.readEguasByPropriedade(propId);
+                                eguasDaPropriedade.addAll(eguasDoLote);
+                            }
+                            return eguasDaPropriedade;
+                        }(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Center(
+                                child: Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: CircularProgressIndicator()));
+                          }
+                          return DropdownButtonFormField<Egua>(
+                            value: eguaSelecionada,
+                            decoration: const InputDecoration(
+                              labelText: "Égua",
+                              prefixIcon: Icon(Icons.female_outlined),
+                            ),
+                            items: snapshot.data!
+                                .map((egua) => DropdownMenuItem(
+                                    value: egua, child: Text(egua.nome)))
+                                .toList(),
+                            onChanged: (egua) =>
+                                setModalState(() => eguaSelecionada = egua),
+                            validator: (v) => v == null ? "Selecione uma égua" : null,
+                          );
+                        },
+                      ),
+                    const SizedBox(height: 15),
+
+                    TextFormField(
+                      readOnly: true,
+                      controller: TextEditingController(
+                          text: dataSelecionada == null
+                              ? ''
+                              : DateFormat('dd/MM/yyyy').format(dataSelecionada!),
+                        ),
+                      decoration: const InputDecoration(
+                        labelText: "Data do Manejo",
+                        prefixIcon: Icon(Icons.calendar_today_outlined),
+                        hintText: 'Toque para selecionar',
+                      ),
+                      onTap: () async {
+                        final pickedDate = await showDatePicker(
+                            context: context,
+                            initialDate: dataSelecionada ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2030));
+                        if (pickedDate != null) {
+                          setModalState(() => dataSelecionada = pickedDate);
+                        }
+                      },
+                      validator: (v) =>
+                          dataSelecionada == null ? "Selecione a data" : null,
+                    ),
+                    const SizedBox(height: 15),
+                    DropdownButtonFormField<String>(
+                      value: tipoManejoSelecionado,
+                      decoration: const InputDecoration(
+                        labelText: "Tipo de Manejo",
+                        prefixIcon: Icon(Icons.edit_note_outlined),
+                      ),
+                      items: tiposDeManejo
+                          .map((tipo) =>
+                              DropdownMenuItem(value: tipo, child: Text(tipo)))
+                          .toList(),
+                      onChanged: (val) =>
+                          setModalState(() => tipoManejoSelecionado = val),
+                      validator: (v) => v == null ? "Selecione o tipo" : null,
+                    ),
+                    const SizedBox(height: 15),
+                    DropdownButtonFormField<dynamic>(
+                      value: responsavelSelecionado,
+                      decoration: const InputDecoration(labelText: "Responsável", prefixIcon: Icon(Icons.person_outline)),
+                      items: [
+                        const DropdownMenuItem<dynamic>(
+                          enabled: false,
+                          child: Text("Usuários", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
+                        ),
+                        ...allUsersList.map((user) => DropdownMenuItem<dynamic>(value: user, child: Text(user.nome))),
+                        if (peoesDaPropriedade.isNotEmpty) ...[
+                          const DropdownMenuItem<dynamic>(enabled: false, child: Divider()),
+                          const DropdownMenuItem<dynamic>(
+                            enabled: false,
+                            child: Text("Peões da Propriedade", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.brown)),
+                          ),
+                          ...peoesDaPropriedade.map((peao) => DropdownMenuItem<dynamic>(value: peao, child: Text(peao.nome))),
+                        ]
+                      ],
+                      onChanged: (value) {
+                        if (value != null) setModalState(() => responsavelSelecionado = value);
+                      },
+                      validator: (v) => v == null ? "Selecione um responsável" : null,
+                    ),
+                    const SizedBox(height: 15),
+                    TextFormField(
+                        controller: detalhesController,
+                        decoration: const InputDecoration(
+                            labelText: "Detalhes/Observações",
+                            prefixIcon: Icon(Icons.comment_outlined)),
+                        maxLines: 2),
+                    const SizedBox(height: 30),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text("SALVAR ALTERAÇÕES"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.darkGreen,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () async {
+                          if (formKey.currentState!.validate()) {
+                            final manejoAtualizado = manejo.copyWith(
+                              tipo: tipoManejoSelecionado!,
+                              dataAgendada: dataSelecionada!,
+                              detalhes: {'descricao': detalhesController.text},
+                              eguaId: eguaSelecionada!.id,
+                              propriedadeId: eguaSelecionada!.propriedadeId,
+                              responsavelId: responsavelSelecionado is AppUser ? responsavelSelecionado.uid : null,
+                              responsavelPeaoId: responsavelSelecionado is Peao ? responsavelSelecionado.id : null,
+                              statusSync: 'pending_update'
+                            );
+                            await SQLiteHelper.instance
+                                .updateManejo(manejoAtualizado);
+                            if (mounted) {
+                              Navigator.of(ctx).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                content: Text("Agendamento atualizado com sucesso!"),
+                                backgroundColor: Colors.green,
+                              ));
+                              _autoSync();
+                            }
+                          }
+                        },
                       ),
                     ),
+                    const SizedBox(height: 20),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Text("Editar Observação",
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                Text("Manejo: ${manejo.tipo}", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[600])),
-                const Divider(height: 30),
-                TextFormField(
-                  controller: obsController,
-                  decoration: const InputDecoration(
-                    labelText: "Observação",
-                    prefixIcon: Icon(Icons.comment_outlined)
-                  ),
-                  maxLines: 4,
-                  autofocus: true,
-                ),
-                const SizedBox(height: 30),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text("SALVAR OBSERVAÇÃO"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.darkGreen,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                  onPressed: () async {
-                    manejo.detalhes['descricao'] = obsController.text;
-                    manejo.statusSync = 'pending_update';
-
-                    await SQLiteHelper.instance.updateManejo(manejo);
-
-                      if (mounted) {
-                        Navigator.of(editCtx).pop();
-                        Navigator.of(context).pop();
-                        _refreshData();
-                        _autoSync();
-                        ScaffoldMessenger.of(this.context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Observação atualizada!"),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

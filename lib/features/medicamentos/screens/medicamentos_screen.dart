@@ -28,12 +28,14 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
   void initState() {
     super.initState();
     _refreshMedicamentos();
-    Provider.of<SyncService>(context, listen: false).addListener(_refreshMedicamentos);  
+    Provider.of<SyncService>(context, listen: false)
+        .addListener(_refreshMedicamentos);
   }
 
   @override
   void dispose() {
-    Provider.of<SyncService>(context, listen: false).removeListener(_refreshMedicamentos);
+    Provider.of<SyncService>(context, listen: false)
+        .removeListener(_refreshMedicamentos);
     super.dispose();
   }
 
@@ -61,7 +63,8 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
     if (mounted) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(online ? "Sincronização concluída!" : "Sem conexão com a internet."),
+        content: Text(
+            online ? "Sincronização concluída!" : "Sem conexão com a internet."),
         backgroundColor: online ? Colors.green : Colors.orange,
       ));
     }
@@ -90,7 +93,8 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ManageUsersScreen()),
+                  MaterialPageRoute(
+                      builder: (context) => const ManageUsersScreen()),
                 );
               },
             ),
@@ -134,7 +138,7 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
               ),
             );
           }
-          
+
           final medicamentos = snapshot.data!;
           return ListView.builder(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
@@ -143,12 +147,41 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
               final med = medicamentos[index];
               return Card(
                 child: ListTile(
-                  title: Text(med.nome, style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.darkText)),
-                  subtitle: Text(med.descricao, style: TextStyle(color: Colors.grey[700])),
-                  trailing: IconButton(
-                    icon: Icon(Icons.delete_outline, color: Colors.red[700]),
-                    onPressed: () => _confirmDeleteMedicamento(med),
-                    tooltip: "Excluir medicamento",
+                  title: Text(med.nome,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.darkText)),
+                  subtitle: Text(med.descricao,
+                      style: TextStyle(color: Colors.grey[700])),
+                  trailing: PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert),
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        _showAddOrEditMedicamentoModal(context,
+                            medicamento: med);
+                      } else if (value == 'delete') {
+                        _confirmDeleteMedicamento(med);
+                      }
+                    },
+                    itemBuilder: (BuildContext context) =>
+                        <PopupMenuEntry<String>>[
+                      const PopupMenuItem<String>(
+                        value: 'edit',
+                        child: ListTile(
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('Editar'),
+                        ),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'delete',
+                        child: ListTile(
+                          leading:
+                              Icon(Icons.delete_outline, color: Colors.red),
+                          title:
+                              Text('Excluir', style: TextStyle(color: Colors.red)),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -157,7 +190,7 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddMedicamentoModal(context),
+        onPressed: () => _showAddOrEditMedicamentoModal(context),
         child: const Icon(Icons.add),
         tooltip: "Adicionar Medicamento",
       ),
@@ -169,7 +202,8 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Confirmar Exclusão"),
-        content: Text("Tem certeza que deseja excluir o medicamento \"${med.nome}\"?"),
+        content:
+            Text("Tem certeza que deseja excluir o medicamento \"${med.nome}\"?"),
         actions: [
           TextButton(
             child: const Text("Cancelar"),
@@ -186,94 +220,110 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
     if (confirmed == true) {
       await SQLiteHelper.instance.softDeleteMedicamento(med.id);
       if (mounted) {
-          _refreshMedicamentos();
-          _autoSync();
+        _refreshMedicamentos();
+        _autoSync();
       }
     }
   }
 
-  void _showAddMedicamentoModal(BuildContext context) {
+  void _showAddOrEditMedicamentoModal(BuildContext context,
+      {Medicamento? medicamento}) {
+    final isEditing = medicamento != null;
     final formKey = GlobalKey<FormState>();
-    final nomeController = TextEditingController();
-    final descController = TextEditingController();
+    final nomeController =
+        TextEditingController(text: isEditing ? medicamento.nome : '');
+    final descController =
+        TextEditingController(text: isEditing ? medicamento.descricao : '');
 
     showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom,
-                top: 20,
-                left: 20,
-                right: 20),
-            child: Form(
-              key: formKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 40,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(12),
+        context: context,
+        isScrollControlled: true,
+        builder: (ctx) => Padding(
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                  top: 20,
+                  left: 20,
+                  right: 20),
+              child: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Center(
+                            child: Container(
+                              width: 40,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(isEditing ? "Editar Medicamento" : "Adicionar Medicamento",
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.bold)),
+                      const Divider(height: 30, thickness: 1),
+                      TextFormField(
+                        controller: nomeController,
+                        decoration: const InputDecoration(
+                            labelText: "Nome",
+                            prefixIcon: Icon(Icons.medication_outlined)),
+                        validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: descController,
+                        decoration: const InputDecoration(
+                            labelText: "Descrição",
+                            prefixIcon: Icon(Icons.notes_outlined)),
+                        maxLines: 3,
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.darkGreen),
+                          onPressed: () async {
+                            if (formKey.currentState!.validate()) {
+                              final med = Medicamento(
+                                id: isEditing ? medicamento.id : const Uuid().v4(),
+                                firebaseId: isEditing ? medicamento.firebaseId : null,
+                                nome: nomeController.text,
+                                descricao: descController.text,
+                                statusSync: isEditing ? 'pending_update' : 'pending_create',
+                              );
+
+                              if(isEditing) {
+                                await SQLiteHelper.instance.updateMedicamento(med);
+                              } else {
+                                await SQLiteHelper.instance.createMedicamento(med);
+                              }
+
+                              if (mounted) {
+                                Navigator.of(ctx).pop();
+                                _autoSync();
+                              }
+                            }
+                          },
+                          child: Text(isEditing ? "Salvar Alterações" : "Salvar"),
                         ),
-                      ],
-                    ),
-                  const SizedBox(height: 10),
-                  Text("Adicionar Medicamento",
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                  const Divider(height: 30, thickness: 1),
-              TextFormField(
-                controller: nomeController,
-                decoration: InputDecoration(
-                  labelText: "Nome",
-                  prefixIcon: Icon(Icons.medication_outlined)),
-                validator: (v) => v!.isEmpty ? "Obrigatório" : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: descController,
-                decoration: InputDecoration(
-                  labelText: "Descrição",
-                  prefixIcon: Icon(Icons.notes_outlined)),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
-                  onPressed: () async {
-                    if (formKey.currentState!.validate()) {
-                      final novoMed = Medicamento(
-                        id: const Uuid().v4(),
-                        nome: nomeController.text,
-                        descricao: descController.text,
-                      );
-                      await SQLiteHelper.instance.createMedicamento(novoMed);
-                      if (mounted) {
-                        Navigator.of(ctx).pop();
-                        _autoSync();
-                      }
-                    }
-                  },
-                  child: const Text("Salvar"),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-    ));
+            ));
   }
-} 
+}
