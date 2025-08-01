@@ -1,17 +1,34 @@
 histórico:
 
     deslocamentos mensais nos relatórios 
+    filtro de manejo no histórico
+
+    hora da conclusão do manejo
     filtro de estações
 
 parto:
 
     partos no histórico
-    
+
     diagnóstico com opção "Pariu"
+
+menu de conclusão:
+
+ 	responsável da cabanha (dono ou peões)
+    
+agenda:
+
+    editar tudo 	
+
+ovários:
+
+    múltipla escolha    
 
 notificações:
 
     monitoramento de controle folicular: 		
+    
+        agendamento automático de diagnóstico (com alerta de egua prenha)para égua prenha (14 dias após a inseminação)
 
         fl >= 34 {alerta para concluir controle folicular}
 
@@ -19,5 +36,11 @@ notificações:
         verificar em qual dia o tamanho folicular vai bater 34mm e dar um alert se deseja marcar um controle folicular
 
     conclusão de indução:
-        verificar em qual dia bate a inseminação e dar um alert se deseja marcar uma inseminação
+        verificar em qual dia bate a indução e dar um alert se deseja marcar uma inseminação
         após 36 hrs da conclusão, notificar para realizar a inseminação
+
+medicamentos:
+    editável
+
+
+função limpar campos (todos)

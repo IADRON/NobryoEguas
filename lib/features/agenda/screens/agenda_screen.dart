@@ -2059,7 +2059,6 @@ void _showAddAgendamentoModal(BuildContext context,
                   onChanged: (val) => setModalState(() => onOvarioDirChange(val)),
                 ),
               ),
-              if (ovarioDirOp == 'FL') ...[
                 const SizedBox(width: 10),
                 SizedBox(
                   width: 120,
@@ -2069,7 +2068,6 @@ void _showAddAgendamentoModal(BuildContext context,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
                 ),
-              ]
             ],
           ),
           const SizedBox(height: 15),
@@ -2084,7 +2082,6 @@ void _showAddAgendamentoModal(BuildContext context,
                   onChanged: (val) => setModalState(() => onOvarioEsqChange(val)),
                 ),
               ),
-              if (ovarioEsqOp == 'FL') ...[
                 const SizedBox(width: 10),
                 SizedBox(
                   width: 120,
@@ -2094,7 +2091,6 @@ void _showAddAgendamentoModal(BuildContext context,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
                 ),
-              ]
             ],
           ),
           const SizedBox(height: 15),

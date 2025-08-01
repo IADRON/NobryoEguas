@@ -1,5 +1,3 @@
-// lib/features/eguas/screens/egua_details_screen.dart
-
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
