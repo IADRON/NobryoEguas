@@ -41,6 +41,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
   DateTime? _previsaoParto;
   Map<String, AppUser> _allUsers = {};
   Map<String, Peao> _allPeoes = {};
+  Map<String, Egua> _allEguas = {};
+  Map<String, Propriedade> _allPropriedades = {};
   final SyncService _syncService = SyncService();
   final AuthService _authService = AuthService();
 
@@ -99,15 +101,21 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     final usersFuture = SQLiteHelper.instance.getAllUsers();
     final peoesFuture =
         SQLiteHelper.instance.readPeoesByPropriedade(widget.propriedadeMaeId);
+    final eguasFuture = SQLiteHelper.instance.getAllEguas();
+    final propriedadesFuture = SQLiteHelper.instance.readAllPropriedades();
 
-    final results = await Future.wait([usersFuture, peoesFuture]);
+    final results = await Future.wait([usersFuture, peoesFuture, eguasFuture, propriedadesFuture]);
 
     if (mounted) {
       final users = results[0] as List<AppUser>;
       final peoes = results[1] as List<Peao>;
+      final eguas = results[2] as List<Egua>;
+      final propriedades = results[3] as List<Propriedade>;
       setState(() {
         _allUsers = {for (var u in users) u.uid: u};
         _allPeoes = {for (var p in peoes) p.id: p};
+        _allEguas = {for (var e in eguas) e.id: e};
+        _allPropriedades = {for (var p in propriedades) p.id: p};
       });
     }
     _calcularDiasPrenhe();
@@ -1260,7 +1268,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                             value: 'edit',
                             child: ListTile(
                                 leading: Icon(Icons.notes_outlined),
-                                title: Text('Editar Observação'),
+                                title: Text('Editar Agendamento'),
                             ),
                         ),
                         const PopupMenuItem<String>(
@@ -1340,22 +1348,16 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
 
     dynamic responsavelSelecionado;
 
-    // **INÍCIO DA CORREÇÃO**
     if (manejo.responsavelId != null) {
-      // Procura o usuário na lista. Retorna null se não encontrar.
       responsavelSelecionado = allUsersList.firstWhereOrNull((u) => u.uid == manejo.responsavelId);
     } else if (manejo.responsavelPeaoId != null) {
-      // Busca os peões da propriedade e procura o peão específico.
       final peoes = await SQLiteHelper.instance.readPeoesByPropriedade(propriedadeMae?.id ?? '');
       responsavelSelecionado = peoes.firstWhereOrNull((p) => p.id == manejo.responsavelPeaoId);
     }
 
-    // Se, após as buscas, nenhum responsável foi encontrado (ou se não havia um),
-    // define o usuário atual como padrão.
     if (responsavelSelecionado == null) {
       responsavelSelecionado = allUsersList.firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
     }
-    // **FIM DA CORREÇÃO**
 
     List<Peao> peoesDaPropriedade = [];
     if (propriedadeMae != null) {

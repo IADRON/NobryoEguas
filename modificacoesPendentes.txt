@@ -1,8 +1,6 @@
 histórico:
 
     deslocamentos mensais nos relatórios 
-    filtro de manejo no histórico
-
     hora da conclusão do manejo
     filtro de estações
 
@@ -36,3 +34,5 @@ notificações:
         após 36 hrs da conclusão, notificar para realizar a inseminação
 
 função limpar campos (todos)
+
+foto eguas*
