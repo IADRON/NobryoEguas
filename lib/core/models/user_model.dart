@@ -8,7 +8,7 @@ class AppUser {
   String? password;
   String? statusSync;
   String? photoUrl;
-  bool isDeleted; // Adicionado para o soft delete
+  bool isDeleted;
 
   AppUser({
     required this.uid,
@@ -18,10 +18,9 @@ class AppUser {
     this.password,
     this.statusSync = 'pending_create',
     this.photoUrl,
-    this.isDeleted = false, // Valor padrão é falso
+    this.isDeleted = false,
   });
 
-  /// Converte o objeto para um Map para o banco de dados local (SQLite).
   Map<String, dynamic> toMapForDb() {
     return {
       'uid': uid,

@@ -1,5 +1,3 @@
-// lib/core/models/peao_model.dart
-
 class Peao {
   String id;
   String nome;

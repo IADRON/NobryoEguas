@@ -230,44 +230,61 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
     return Colors.grey;
   }
 
-  Widget _buildControleFolicularInputs({
+    Widget _buildControleFolicularInputs({
     required StateSetter setModalState,
-    required String? ovarioDirOp,
-    required Function(String?) onOvarioDirChange,
+    // MODIFICADO: Agora recebe uma lista de opções selecionadas
+    required List<String> ovarioDirOp, 
+    // MODIFICADO: Função para alternar a seleção de uma opção
+    required Function(String) onOvarioDirToggle, 
     required TextEditingController ovarioDirTamanhoController,
-    required String? ovarioEsqOp,
-    required Function(String?) onOvarioEsqChange,
+    required List<String> ovarioEsqOp,
+    required Function(String) onOvarioEsqToggle,
     required TextEditingController ovarioEsqTamanhoController,
     required String? edemaSelecionado,
     required Function(String?) onEdemaChange,
     required TextEditingController uteroController,
   }) {
     final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
+
+    // Função auxiliar para construir os chips
+    Widget buildChipGroup(List<String> selectedOptions, Function(String) onToggle) {
+      return Wrap(
+        spacing: 8.0,
+        runSpacing: 4.0,
+        children: ovarioOptions.map((option) {
+          return FilterChip(
+            label: Text(option),
+            selected: selectedOptions.contains(option),
+            onSelected: (isSelected) {
+              onToggle(option);
+            },
+            selectedColor: AppTheme.darkGreen.withOpacity(0.2),
+            checkmarkColor: AppTheme.darkGreen,
+          );
+        }).toList(),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 10),
         Text("Dados do Controle Folicular", style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 15),
+        
+        // --- Ovário Direito ---
+        const Text("Ovário Direito", style: TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: DropdownButtonFormField<String>(
-                value: ovarioDirOp,
-                decoration: const InputDecoration(
-                  labelText: "Ovário Direito",
-                  prefixIcon: Icon(Icons.join_right_outlined)
-                ),
-                items: ovarioOptions
-                    .map((o) => DropdownMenuItem(value: o, child: Text(o)))
-                    .toList(),
-                onChanged: onOvarioDirChange,
-              ),
+              flex: 3,
+              child: buildChipGroup(ovarioDirOp, onOvarioDirToggle),
             ),
             const SizedBox(width: 10),
-            SizedBox(
-              width: 120,
+            Expanded(
+              flex: 2,
               child: TextFormField(
                 controller: ovarioDirTamanhoController,
                 decoration: const InputDecoration(labelText: "Tamanho (mm)"),
@@ -276,40 +293,36 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 15),
+
+        // --- Ovário Esquerdo ---
+        const Text("Ovário Esquerdo", style: TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: DropdownButtonFormField<String>(
-                value: ovarioEsqOp,
-                decoration: const InputDecoration(
-                  labelText: "Ovário Esquerdo",
-                  prefixIcon: Icon(Icons.join_left_outlined)
-                ),
-                items: ovarioOptions
-                    .map((o) => DropdownMenuItem(value: o, child: Text(o)))
-                    .toList(),
-                onChanged: onOvarioEsqChange,
-              ),
+              flex: 3,
+              child: buildChipGroup(ovarioEsqOp, onOvarioEsqToggle),
             ),
             const SizedBox(width: 10),
-            SizedBox(
-              width: 120,
+            Expanded(
+              flex: 2,
               child: TextFormField(
                 controller: ovarioEsqTamanhoController,
                 decoration: const InputDecoration(labelText: "Tamanho (mm)"),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
-            )
+            ),
           ],
         ),
+
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
           value: edemaSelecionado,
           decoration: const InputDecoration(
             labelText: "Edema",
-            prefixIcon: Icon(Icons.numbers_outlined)
+            prefixIcon: Icon(Icons.numbers_outlined),
           ),
           items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
               .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -318,10 +331,11 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
         ),
         const SizedBox(height: 10),
         TextFormField(
-            controller: uteroController,
-            decoration: const InputDecoration(
-                labelText: "Útero",
-                prefixIcon: Icon(Icons.notes_outlined))),
+          controller: uteroController,
+          decoration: const InputDecoration(
+              labelText: "Útero",
+              prefixIcon: Icon(Icons.notes_outlined)),
+        ),
       ],
     );
   }
@@ -739,7 +753,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
     }
   }
 
-void _showAddAgendamentoModal(BuildContext context,
+  void _showAddAgendamentoModal(BuildContext context,
     {Propriedade? propriedade,
     Egua? egua,
     DateTime? preselectedDate,
@@ -752,6 +766,7 @@ void _showAddAgendamentoModal(BuildContext context,
   final formKey = GlobalKey<FormState>();
 
   Propriedade? propriedadeMaeSelecionada = propriedade;
+  Propriedade? loteSelecionado; // NOVO: Estado para o lote selecionado
   final TextEditingController propSearchController = TextEditingController(text: propriedadeMaeSelecionada?.nome ?? '');
 
   List<Propriedade> _allTopLevelProps = [];
@@ -839,6 +854,7 @@ void _showAddAgendamentoModal(BuildContext context,
                                 setModalState(() {
                                   propriedadeMaeSelecionada = null;
                                   propSearchController.clear();
+                                  loteSelecionado = null; // Limpa o lote
                                   eguaSelecionada = null;
                                   peoesDaPropriedade = [];
                                   _showPropList = true;
@@ -875,6 +891,7 @@ void _showAddAgendamentoModal(BuildContext context,
                                 propriedadeMaeSelecionada = prop;
                                 propSearchController.text = prop.nome;
                                 eguaSelecionada = null;
+                                loteSelecionado = null; // Limpa o lote
                                 peoesDaPropriedade = peoes;
                                 _showPropList = false;
                                 FocusScope.of(context).unfocus();
@@ -886,28 +903,71 @@ void _showAddAgendamentoModal(BuildContext context,
                     ),
                   const SizedBox(height: 15),
 
+                  // NOVO: Campo de Lote Condicional
+                  if (propriedadeMaeSelecionada != null && propriedadeMaeSelecionada!.hasLotes)
+                    FutureBuilder<List<Propriedade>>(
+                      future: SQLiteHelper.instance.readSubPropriedades(propriedadeMaeSelecionada!.id),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return Column(
+                          children: [
+                            DropdownButtonFormField<Propriedade>(
+                              value: loteSelecionado,
+                              decoration: const InputDecoration(
+                                labelText: "Lote (Opcional)",
+                                prefixIcon: Icon(Icons.location_on_outlined),
+                              ),
+                              hint: const Text("Selecione o Lote"),
+                              items: snapshot.data!
+                                  .map((lote) => DropdownMenuItem(
+                                      value: lote, child: Text(lote.nome)))
+                                  .toList(),
+                              onChanged: (lote) =>
+                                  setModalState(() {
+                                    loteSelecionado = lote;
+                                    eguaSelecionada = null; // Reseta a égua ao trocar de lote
+                                  }),
+                            ),
+                            const SizedBox(height: 15),
+                          ],
+                        );
+                      },
+                    ),
+
+                  // ALTERADO: Busca de Éguas Condicional
                   if (propriedadeMaeSelecionada != null)
                     FutureBuilder<List<Egua>>(
                       future: () async {
-                          final subPropriedades = await SQLiteHelper.instance.readSubPropriedades(propriedadeMaeSelecionada!.id);
-                          final allPropIds = [propriedadeMaeSelecionada!.id, ...subPropriedades.map((p) => p.id)];
-                          
-                          List<Egua> eguasDaPropriedade = [];
-                          for (final propId in allPropIds) {
-                              final eguasDoLote = await SQLiteHelper.instance.readEguasByPropriedade(propId);
-                              eguasDaPropriedade.addAll(eguasDoLote);
-                          }
-                          return eguasDaPropriedade;
+                        // Se um lote for selecionado, busca éguas desse lote.
+                        if (loteSelecionado != null) {
+                          return SQLiteHelper.instance.readEguasByPropriedade(loteSelecionado!.id);
+                        }
+                        // Se a propriedade não tem lotes, busca todas as éguas dela.
+                        if (!propriedadeMaeSelecionada!.hasLotes) {
+                          return SQLiteHelper.instance.readEguasByPropriedade(propriedadeMaeSelecionada!.id);
+                        }
+                        // Se nenhum lote foi selecionado (mas a prop tem lotes), busca de todos os lotes.
+                        final subPropriedades = await SQLiteHelper.instance.readSubPropriedades(propriedadeMaeSelecionada!.id);
+                        final allPropIds = [propriedadeMaeSelecionada!.id, ...subPropriedades.map((p) => p.id)];
+                        
+                        List<Egua> eguasDaPropriedade = [];
+                        for (final propId in allPropIds) {
+                            final eguasDoLote = await SQLiteHelper.instance.readEguasByPropriedade(propId);
+                            eguasDaPropriedade.addAll(eguasDoLote);
+                        }
+                        return eguasDaPropriedade;
                       }(),
                       builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
                           return const Center(
                               child: Padding(
                                   padding: EdgeInsets.all(8.0),
                                   child: CircularProgressIndicator()));
                         }
-                        if (snapshot.data!.isEmpty) {
-                            return const Center(child: Text("Nenhuma égua encontrada nesta propriedade."));
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                            return const Center(child: Text("Nenhuma égua encontrada para a seleção atual."));
                         }
                         return DropdownButtonFormField<Egua>(
                           value: eguaSelecionada,
@@ -927,8 +987,9 @@ void _showAddAgendamentoModal(BuildContext context,
                       },
                     ),
                   const SizedBox(height: 15),
-
-                  Row(
+                  
+                  // ... resto do formulário (Data, Tipo, Responsável, Detalhes) ...
+                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
@@ -1028,7 +1089,8 @@ void _showAddAgendamentoModal(BuildContext context,
                             dataAgendada: dataSelecionada!,
                             detalhes: {'descricao': detalhesController.text},
                             eguaId: eguaSelecionada!.id,
-                            propriedadeId: eguaSelecionada!.propriedadeId,
+                            // ALTERADO: Usa o ID do lote se selecionado, senão o ID da égua
+                            propriedadeId: loteSelecionado?.id ?? eguaSelecionada!.propriedadeId,
                             responsavelId: responsavelSelecionado is AppUser ? responsavelSelecionado.uid : null,
                             responsavelPeaoId: responsavelSelecionado is Peao ? responsavelSelecionado.id : null,
                           );
@@ -1056,6 +1118,302 @@ void _showAddAgendamentoModal(BuildContext context,
     ),
   );
 }
+
+void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) async {
+  final currentUser = _authService.currentUserNotifier.value;
+  if (currentUser == null) return;
+
+  final allUsersList = await SQLiteHelper.instance.getAllUsers();
+  final formKey = GlobalKey<FormState>();
+
+  final Egua? egua = _allEguas[manejo.eguaId];
+  Propriedade? lote = _allPropriedades[manejo.propriedadeId];
+  final Propriedade? propriedadeMae = lote?.parentId != null ? _allPropriedades[lote!.parentId] : lote;
+
+  // NOVO: Estado para lote e égua selecionados na edição
+  Propriedade? loteSelecionado = lote?.parentId != null ? lote : null;
+  Egua? eguaSelecionada = egua;
+
+  DateTime? dataSelecionada = manejo.dataAgendada;
+  String? tipoManejoSelecionado = manejo.tipo;
+  final detalhesController = TextEditingController(text: manejo.detalhes['descricao'] ?? '');
+  final tiposDeManejo = [
+    "Controle Folicular", "Inseminação", "Lavado", "Diagnóstico",
+    "Transferência de Embrião", "Coleta de Embrião", "Outros Manejos"
+  ];
+
+  dynamic responsavelSelecionado;
+
+  if (manejo.responsavelId != null) {
+    responsavelSelecionado = allUsersList.firstWhereOrNull((u) => u.uid == manejo.responsavelId);
+  } else if (manejo.responsavelPeaoId != null) {
+    final peoes = await SQLiteHelper.instance.readPeoesByPropriedade(propriedadeMae?.id ?? '');
+    responsavelSelecionado = peoes.firstWhereOrNull((p) => p.id == manejo.responsavelPeaoId);
+  }
+
+  if (responsavelSelecionado == null) {
+    responsavelSelecionado = allUsersList.firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
+  }
+
+  List<Peao> peoesDaPropriedade = [];
+  if (propriedadeMae != null) {
+    peoesDaPropriedade = await SQLiteHelper.instance.readPeoesByPropriedade(propriedadeMae.id);
+  }
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) => StatefulBuilder(
+      builder: (BuildContext context, StateSetter setModalState) {
+        return Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              top: 20,
+              left: 20,
+              right: 20),
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                        child: Container(
+                          width: 40,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                  const SizedBox(height: 10),
+                  Text("Editar Agendamento",
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  const Divider(height: 30, thickness: 1),
+                  
+                  TextFormField(
+                    initialValue: propriedadeMae?.nome ?? '',
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: "Propriedade",
+                      prefixIcon: Icon(Icons.home_work_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  
+                  // NOVO: Campo de Lote Condicional na Edição
+                  if (propriedadeMae != null && propriedadeMae.hasLotes)
+                    FutureBuilder<List<Propriedade>>(
+                      future: SQLiteHelper.instance.readSubPropriedades(propriedadeMae.id),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        // Garante que o lote selecionado esteja na lista
+                        if (loteSelecionado != null && !snapshot.data!.any((l) => l.id == loteSelecionado!.id)) {
+                           loteSelecionado = null;
+                        }
+
+                        return Column(
+                          children: [
+                            DropdownButtonFormField<Propriedade>(
+                              value: loteSelecionado,
+                              decoration: const InputDecoration(
+                                labelText: "Lote",
+                                prefixIcon: Icon(Icons.location_on_outlined),
+                              ),
+                              hint: const Text("Selecione o Lote"),
+                              items: snapshot.data!
+                                  .map((lote) => DropdownMenuItem(
+                                      value: lote, child: Text(lote.nome)))
+                                  .toList(),
+                              onChanged: (lote) =>
+                                  setModalState(() {
+                                    loteSelecionado = lote;
+                                    eguaSelecionada = null;
+                                  }),
+                            ),
+                            const SizedBox(height: 15),
+                          ],
+                        );
+                      },
+                    ),
+
+                  // ALTERADO: Busca de Éguas Condicional na Edição
+                  if (propriedadeMae != null)
+                    FutureBuilder<List<Egua>>(
+                      future: () async {
+                        if (loteSelecionado != null) {
+                          return SQLiteHelper.instance.readEguasByPropriedade(loteSelecionado!.id);
+                        }
+                        if (!propriedadeMae.hasLotes) {
+                          return SQLiteHelper.instance.readEguasByPropriedade(propriedadeMae.id);
+                        }
+                        final subPropriedades = await SQLiteHelper.instance.readSubPropriedades(propriedadeMae.id);
+                        final allPropIds = [propriedadeMae.id, ...subPropriedades.map((p) => p.id)];
+                        
+                        List<Egua> eguasDaPropriedade = [];
+                        for (final propId in allPropIds) {
+                            final eguasDoLote = await SQLiteHelper.instance.readEguasByPropriedade(propId);
+                            eguasDaPropriedade.addAll(eguasDoLote);
+                        }
+                        return eguasDaPropriedade;
+                      }(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                            return const Center(child: Text("Nenhuma égua encontrada."));
+                        }
+                        // Garante que a égua selecionada esteja na lista
+                        if (eguaSelecionada != null && !snapshot.data!.any((e) => e.id == eguaSelecionada!.id)) {
+                          eguaSelecionada = null;
+                        }
+                        return DropdownButtonFormField<Egua>(
+                          value: eguaSelecionada,
+                          decoration: const InputDecoration(
+                            labelText: "Égua",
+                            prefixIcon: Icon(Icons.female_outlined),
+                          ),
+                          items: snapshot.data!
+                              .map((egua) => DropdownMenuItem(
+                                  value: egua, child: Text(egua.nome)))
+                              .toList(),
+                          onChanged: (egua) =>
+                              setModalState(() => eguaSelecionada = egua),
+                          validator: (v) => v == null ? "Selecione uma égua" : null,
+                        );
+                      },
+                    ),
+                  const SizedBox(height: 15),
+
+                  TextFormField(
+                    readOnly: true,
+                    controller: TextEditingController(
+                        text: dataSelecionada == null
+                            ? ''
+                            : DateFormat('dd/MM/yyyy').format(dataSelecionada!),
+                      ),
+                    decoration: const InputDecoration(
+                      labelText: "Data do Manejo",
+                      prefixIcon: Icon(Icons.calendar_today_outlined),
+                      hintText: 'Toque para selecionar',
+                    ),
+                    onTap: () async {
+                      final pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: dataSelecionada ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030));
+                      if (pickedDate != null) {
+                        setModalState(() => dataSelecionada = pickedDate);
+                      }
+                    },
+                    validator: (v) =>
+                        dataSelecionada == null ? "Selecione a data" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  DropdownButtonFormField<String>(
+                    value: tipoManejoSelecionado,
+                    decoration: const InputDecoration(
+                      labelText: "Tipo de Manejo",
+                      prefixIcon: Icon(Icons.edit_note_outlined),
+                    ),
+                    items: tiposDeManejo
+                        .map((tipo) =>
+                            DropdownMenuItem(value: tipo, child: Text(tipo)))
+                        .toList(),
+                    onChanged: (val) =>
+                        setModalState(() => tipoManejoSelecionado = val),
+                    validator: (v) => v == null ? "Selecione o tipo" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  DropdownButtonFormField<dynamic>(
+                    value: responsavelSelecionado,
+                    decoration: const InputDecoration(labelText: "Responsável", prefixIcon: Icon(Icons.person_outline)),
+                    items: [
+                      const DropdownMenuItem<dynamic>(
+                        enabled: false,
+                        child: Text("Usuários", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
+                      ),
+                      ...allUsersList.map((user) => DropdownMenuItem<dynamic>(value: user, child: Text(user.nome))),
+                      if (peoesDaPropriedade.isNotEmpty) ...[
+                        const DropdownMenuItem<dynamic>(enabled: false, child: Divider()),
+                        const DropdownMenuItem<dynamic>(
+                          enabled: false,
+                          child: Text("Peões da Propriedade", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.brown)),
+                        ),
+                        ...peoesDaPropriedade.map((peao) => DropdownMenuItem<dynamic>(value: peao, child: Text(peao.nome))),
+                      ]
+                    ],
+                    onChanged: (value) {
+                      if (value != null) setModalState(() => responsavelSelecionado = value);
+                    },
+                    validator: (v) => v == null ? "Selecione um responsável" : null,
+                  ),
+                  const SizedBox(height: 15),
+                  TextFormField(
+                      controller: detalhesController,
+                      decoration: const InputDecoration(
+                          labelText: "Detalhes/Observações",
+                          prefixIcon: Icon(Icons.comment_outlined)),
+                      maxLines: 2),
+                  const SizedBox(height: 30),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text("SALVAR ALTERAÇÕES"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.darkGreen,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () async {
+                        if (formKey.currentState!.validate()) {
+                          final manejoAtualizado = manejo.copyWith(
+                            tipo: tipoManejoSelecionado!,
+                            dataAgendada: dataSelecionada!,
+                            detalhes: {'descricao': detalhesController.text},
+                            eguaId: eguaSelecionada!.id,
+                            // ALTERADO: Atualiza a propriedade para o lote, se houver
+                            propriedadeId: loteSelecionado?.id ?? eguaSelecionada!.propriedadeId,
+                            responsavelId: responsavelSelecionado is AppUser ? responsavelSelecionado.uid : null,
+                            responsavelPeaoId: responsavelSelecionado is Peao ? responsavelSelecionado.id : null,
+                            statusSync: 'pending_update'
+                          );
+                          await SQLiteHelper.instance
+                              .updateManejo(manejoAtualizado);
+                          if (mounted) {
+                            Navigator.of(ctx).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              content: Text("Agendamento atualizado com sucesso!"),
+                              backgroundColor: Colors.green,
+                            ));
+                            _autoSync();
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            )
+          );
+        },
+      ),
+    );
+  }
 
   void _showConfirmationModal(BuildContext context, Manejo manejo, Egua? egua) {
     String responsavelNome = '...';
@@ -1277,255 +1635,6 @@ void _showAddAgendamentoModal(BuildContext context,
     );
   }
 
-  void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) async {
-    final currentUser = _authService.currentUserNotifier.value;
-    if (currentUser == null) return;
-
-    final allUsersList = await SQLiteHelper.instance.getAllUsers();
-    final formKey = GlobalKey<FormState>();
-
-    final Egua? egua = _allEguas[manejo.eguaId];
-    final Propriedade? lote = _allPropriedades[manejo.propriedadeId];
-    final Propriedade? propriedadeMae = lote?.parentId != null ? _allPropriedades[lote!.parentId] : lote;
-
-    Egua? eguaSelecionada = egua;
-    DateTime? dataSelecionada = manejo.dataAgendada;
-    String? tipoManejoSelecionado = manejo.tipo;
-    final detalhesController = TextEditingController(text: manejo.detalhes['descricao'] ?? '');
-    final tiposDeManejo = [
-      "Controle Folicular", "Inseminação", "Lavado", "Diagnóstico",
-      "Transferência de Embrião", "Coleta de Embrião", "Outros Manejos"
-    ];
-
-    dynamic responsavelSelecionado;
-
-    // **INÍCIO DA CORREÇÃO**
-    if (manejo.responsavelId != null) {
-      // Procura o usuário na lista. Retorna null se não encontrar.
-      responsavelSelecionado = allUsersList.firstWhereOrNull((u) => u.uid == manejo.responsavelId);
-    } else if (manejo.responsavelPeaoId != null) {
-      // Busca os peões da propriedade e procura o peão específico.
-      final peoes = await SQLiteHelper.instance.readPeoesByPropriedade(propriedadeMae?.id ?? '');
-      responsavelSelecionado = peoes.firstWhereOrNull((p) => p.id == manejo.responsavelPeaoId);
-    }
-
-    // Se, após as buscas, nenhum responsável foi encontrado (ou se não havia um),
-    // define o usuário atual como padrão.
-    if (responsavelSelecionado == null) {
-      responsavelSelecionado = allUsersList.firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
-    }
-    // **FIM DA CORREÇÃO**
-
-    List<Peao> peoesDaPropriedade = [];
-    if (propriedadeMae != null) {
-      peoesDaPropriedade = await SQLiteHelper.instance.readPeoesByPropriedade(propriedadeMae.id);
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (BuildContext context, StateSetter setModalState) {
-          return Padding(
-            padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom,
-                top: 20,
-                left: 20,
-                right: 20),
-            child: Form(
-              key: formKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                          child: Container(
-                            width: 40,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                    const SizedBox(height: 10),
-                    Text("Editar Agendamento",
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                    const Divider(height: 30, thickness: 1),
-                    
-                    TextFormField(
-                      initialValue: propriedadeMae?.nome ?? '',
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: "Propriedade",
-                        prefixIcon: Icon(Icons.home_work_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-
-                    if (propriedadeMae != null)
-                      FutureBuilder<List<Egua>>(
-                        future: () async {
-                            final subPropriedades = await SQLiteHelper.instance.readSubPropriedades(propriedadeMae.id);
-                            final allPropIds = [propriedadeMae.id, ...subPropriedades.map((p) => p.id)];
-                            
-                            List<Egua> eguasDaPropriedade = [];
-                            for (final propId in allPropIds) {
-                                final eguasDoLote = await SQLiteHelper.instance.readEguasByPropriedade(propId);
-                                eguasDaPropriedade.addAll(eguasDoLote);
-                            }
-                            return eguasDaPropriedade;
-                        }(),
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) {
-                            return const Center(
-                                child: Padding(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: CircularProgressIndicator()));
-                          }
-                          return DropdownButtonFormField<Egua>(
-                            value: eguaSelecionada,
-                            decoration: const InputDecoration(
-                              labelText: "Égua",
-                              prefixIcon: Icon(Icons.female_outlined),
-                            ),
-                            items: snapshot.data!
-                                .map((egua) => DropdownMenuItem(
-                                    value: egua, child: Text(egua.nome)))
-                                .toList(),
-                            onChanged: (egua) =>
-                                setModalState(() => eguaSelecionada = egua),
-                            validator: (v) => v == null ? "Selecione uma égua" : null,
-                          );
-                        },
-                      ),
-                    const SizedBox(height: 15),
-
-                    TextFormField(
-                      readOnly: true,
-                      controller: TextEditingController(
-                          text: dataSelecionada == null
-                              ? ''
-                              : DateFormat('dd/MM/yyyy').format(dataSelecionada!),
-                        ),
-                      decoration: const InputDecoration(
-                        labelText: "Data do Manejo",
-                        prefixIcon: Icon(Icons.calendar_today_outlined),
-                        hintText: 'Toque para selecionar',
-                      ),
-                      onTap: () async {
-                        final pickedDate = await showDatePicker(
-                            context: context,
-                            initialDate: dataSelecionada ?? DateTime.now(),
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2030));
-                        if (pickedDate != null) {
-                          setModalState(() => dataSelecionada = pickedDate);
-                        }
-                      },
-                      validator: (v) =>
-                          dataSelecionada == null ? "Selecione a data" : null,
-                    ),
-                    const SizedBox(height: 15),
-                    DropdownButtonFormField<String>(
-                      value: tipoManejoSelecionado,
-                      decoration: const InputDecoration(
-                        labelText: "Tipo de Manejo",
-                        prefixIcon: Icon(Icons.edit_note_outlined),
-                      ),
-                      items: tiposDeManejo
-                          .map((tipo) =>
-                              DropdownMenuItem(value: tipo, child: Text(tipo)))
-                          .toList(),
-                      onChanged: (val) =>
-                          setModalState(() => tipoManejoSelecionado = val),
-                      validator: (v) => v == null ? "Selecione o tipo" : null,
-                    ),
-                    const SizedBox(height: 15),
-                    DropdownButtonFormField<dynamic>(
-                      value: responsavelSelecionado,
-                      decoration: const InputDecoration(labelText: "Responsável", prefixIcon: Icon(Icons.person_outline)),
-                      items: [
-                        const DropdownMenuItem<dynamic>(
-                          enabled: false,
-                          child: Text("Usuários", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
-                        ),
-                        ...allUsersList.map((user) => DropdownMenuItem<dynamic>(value: user, child: Text(user.nome))),
-                        if (peoesDaPropriedade.isNotEmpty) ...[
-                          const DropdownMenuItem<dynamic>(enabled: false, child: Divider()),
-                          const DropdownMenuItem<dynamic>(
-                            enabled: false,
-                            child: Text("Peões da Propriedade", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.brown)),
-                          ),
-                          ...peoesDaPropriedade.map((peao) => DropdownMenuItem<dynamic>(value: peao, child: Text(peao.nome))),
-                        ]
-                      ],
-                      onChanged: (value) {
-                        if (value != null) setModalState(() => responsavelSelecionado = value);
-                      },
-                      validator: (v) => v == null ? "Selecione um responsável" : null,
-                    ),
-                    const SizedBox(height: 15),
-                    TextFormField(
-                        controller: detalhesController,
-                        decoration: const InputDecoration(
-                            labelText: "Detalhes/Observações",
-                            prefixIcon: Icon(Icons.comment_outlined)),
-                        maxLines: 2),
-                    const SizedBox(height: 30),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.check_circle_outline),
-                        label: const Text("SALVAR ALTERAÇÕES"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.darkGreen,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onPressed: () async {
-                          if (formKey.currentState!.validate()) {
-                            final manejoAtualizado = manejo.copyWith(
-                              tipo: tipoManejoSelecionado!,
-                              dataAgendada: dataSelecionada!,
-                              detalhes: {'descricao': detalhesController.text},
-                              eguaId: eguaSelecionada!.id,
-                              propriedadeId: eguaSelecionada!.propriedadeId,
-                              responsavelId: responsavelSelecionado is AppUser ? responsavelSelecionado.uid : null,
-                              responsavelPeaoId: responsavelSelecionado is Peao ? responsavelSelecionado.id : null,
-                              statusSync: 'pending_update'
-                            );
-                            await SQLiteHelper.instance
-                                .updateManejo(manejoAtualizado);
-                            if (mounted) {
-                              Navigator.of(ctx).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                content: Text("Agendamento atualizado com sucesso!"),
-                                backgroundColor: Colors.green,
-                              ));
-                              _autoSync();
-                            }
-                          }
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   void _showMarkAsCompleteModal(BuildContext context, Manejo manejo, Egua? egua) async {
     final currentUser = _authService.currentUserNotifier.value;
     if (currentUser == null || egua == null) return;
@@ -1543,8 +1652,8 @@ void _showAddAgendamentoModal(BuildContext context,
     String? tipoSememSelecionado;
     DateTime? dataHoraInseminacao;
     final litrosController = TextEditingController();
-    String? ovarioDirOp;
-    String? ovarioEsqOp;
+    List<String> ovarioDirOp = [];
+    List<String> ovarioEsqOp = [];
     final ovarioDirTamanhoController = TextEditingController();
     final ovarioEsqTamanhoController = TextEditingController();
     String? edemaSelecionado;
@@ -1655,8 +1764,24 @@ void _showAddAgendamentoModal(BuildContext context,
                       setModalState: setModalState,
                       onDataHoraInseminacaoChange: (val) => setModalState(() => dataHoraInseminacao = val),
                       onMedicamentoChange: (val) => setModalState(() => medicamentoSelecionado = val),
-                      onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
-                      onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
+                      onOvarioDirToggle: (option) {
+                        setModalState(() {
+                          if (ovarioDirOp.contains(option)) {
+                            ovarioDirOp.remove(option);
+                          } else {
+                            ovarioDirOp.add(option);
+                          }
+                        });
+                      },
+                      onOvarioEsqToggle: (option) {
+                        setModalState(() {
+                          if (ovarioEsqOp.contains(option)) {
+                            ovarioEsqOp.remove(option);
+                          } else {
+                            ovarioEsqOp.add(option);
+                          }
+                        });
+                      },
                       onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
                       onIdadeEmbriaoChange: (val) => setModalState(() => idadeEmbriaoSelecionada = val),
                       onDoadoraChange: (val) => setModalState(() => doadoraSelecionada = val),
@@ -1705,10 +1830,26 @@ void _showAddAgendamentoModal(BuildContext context,
                         _buildControleFolicularInputs(
                           setModalState: setModalState,
                           ovarioDirOp: ovarioDirOp,
-                          onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
+                          onOvarioDirToggle: (option) {
+                            setModalState(() {
+                              if (ovarioDirOp.contains(option)) {
+                                ovarioDirOp.remove(option);
+                              } else {
+                                ovarioDirOp.add(option);
+                              }
+                            });
+                          },
                           ovarioDirTamanhoController: ovarioDirTamanhoController,
                           ovarioEsqOp: ovarioEsqOp,
-                          onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
+                          onOvarioEsqToggle: (option) {
+                            setModalState(() {
+                              if (ovarioEsqOp.contains(option)) {
+                                ovarioEsqOp.remove(option);
+                              } else {
+                                ovarioEsqOp.add(option);
+                              }
+                            });
+                          },
                           ovarioEsqTamanhoController: ovarioEsqTamanhoController,
                           edemaSelecionado: edemaSelecionado,
                           onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
@@ -2057,10 +2198,12 @@ void _showAddAgendamentoModal(BuildContext context,
     required Medicamento? medicamentoSelecionado,
     required Function(Medicamento?) onMedicamentoChange,
     required List<Medicamento> allMeds,
-    required String? ovarioDirOp,
-    required Function(String?) onOvarioDirChange,
-    required String? ovarioEsqOp,
-    required Function(String?) onOvarioEsqChange,
+    // MODIFICADO AQUI
+    required List<String> ovarioDirOp,
+    required Function(String) onOvarioDirToggle,
+    required List<String> ovarioEsqOp,
+    required Function(String) onOvarioEsqToggle,
+    // FIM DA MODIFICAÇÃO
     required TextEditingController ovarioDirTamanhoController,
     required TextEditingController ovarioEsqTamanhoController,
     required String? edemaSelecionado,
@@ -2083,43 +2226,43 @@ void _showAddAgendamentoModal(BuildContext context,
     required Function(bool) onShowPropDoadoraListChange,
     required List<Propriedade> allPropsDoadora,
   }) {
-    final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
     final idadeEmbriaoOptions = ['D6', 'D7', 'D8', 'D9', 'D10', 'D11'];
     final tiposSemem = ['Refrigerado', 'Congelado', 'A Fresco', 'Monta Natural'];
 
     switch (tipo) {
-    case "Diagnóstico":
-      return [
-        DropdownButtonFormField<String>(
-          value: resultadoDiagnostico,
-          hint: const Text("Resultado do Diagnóstico"),
-          items: ["Indeterminado", "Prenhe", "Vazia"]
-              .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-              .toList(),
-          onChanged: (val) => setModalState(() => onResultadoChange(val)),
-          validator: (v) => v == null ? "Selecione um resultado" : null,
-        ),
-        if (resultadoDiagnostico == 'Prenhe') ...[
-          const SizedBox(height: 10),
-          TextFormField(
-            controller: diasPrenheController,
-            decoration: const InputDecoration(labelText: "Dias de Prenhez"),
-            keyboardType: TextInputType.number,
-            validator: (v) => v!.isEmpty ? "Informe os dias" : null,
+      case "Diagnóstico":
+        return [
+          DropdownButtonFormField<String>(
+            value: resultadoDiagnostico,
+            hint: const Text("Resultado do Diagnóstico"),
+            items: ["Indeterminado", "Prenhe", "Vazia"]
+                .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                .toList(),
+            onChanged: (val) => setModalState(() => onResultadoChange(val)),
+            validator: (v) => v == null ? "Selecione um resultado" : null,
           ),
-          const SizedBox(height: 10),
-          TextFormField(
-            controller: garanhaoController,
-            decoration: const InputDecoration(labelText: "Cobertura"),
-            validator: (v) => v!.isEmpty ? "Informe a cobertura" : null,
-          ),
-        ]
-      ];
+          if (resultadoDiagnostico == 'Prenhe') ...[
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: diasPrenheController,
+              decoration: const InputDecoration(labelText: "Dias de Prenhez"),
+              keyboardType: TextInputType.number,
+              validator: (v) => v!.isEmpty ? "Informe os dias" : null,
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: garanhaoController,
+              decoration: const InputDecoration(labelText: "Cobertura"),
+              validator: (v) => v!.isEmpty ? "Informe a cobertura" : null,
+            ),
+          ]
+        ];
       case "Inseminação":
         return [
           TextFormField(
               controller: garanhaoController,
-              decoration: const InputDecoration(labelText: "Garanhão", prefixIcon: Icon(Icons.male_outlined))),
+              decoration: const InputDecoration(
+                  labelText: "Garanhão", prefixIcon: Icon(Icons.male_outlined))),
           const SizedBox(height: 15),
           DropdownButtonFormField<String>(
             value: tipoSememSelecionado,
@@ -2131,7 +2274,7 @@ void _showAddAgendamentoModal(BuildContext context,
                 .map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo)))
                 .toList(),
             onChanged: (val) => setModalState(() => onTipoSememChange(val)),
-             validator: (v) => v == null ? "Selecione o tipo de sêmen" : null,
+            validator: (v) => v == null ? "Selecione o tipo de sêmen" : null,
           ),
           const SizedBox(height: 15),
           TextFormField(
@@ -2139,7 +2282,8 @@ void _showAddAgendamentoModal(BuildContext context,
             controller: TextEditingController(
               text: dataHoraInseminacao == null
                   ? ''
-                  : DateFormat('dd/MM/yyyy HH:mm', 'pt_BR').format(dataHoraInseminacao),
+                  : DateFormat('dd/MM/yyyy HH:mm', 'pt_BR')
+                      .format(dataHoraInseminacao),
             ),
             decoration: const InputDecoration(
                 labelText: "Data/Hora da Inseminação",
@@ -2153,35 +2297,35 @@ void _showAddAgendamentoModal(BuildContext context,
                   lastDate: DateTime.now());
               if (date == null) return;
               TimeOfDay? time;
-                await showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: const Text("Selecione a Hora"),
-                      content: TimePickerSpinner(
-                        is24HourMode: true,
-                        minutesInterval: 5,
-                        onTimeChange: (dateTime) {
-                          time = TimeOfDay.fromDateTime(dateTime);
+              await showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: const Text("Selecione a Hora"),
+                    content: TimePickerSpinner(
+                      is24HourMode: true,
+                      minutesInterval: 5,
+                      onTimeChange: (dateTime) {
+                        time = TimeOfDay.fromDateTime(dateTime);
+                      },
+                    ),
+                    actions: <Widget>[
+                      TextButton(
+                        child: const Text("CANCELAR"),
+                        onPressed: () {
+                          Navigator.of(context).pop();
                         },
                       ),
-                      actions: <Widget>[
-                        TextButton(
-                          child: const Text("CANCELAR"),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                        TextButton(
-                          child: const Text("OK"),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                );
+                      TextButton(
+                        child: const Text("OK"),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ],
+                  );
+                },
+              );
               if (time != null) {
                 onDataHoraInseminacaoChange(DateTime(
                     date.year, date.month, date.day, time!.hour, time!.minute));
@@ -2193,12 +2337,15 @@ void _showAddAgendamentoModal(BuildContext context,
         return [
           TextFormField(
               controller: litrosController,
-              decoration: const InputDecoration(labelText: "Litros", prefixIcon: Icon(Icons.water_drop_outlined)),
+              decoration: const InputDecoration(
+                  labelText: "Litros", prefixIcon: Icon(Icons.water_drop_outlined)),
               keyboardType: TextInputType.number),
           const SizedBox(height: 15),
           DropdownButtonFormField<Medicamento>(
             value: medicamentoSelecionado,
-            decoration: const InputDecoration(labelText: "Medicamento", prefixIcon: Icon(Icons.vaccines_outlined)),
+            decoration: const InputDecoration(
+                labelText: "Medicamento",
+                prefixIcon: Icon(Icons.vaccines_outlined)),
             items: allMeds
                 .map((m) => DropdownMenuItem(value: m, child: Text(m.nome)))
                 .toList(),
@@ -2206,69 +2353,28 @@ void _showAddAgendamentoModal(BuildContext context,
           )
         ];
       case "Controle Folicular":
+        // CONTEÚDO TOTALMENTE SUBSTITUÍDO
         return [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: ovarioDirOp,
-                  decoration: const InputDecoration(labelText: "Ovário Direito"),
-                  items: ovarioOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
-                  onChanged: (val) => setModalState(() => onOvarioDirChange(val)),
-                ),
-              ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 120,
-                  child: TextFormField(
-                    controller: ovarioDirTamanhoController,
-                    decoration: const InputDecoration(labelText: "Tamanho", suffixText: "mm"),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: ovarioEsqOp,
-                  decoration: const InputDecoration(labelText: "Ovário Esquerdo"),
-                  items: ovarioOptions.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
-                  onChanged: (val) => setModalState(() => onOvarioEsqChange(val)),
-                ),
-              ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 120,
-                  child: TextFormField(
-                    controller: ovarioEsqTamanhoController,
-                    decoration: const InputDecoration(labelText: "Tamanho", suffixText: "mm"),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          DropdownButtonFormField<String>(
-            value: edemaSelecionado,
-            decoration: const InputDecoration(labelText: "Edema"),
-            items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
-                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                .toList(),
-            onChanged: (val) => setModalState(() => onEdemaChange(val)),
-          ),
-          const SizedBox(height: 15),
-          TextFormField(
-              controller: uteroController,
-              decoration: const InputDecoration(labelText: "Útero")),
+          _buildControleFolicularInputs(
+            setModalState: setModalState,
+            ovarioDirOp: ovarioDirOp,
+            onOvarioDirToggle: onOvarioDirToggle,
+            ovarioDirTamanhoController: ovarioDirTamanhoController,
+            ovarioEsqOp: ovarioEsqOp,
+            onOvarioEsqToggle: onOvarioEsqToggle,
+            ovarioEsqTamanhoController: ovarioEsqTamanhoController,
+            edemaSelecionado: edemaSelecionado,
+            onEdemaChange: onEdemaChange,
+            uteroController: uteroController,
+          )
         ];
       case "Transferência de Embrião":
         return [
-          Text("Dados da Doadora", style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          Text("Dados da Doadora",
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 15),
           TextFormField(
             controller: propDoadoraSearchController,
@@ -2277,30 +2383,31 @@ void _showAddAgendamentoModal(BuildContext context,
               labelText: "Propriedade da Doadora",
               prefixIcon: const Icon(Icons.home_work_outlined),
               suffixIcon: propDoadoraSelecionada != null
-                ? IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      setModalState(() {
-                        onPropDoadoraChange(null);
-                        propDoadoraSearchController.clear();
-                        onDoadoraChange(null);
-                        onShowPropDoadoraListChange(true);
-                      });
-                    },
-                  )
-                : const Icon(Icons.search),
+                  ? IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        setModalState(() {
+                          onPropDoadoraChange(null);
+                          propDoadoraSearchController.clear();
+                          onDoadoraChange(null);
+                          onShowPropDoadoraListChange(true);
+                        });
+                      },
+                    )
+                  : const Icon(Icons.search),
             ),
             onChanged: onFilterPropsDoadora,
             onTap: () => setModalState(() => onShowPropDoadoraListChange(true)),
-            validator: (v) => propDoadoraSelecionada == null ? "Selecione a propriedade" : null,
+            validator: (v) =>
+                propDoadoraSelecionada == null ? "Selecione a propriedade" : null,
           ),
           if (showPropDoadoraList && propDoadoraSelecionada == null)
             Container(
               height: 150,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300)),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300)),
               child: ListView.builder(
                 itemCount: filteredPropsDoadora.length,
                 itemBuilder: (context, index) {
@@ -2323,15 +2430,22 @@ void _showAddAgendamentoModal(BuildContext context,
           const SizedBox(height: 15),
           if (propDoadoraSelecionada != null)
             FutureBuilder<List<Egua>>(
-              future: SQLiteHelper.instance.readEguasByPropriedade(propDoadoraSelecionada.id),
+              future: SQLiteHelper.instance
+                  .readEguasByPropriedade(propDoadoraSelecionada.id),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData)
+                  return const Center(child: CircularProgressIndicator());
                 return DropdownButtonFormField<Egua>(
                   value: doadoraSelecionada,
-                  decoration: const InputDecoration(labelText: "Égua Doadora", prefixIcon: Icon(Icons.female_outlined)),
-                  items: snapshot.data!.map((e) => DropdownMenuItem(value: e, child: Text(e.nome))).toList(),
+                  decoration: const InputDecoration(
+                      labelText: "Égua Doadora",
+                      prefixIcon: Icon(Icons.female_outlined)),
+                  items: snapshot.data!
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e.nome)))
+                      .toList(),
                   onChanged: (val) => setModalState(() => onDoadoraChange(val)),
-                  validator: (v) => v == null ? "Selecione a égua doadora" : null,
+                  validator: (v) =>
+                      v == null ? "Selecione a égua doadora" : null,
                 );
               },
             ),
@@ -2340,7 +2454,9 @@ void _showAddAgendamentoModal(BuildContext context,
           const SizedBox(height: 15),
           DropdownButtonFormField<String>(
             value: idadeEmbriao,
-            decoration: const InputDecoration(labelText: "Idade do Embrião", prefixIcon: Icon(Icons.hourglass_bottom_outlined)),
+            decoration: const InputDecoration(
+                labelText: "Idade do Embrião",
+                prefixIcon: Icon(Icons.hourglass_bottom_outlined)),
             items: idadeEmbriaoOptions
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
@@ -2349,14 +2465,17 @@ void _showAddAgendamentoModal(BuildContext context,
           const SizedBox(height: 15),
           TextFormField(
               controller: avaliacaoUterinaController,
-              decoration:
-                  const InputDecoration(labelText: "Avaliação Uterina", prefixIcon: Icon(Icons.notes_outlined))),
+              decoration: const InputDecoration(
+                  labelText: "Avaliação Uterina",
+                  prefixIcon: Icon(Icons.notes_outlined))),
         ];
       case "Coleta de Embrião":
         return [
           DropdownButtonFormField<String>(
             value: idadeEmbriao,
-            decoration: const InputDecoration(labelText: "Idade do Embrião", prefixIcon: Icon(Icons.hourglass_bottom_outlined)),
+            decoration: const InputDecoration(
+                labelText: "Idade do Embrião",
+                prefixIcon: Icon(Icons.hourglass_bottom_outlined)),
             items: idadeEmbriaoOptions
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),

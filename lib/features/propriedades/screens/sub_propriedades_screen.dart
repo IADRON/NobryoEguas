@@ -447,12 +447,14 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
     );
   }
 
-  void _showEditPropriedadeModal(BuildContext context) {
+  // lib/features/propriedades/screens/sub_propriedades_screen.dart
+
+void _showEditPropriedadeModal(BuildContext context) {
     final formKey = GlobalKey<FormState>();
     final nomeController = TextEditingController(text: _currentPropriedadePai.nome);
     final donoController = TextEditingController(text: _currentPropriedadePai.dono);
     bool hasLotes = _currentPropriedadePai.hasLotes;
-    bool canEditHasLotes = _allSubPropriedades.length <= 1;
+    bool canEditHasLotes = _allSubPropriedades.isEmpty; // ALTERADO: Permite apenas se não houver lotes
 
     showModalBottomSheet(
       context: context,
@@ -512,7 +514,7 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
                         title: const Text("Possui Lotes?"),
                         subtitle: !canEditHasLotes
                             ? Text(
-                                "Remova os lotes extras para alterar esta opção.",
+                                "Remova todos os lotes para desativar esta opção.", // MENSAGEM ATUALIZADA
                                 style: TextStyle(color: Colors.red[700]),
                               )
                             : null,
@@ -534,39 +536,35 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
                               backgroundColor: AppTheme.darkGreen),
                           onPressed: () async {
                             if (formKey.currentState!.validate()) {
-                              if (_currentPropriedadePai.hasLotes &&
-                                  !hasLotes &&
-                                  _allSubPropriedades.length == 1) {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (dialogCtx) => AlertDialog(
-                                    title: const Text("Atenção"),
-                                    content: Text(
-                                        "Ao desativar os lotes, todas as éguas do lote '${_allSubPropriedades.first.nome}' serão movidas para a propriedade principal e o lote será excluído. Deseja continuar?"),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.of(dialogCtx).pop(false),
-                                        child: const Text("Cancelar"),
-                                      ),
-                                      ElevatedButton(
-                                        onPressed: () =>
-                                            Navigator.of(dialogCtx).pop(true),
-                                        child: const Text("Continuar"),
-                                      ),
-                                    ],
-                                  ),
-                                );
+                              // Se a propriedade TINHA lotes e agora NÃO TEM MAIS
+                              if (_currentPropriedadePai.hasLotes && !hasLotes) {
+                                  
+                                  // Busca todas as éguas que estavam nos lotes (subpropriedades)
+                                  final lotes = await SQLiteHelper.instance.readSubPropriedades(_currentPropriedadePai.id);
+                                  for (var lote in lotes) {
+                                    final eguasDoLote = await SQLiteHelper.instance.readEguasByPropriedade(lote.id);
+                                    
+                                    for (var egua in eguasDoLote) {
+                                      // 1. Move a égua para a propriedade pai
+                                      await SQLiteHelper.instance.updateEgua(egua.copyWith(
+                                        propriedadeId: _currentPropriedadePai.id,
+                                        statusSync: 'pending_update',
+                                      ));
 
-                                if (confirm != true) return;
+                                      final manejosDaEgua = await SQLiteHelper.instance.getAllEguasManejos();
+                                      final manejosFiltrados = manejosDaEgua.where((m) => m.eguaId == egua.id).toList();
 
-                                final lote = _allSubPropriedades.first;
-                                final eguasDoLote = await SQLiteHelper.instance.readEguasByPropriedade(lote.id);
-                                for (var egua in eguasDoLote) {
-                                  await SQLiteHelper.instance.updateEgua(egua.copyWith(propriedadeId: _currentPropriedadePai.id));
-                                }
-                                await SQLiteHelper.instance.softDeletePropriedade(lote.id);
+                                      for (var manejo in manejosFiltrados) {
+                                        await SQLiteHelper.instance.updateManejo(manejo.copyWith(
+                                          propriedadeId: _currentPropriedadePai.id, 
+                                          statusSync: 'pending_update',
+                                        ));
+                                      }
+                                    }
+                                    await SQLiteHelper.instance.softDeletePropriedade(lote.id);
+                                  }
                               }
+                              
                               final updatedProp =
                                   _currentPropriedadePai.copyWith(
                                 nome: nomeController.text,
@@ -576,6 +574,7 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
                               );
                               await SQLiteHelper.instance
                                   .updatePropriedade(updatedProp);
+
                               if (mounted) {
                                 Navigator.of(ctx).pop();
                                 ScaffoldMessenger.of(context)
