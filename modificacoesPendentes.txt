@@ -12,11 +12,7 @@ parto:
 
 menu de conclusão:
 
- 	responsável da cabanha (dono ou peões)
-    
-ovários:
-
-    múltipla escolha    
+ 	responsável da cabanha (dono ou peões)  
 
 notificações:
 
