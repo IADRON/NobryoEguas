@@ -986,9 +986,13 @@ class _EguasListScreenState extends State<EguasListScreen> {
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.darkText)),
-                    Text("RP: ${egua.rp}",
-                        style:
-                            TextStyle(fontSize: 14, color: Colors.grey[600])),
+                      if (egua.rp.isNotEmpty) ...[
+                      Text("RP: ${egua.rp}",
+                          style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                          ] else ...[
+                      Text("Pelagem: ${egua.pelagem}",
+                          style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                      ],
                     if (proximoManejo != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8.0),

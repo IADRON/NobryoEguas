@@ -232,9 +232,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
 
     Widget _buildControleFolicularInputs({
     required StateSetter setModalState,
-    // MODIFICADO: Agora recebe uma lista de opções selecionadas
     required List<String> ovarioDirOp, 
-    // MODIFICADO: Função para alternar a seleção de uma opção
     required Function(String) onOvarioDirToggle, 
     required TextEditingController ovarioDirTamanhoController,
     required List<String> ovarioEsqOp,
@@ -246,7 +244,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
   }) {
     final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
 
-    // Função auxiliar para construir os chips
     Widget buildChipGroup(List<String> selectedOptions, Function(String) onToggle) {
       return Wrap(
         spacing: 8.0,
@@ -272,7 +269,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
         Text("Dados do Controle Folicular", style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 15),
         
-        // --- Ovário Direito ---
         const Text("Ovário Direito", style: TextStyle(fontSize: 12, color: Colors.grey)),
         const SizedBox(height: 8),
         Row(
@@ -295,7 +291,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
         ),
         const SizedBox(height: 15),
 
-        // --- Ovário Esquerdo ---
         const Text("Ovário Esquerdo", style: TextStyle(fontSize: 12, color: Colors.grey)),
         const SizedBox(height: 8),
         Row(
@@ -427,14 +422,9 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
           ],
         ),
       ),
-      floatingActionButton: ScaleTransition(
-        scale: _animation,
-        child: FadeTransition(
-          opacity: _animation,
-          child: FloatingActionButton(onPressed: () => _showAddAgendamentoModal(context),
-          child: const Icon(Icons.add),
-          ),
-        )
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddAgendamentoModal(context),
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -854,7 +844,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                                 setModalState(() {
                                   propriedadeMaeSelecionada = null;
                                   propSearchController.clear();
-                                  loteSelecionado = null; // Limpa o lote
+                                  loteSelecionado = null;
                                   eguaSelecionada = null;
                                   peoesDaPropriedade = [];
                                   _showPropList = true;
@@ -891,7 +881,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                                 propriedadeMaeSelecionada = prop;
                                 propSearchController.text = prop.nome;
                                 eguaSelecionada = null;
-                                loteSelecionado = null; // Limpa o lote
+                                loteSelecionado = null;
                                 peoesDaPropriedade = peoes;
                                 _showPropList = false;
                                 FocusScope.of(context).unfocus();
@@ -903,7 +893,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                     ),
                   const SizedBox(height: 15),
 
-                  // NOVO: Campo de Lote Condicional
                   if (propriedadeMaeSelecionada != null && propriedadeMaeSelecionada!.hasLotes)
                     FutureBuilder<List<Propriedade>>(
                       future: SQLiteHelper.instance.readSubPropriedades(propriedadeMaeSelecionada!.id),
@@ -916,7 +905,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                             DropdownButtonFormField<Propriedade>(
                               value: loteSelecionado,
                               decoration: const InputDecoration(
-                                labelText: "Lote (Opcional)",
+                                labelText: "Lote",
                                 prefixIcon: Icon(Icons.location_on_outlined),
                               ),
                               hint: const Text("Selecione o Lote"),
@@ -927,7 +916,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                               onChanged: (lote) =>
                                   setModalState(() {
                                     loteSelecionado = lote;
-                                    eguaSelecionada = null; // Reseta a égua ao trocar de lote
+                                    eguaSelecionada = null;
                                   }),
                             ),
                             const SizedBox(height: 15),
@@ -936,11 +925,9 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                       },
                     ),
 
-                  // ALTERADO: Busca de Éguas Condicional
                   if (propriedadeMaeSelecionada != null)
                     FutureBuilder<List<Egua>>(
                       future: () async {
-                        // Se um lote for selecionado, busca éguas desse lote.
                         if (loteSelecionado != null) {
                           return SQLiteHelper.instance.readEguasByPropriedade(loteSelecionado!.id);
                         }

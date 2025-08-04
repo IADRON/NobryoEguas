@@ -5,22 +5,11 @@ import 'package:nobryo_final/features/auth/screens/edit_profile_screen.dart';
 import 'package:nobryo_final/core/services/auth_service.dart';
 import 'package:nobryo_final/shared/theme/theme.dart';
 
-  void showUserProfileModal(BuildContext context) {
-    final authService = AuthService();
-    final user = authService.currentUserNotifier.value;
+void showUserProfileModal(BuildContext context) {
+  final authService = AuthService();
+  final user = authService.currentUserNotifier.value;
 
-    if (user == null) return;
-
-    ImageProvider<Object> userImage;
-      if (user.photoUrl != null && user.photoUrl!.isNotEmpty) {
-        try {
-          userImage = FileImage(File(user.photoUrl!));
-        } catch (_) {
-          userImage = const AssetImage('assets/images/nobryoSemFundo.png');
-        }
-      } else {
-    userImage = const AssetImage('assets/images/nobryoSemFundo.png');
-      }
+  if (user == null) return;
 
   showModalBottomSheet(
     context: context,
@@ -42,8 +31,18 @@ import 'package:nobryo_final/shared/theme/theme.dart';
               children: [
                 CircleAvatar(
                   radius: 40,
-                  backgroundImage: userImage,
                   backgroundColor: AppTheme.lightGrey,
+                  backgroundImage: (user.photoUrl != null &&
+                          user.photoUrl!.isNotEmpty)
+                      ? FileImage(File(user.photoUrl!)) as ImageProvider
+                      : null,
+                  child: (user.photoUrl == null || user.photoUrl!.isEmpty)
+                      ? const Icon(
+                          Icons.person,
+                          size: 45,
+                          color: AppTheme.darkGreen,
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -60,16 +59,18 @@ import 'package:nobryo_final/shared/theme/theme.dart';
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      Text("Usuário: ${user.username}", style: TextStyle(color: Colors.grey[700])),
+                      Text("Usuário: ${user.username}",
+                          style: TextStyle(color: Colors.grey[700])),
                       const SizedBox(height: 4),
-                      Text("CRMV: ${user.crmv}", style: TextStyle(color: Colors.grey[700])),
+                      Text("CRMV: ${user.crmv}",
+                          style: TextStyle(color: Colors.grey[700])),
                     ],
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, color: AppTheme.brown),
                   onPressed: () {
-                    Navigator.of(ctx).pop(); 
+                    Navigator.of(ctx).pop();
                     _showPasswordConfirmationDialog(context, user);
                   },
                 )
@@ -78,7 +79,8 @@ import 'package:nobryo_final/shared/theme/theme.dart';
             const Divider(height: 30),
             ListTile(
               leading: const Icon(Icons.logout, color: AppTheme.darkText),
-              title: const Text("Sair do Aplicativo", style: TextStyle(color: AppTheme.darkText)),
+              title: const Text("Sair do Aplicativo",
+                  style: TextStyle(color: AppTheme.darkText)),
               onTap: () {
                 Navigator.of(ctx).pop();
                 authService.signOut(context);
@@ -105,7 +107,8 @@ void _showPasswordConfirmationDialog(BuildContext context, AppUser user) {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Para editar seu perfil, por favor, insira sua senha novamente."),
+            const Text(
+                "Para editar seu perfil, por favor, insira sua senha novamente."),
             const SizedBox(height: 15),
             TextFormField(
               controller: passwordController,
@@ -122,6 +125,7 @@ void _showPasswordConfirmationDialog(BuildContext context, AppUser user) {
           child: const Text("Cancelar"),
         ),
         ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
           onPressed: () async {
             if (formKey.currentState!.validate()) {
               final result = await authService.signIn(

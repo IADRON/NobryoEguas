@@ -12,7 +12,7 @@ parto:
 
 menu de conclusão:
 
- 	responsável da cabanha (dono ou peões)  
+ 	responsável da cabanha (dono ou peões)
 
 notificações:
 
