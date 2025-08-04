@@ -1,15 +1,3 @@
-histórico:
-
-    deslocamentos mensais nos relatórios 
-    hora da conclusão do manejo
-    filtro de estações
-
-parto:
-
-    partos no histórico
-
-    diagnóstico com opção "Pariu"
-
 notificações:
 
     monitoramento de controle folicular: 		

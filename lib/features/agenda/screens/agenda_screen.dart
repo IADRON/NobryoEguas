@@ -2231,6 +2231,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                             }
 
                             manejo.status = 'Concluído';
+                            manejo.dataConclusao = DateTime.now();
                             manejo.statusSync = 'pending_update';
                             manejo.detalhes = detalhes;
                             manejo.dataAgendada = dataFinalManejo;
@@ -2352,7 +2353,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
           DropdownButtonFormField<String>(
             value: resultadoDiagnostico,
             hint: const Text("Resultado do Diagnóstico"),
-            items: ["Indeterminado", "Prenhe", "Vazia"]
+            items: ["Indeterminado", "Prenhe", "Vazia", "Pariu"]
                 .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                 .toList(),
             onChanged: (val) => setModalState(() => onResultadoChange(val)),
@@ -2372,7 +2373,68 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
               decoration: const InputDecoration(labelText: "Cobertura"),
               validator: (v) => v!.isEmpty ? "Informe a cobertura" : null,
             ),
-          ]
+          ],
+          if (resultadoDiagnostico == 'Pariu') ...[
+            const SizedBox(height: 15),
+            const Text("Sexo do Potro"),
+            Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                    Text("Macho", style: TextStyle(fontWeight: _sexoPotro == "Macho" ? FontWeight.bold : FontWeight.normal, color: _sexoPotro == "Macho" ? AppTheme.darkGreen: Colors.grey[600])),
+                    Switch(
+                      value: _sexoPotro == "Fêmea",
+                      onChanged: (value) {
+                        setState(() {
+                          _sexoPotro = value ? "Fêmea" : "Macho";
+                        });
+                      },
+                      activeColor: Colors.pink[200],
+                      inactiveThumbColor: AppTheme.darkGreen,
+                      inactiveTrackColor: AppTheme.darkGreen.withOpacity(0.5),
+                        thumbColor: MaterialStateProperty.resolveWith((states) {
+                        if (states.contains(MaterialState.selected)) {
+                          return Colors.pink[200];
+                        }
+                        return AppTheme.darkGreen;
+                      }),
+                    ),
+                    Text("Fêmea", style: TextStyle(fontWeight: _sexoPotro == "Fêmea" ? FontWeight.bold : FontWeight.normal, color: _sexoPotro == "Fêmea" ? Colors.pink[300]: Colors.grey[600])),
+                ],
+              ),
+            const SizedBox(height: 15),
+            TextFormField(controller: _pelagemController,
+              decoration: const InputDecoration(
+                labelText: "Pelagem",
+                prefixIcon: Icon(Icons.pets)
+                ), 
+              validator: (v) => v!.isEmpty ? "Obrigatório" : null),
+            const SizedBox(height: 15),
+            TextFormField(
+              readOnly: true,
+              controller: TextEditingController(
+                text: _dataParto == null ? '' : DateFormat('dd/MM/yyyy').format(_dataParto!),
+              ),
+              decoration: const InputDecoration(
+                labelText: "Data do Parto",
+                prefixIcon: Icon(Icons.calendar_today_outlined),
+                hintText: 'Selecione a data',
+              ),
+              onTap: () async {
+                final pickedDate = await showDatePicker(context: context, initialDate: _dataParto ?? DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime.now());
+                if (pickedDate != null) {
+                  setState(() => _dataParto = pickedDate);
+                }
+              },
+              validator: (v) => v!.isEmpty ? "Informe a data e hora do parto" : null,
+            ),
+            const SizedBox(height: 15),
+            TextFormField(
+                controller: _obsController, 
+                decoration: const InputDecoration(
+                  labelText: "Observação",
+                  prefixIcon: Icon(Icons.comment_outlined)), maxLines: 3),
+              const SizedBox(height: 20),
+          ],
         ];
       case "Inseminação":
         return [

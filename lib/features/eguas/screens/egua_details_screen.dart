@@ -3299,7 +3299,8 @@ class _EditEguaFormState extends State<_EditEguaForm> {
                         },
                       ),
                       const SizedBox(height: 10),
-                        const Text("Sexo do Potro"),
+                      
+                      const Text("Sexo do Potro"),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [

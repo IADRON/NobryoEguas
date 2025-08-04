@@ -25,7 +25,7 @@ import 'package:nobryo_final/core/models/egua_model.dart';
 
       return await openDatabase(
         path,
-        version: 22,
+        version: 23,
         onCreate: _createDB,
         onUpgrade: _onUpgrade,
         onConfigure: (db) async {
@@ -113,6 +113,11 @@ import 'package:nobryo_final/core/models/egua_model.dart';
       if (oldVersion < 22) {
         await db.execute('ALTER TABLE propriedades ADD COLUMN hasLotes INTEGER DEFAULT 1 NOT NULL');
       }
+      if (oldVersion < 23) {
+        await _createPartosTable(db);
+        await _createTemporadaTable(db);
+        await db.execute('ALTER TABLE manejos ADD COLUM dataConclusao DATETIME');
+      }
     }
 
     Future<bool> _columnExists(Database db, String tableName, String columnName) async {
@@ -127,6 +132,8 @@ import 'package:nobryo_final/core/models/egua_model.dart';
       await _createManejosTable(db);
       await _createMedicamentosTable(db);
       await _createPeoesTable(db);
+      await _createPartosTable(db);
+      await _createTemporadaTable(db);
     }
 
     Future<void> _createUsersTable(Database db) async {
@@ -237,6 +244,31 @@ import 'package:nobryo_final/core/models/egua_model.dart';
           propriedadeId TEXT NOT NULL,
           isDeleted INTEGER DEFAULT 0 NOT NULL,
           FOREIGN KEY (propriedadeId) REFERENCES propriedades (id) ON DELETE CASCADE
+        )
+      ''');
+    }
+
+    Future<void> _createPartosTable(Database db) async {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS partos (
+          id TEXT PRIMARY KEY,
+          eguaId TEXT NOT NULL,
+          dataHora TEXT NOT NULL,
+          sexoPotro TEXT NOT NULL,
+          pelagemPotro TEXT NOT NULL,
+          observacoes TEXT,
+          FOREIGN KEY (eguaId) REFERENCES eguas (id) ON DELETE CASCADE
+        )
+      ''');
+    }
+
+    Future<void> _createTemporadaTable(Database db) async {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS temporadas (
+          id TEXT PRIMARY KEY,
+          nome TEXT NOT NULL,
+          dataInicio TEXT NOT NULL,
+          dataFim TEXT NOT NULL,
         )
       ''');
     }

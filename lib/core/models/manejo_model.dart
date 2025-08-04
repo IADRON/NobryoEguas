@@ -6,6 +6,7 @@ class Manejo {
   String? firebaseId;
   String tipo;
   DateTime dataAgendada;
+  DateTime? dataConclusao;
   String status;
   Map<String, dynamic> detalhes;
 
@@ -20,7 +21,7 @@ class Manejo {
 
   String statusSync;
   bool isDeleted;
-  bool isAtrasado; // <-- NOV
+  bool isAtrasado;
 
   String? medicamentoId;
   String? inducao;
@@ -33,6 +34,7 @@ class Manejo {
     required this.tipo,
     required this.dataAgendada,
     this.status = 'Agendado',
+    this.dataConclusao,
     required this.detalhes,
     required this.eguaId,
     required this.propriedadeId,
@@ -42,7 +44,7 @@ class Manejo {
     this.concluidoPorPeaoId,
     this.statusSync = 'pending_create',
     this.isDeleted = false,
-    this.isAtrasado = false, // <-- VALOR PADRÃO
+    this.isAtrasado = false,
     this.medicamentoId,
     this.inducao,
     this.dataHoraInducao,
@@ -55,6 +57,7 @@ class Manejo {
       'firebaseId': firebaseId,
       'tipo': tipo,
       'dataAgendada': dataAgendada.toIso8601String(),
+      'dataConclusao': dataConclusao?.toIso8601String(),
       'status': status,
       'detalhes': jsonEncode(detalhes),
       'eguaId': eguaId,
@@ -78,6 +81,7 @@ class Manejo {
       firebaseId: map['firebaseId'],
       tipo: map['tipo'],
       dataAgendada: DateTime.parse(map['dataAgendada']),
+      dataConclusao: map['dataConclusao'] != null ? DateTime.parse(map['dataConclusao']) : null,
       status: map['status'],
       detalhes:
           map['detalhes'] is String ? jsonDecode(map['detalhes']) : map['detalhes'],
@@ -101,6 +105,7 @@ class Manejo {
       'idLocal': id,
       'tipo': tipo,
       'dataAgendada': dataAgendada,
+      'dataConclusao': dataConclusao,
       'status': status,
       'detalhes': detalhes,
       'eguaFirebaseId': eguaFirebaseId,
@@ -127,6 +132,7 @@ class Manejo {
       propriedadeId: map['propriedadeId'] ?? '',
       tipo: map['tipo'] ?? '',
       dataAgendada: (map['dataAgendada'] as Timestamp).toDate(),
+      dataConclusao: (map['dataConclusao'] as Timestamp?)?.toDate(),
       status: map['status'] ?? 'Agendado',
       detalhes: map['detalhes'] ?? {},
       responsavelId: map['responsavelId'],
