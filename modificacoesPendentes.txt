@@ -10,10 +10,6 @@ parto:
 
     diagnóstico com opção "Pariu"
 
-menu de conclusão:
-
- 	responsável da cabanha (dono ou peões)
-
 notificações:
 
     monitoramento de controle folicular: 		

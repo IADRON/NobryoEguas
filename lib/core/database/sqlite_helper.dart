@@ -25,7 +25,7 @@ import 'package:nobryo_final/core/models/egua_model.dart';
 
       return await openDatabase(
         path,
-        version: 22, // VERSÃO INCREMENTADA
+        version: 22,
         onCreate: _createDB,
         onUpgrade: _onUpgrade,
         onConfigure: (db) async {
@@ -106,11 +106,18 @@ import 'package:nobryo_final/core/models/egua_model.dart';
       }
 
       if (oldVersion < 21) {
-        await db.execute('ALTER TABLE manejos ADD COLUMN isAtrasado INTEGER DEFAULT 0 NOT NULL');
+        if (!await _columnExists(db, 'manejos', 'isAtrasado')) {
+          await db.execute('ALTER TABLE manejos ADD COLUMN isAtrasado INTEGER DEFAULT 0 NOT NULL');
+        }
       }
       if (oldVersion < 22) {
         await db.execute('ALTER TABLE propriedades ADD COLUMN hasLotes INTEGER DEFAULT 1 NOT NULL');
       }
+    }
+
+    Future<bool> _columnExists(Database db, String tableName, String columnName) async {
+      final result = await db.rawQuery('PRAGMA table_info($tableName)');
+      return result.any((col) => col['name'] == columnName);
     }
 
     Future _createDB(Database db, int version) async {
@@ -628,22 +635,23 @@ import 'package:nobryo_final/core/models/egua_model.dart';
     final db = await instance.database;
     final now = DateTime.now();
 
+    // Usar apenas a data, sem as horas, para a comparação
     final today = DateTime(now.year, now.month, now.day);
-    final todayString = today.toIso8601String();
+    final todayString = today.toIso8601String().split('T').first;
 
+    // Atualiza apenas os manejos que estão 'Agendado' e cuja data passou
     final count = await db.update(
       'manejos',
       {
         'isAtrasado': 1,
-        'dataAgendada': todayString,
-        'statusSync': 'pending_update'
+        'statusSync': 'pending_update' // Mantém a lógica de sincronização
       },
-      where: 'status != ? AND dataAgendada < ?', // Condição para a atualização
-      whereArgs: ['Concluído', todayString],     // Argumentos da condição
+      where: 'status = ? AND dataAgendada < ? AND isAtrasado = 0', // Condição mais precisa
+      whereArgs: ['Agendado', todayString], // Argumentos corretos
     );
 
     if (count > 0) {
-      print("$count manejos atrasados foram atualizados e reagendados para hoje.");
+      print("$count manejos foram marcados como atrasados.");
     }
 
     return count;

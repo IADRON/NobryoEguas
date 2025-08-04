@@ -349,7 +349,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       label: const Text("Agendar Novo Manejo"),
                       onPressed: () => _showAddAgendamentoModal(context),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.darkGreen.withOpacity(0.9),
                           padding: const EdgeInsets.symmetric(vertical: 8)),
                     ),
                   ),
@@ -419,6 +418,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
               ],
             ),
             child: ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.brown),
               onPressed: () => _showAddHistoricoModal(context, isEditing: false),
               child: const Text("Adicionar Manejo ao Histórico"),
             ),
@@ -956,13 +956,15 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
   }
 
   void _showAddAgendamentoModal(BuildContext context,
-      {DateTime? preselectedDate, String? preselectedType}) async {
+    {DateTime? preselectedDate, String? preselectedType}) async {
     final currentUser = _authService.currentUserNotifier.value;
     if (currentUser == null) return;
 
     final allUsersList = await SQLiteHelper.instance.getAllUsers();
     final peoesDaPropriedade =
         await SQLiteHelper.instance.readPeoesByPropriedade(widget.propriedadeMaeId);
+    final propriedade =
+        await SQLiteHelper.instance.readPropriedade(_currentEgua.propriedadeId);
 
     final formKey = GlobalKey<FormState>();
     DateTime? dataSelecionada = preselectedDate;
@@ -978,14 +980,60 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
       "Outros Manejos"
     ];
 
-    dynamic responsavelSelecionado = allUsersList
-        .firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
+    dynamic responsavelSelecionado;
+    bool isVeterinario = true;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (BuildContext context, StateSetter setModalState) {
+          List<DropdownMenuItem<dynamic>> veterinarioItems = [
+            const DropdownMenuItem<dynamic>(
+              enabled: false,
+              child: Text("Veterinários",
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
+            ),
+            ...allUsersList
+                .map((user) => DropdownMenuItem<dynamic>(
+                    value: user, child: Text(user.nome)))
+                .toList(),
+          ];
+
+          List<DropdownMenuItem<dynamic>> cabanhaItems = [];
+          if (propriedade != null) {
+            cabanhaItems.add(
+              const DropdownMenuItem<dynamic>(
+                enabled: false,
+                child: Text("Dono",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: AppTheme.brown)),
+              ),
+            );
+            cabanhaItems.add(
+              DropdownMenuItem<dynamic>(
+                value: propriedade.dono,
+                child: Text(propriedade.dono),
+              ),
+            );
+          }
+
+          if (peoesDaPropriedade.isNotEmpty) {
+            cabanhaItems.add(const DropdownMenuItem<dynamic>(
+                enabled: false, child: Divider()));
+            cabanhaItems.add(const DropdownMenuItem<dynamic>(
+              enabled: false,
+              child: Text("Peões da Propriedade",
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: AppTheme.brown)),
+            ));
+            cabanhaItems.addAll(peoesDaPropriedade
+                .map((peao) =>
+                    DropdownMenuItem<dynamic>(value: peao, child: Text(peao.nome)))
+                .toList());
+          }
+
           return Padding(
             padding: EdgeInsets.only(
                 bottom: MediaQuery.of(ctx).viewInsets.bottom,
@@ -1049,10 +1097,10 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                     const SizedBox(height: 15),
                     DropdownButtonFormField<String>(
                       value: tipoManejoSelecionado,
-                      decoration: InputDecoration(
-                          labelText: "Tipo de Manejo",
-                          prefixIcon: Icon(Icons.edit_note_outlined),
-                          ),
+                      decoration: const InputDecoration(
+                        labelText: "Tipo de Manejo",
+                        prefixIcon: Icon(Icons.edit_note_outlined),
+                      ),
                       hint: const Text("Obrigatório"),
                       items: tiposDeManejo
                           .map((tipo) =>
@@ -1063,43 +1111,33 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       validator: (v) => v == null ? "Obrigatório" : null,
                     ),
                     const SizedBox(height: 15),
+                    SwitchListTile(
+                      title: Text(
+                          isVeterinario ? 'Veterinário' : 'Da Cabanha'),
+                      value: isVeterinario,
+                      onChanged: (bool value) {
+                        setModalState(() {
+                          isVeterinario = value;
+                          responsavelSelecionado = null;
+                        });
+                      },
+                      secondary: Icon(isVeterinario
+                          ? Icons.medical_services_outlined
+                          : Icons.home_work_outlined),
+                    ),
                     DropdownButtonFormField<dynamic>(
                       value: responsavelSelecionado,
-                      decoration: InputDecoration(
-                          labelText: "Responsável",
-                          prefixIcon: Icon(Icons.person_outline),
-                          ),
-                      items: [
-                        const DropdownMenuItem<dynamic>(
-                          enabled: false,
-                          child: Text("Usuários",
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.darkGreen)),
-                        ),
-                        ...allUsersList.map((user) => DropdownMenuItem<dynamic>(
-                            value: user, child: Text(user.nome))),
-                        if (peoesDaPropriedade.isNotEmpty) ...[
-                          const DropdownMenuItem<dynamic>(
-                              enabled: false, child: Divider()),
-                          const DropdownMenuItem<dynamic>(
-                            enabled: false,
-                            child: Text("Peões da Propriedade",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.brown)),
-                          ),
-                          ...peoesDaPropriedade.map((peao) =>
-                              DropdownMenuItem<dynamic>(
-                                  value: peao, child: Text(peao.nome))),
-                        ]
-                      ],
+                      decoration: const InputDecoration(
+                        labelText: "Responsável",
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                      items: isVeterinario ? veterinarioItems : cabanhaItems,
                       onChanged: (value) {
-                        if (value != null)
+                        if (value != null) {
                           setModalState(() => responsavelSelecionado = value);
+                        }
                       },
-                      validator: (v) =>
-                          v == null ? "Obrigatório" : null,
+                      validator: (v) => v == null ? "Obrigatório" : null,
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
@@ -1112,8 +1150,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.darkGreen),
                         onPressed: () async {
                           if (formKey.currentState!.validate()) {
                             final novoManejo = Manejo(
@@ -1313,8 +1349,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                         _showMarkAsCompleteModal(context, manejo);
                       },
                       style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              AppTheme.darkGreen,
                           padding:
                               const EdgeInsets.symmetric(vertical: 14))),
                 )
@@ -1517,8 +1551,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                         icon: const Icon(Icons.check_circle_outline),
                         label: const Text("SALVAR ALTERAÇÕES"),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.darkGreen,
-                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
@@ -1566,6 +1598,9 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     final allUsersList = await SQLiteHelper.instance.getAllUsers();
     final peoesDaPropriedade = await SQLiteHelper.instance.readPeoesByPropriedade(widget.propriedadeMaeId);
 
+    final Propriedade? propriedadeMaeSelecionada =
+        await SQLiteHelper.instance.readPropriedade(widget.propriedadeMaeId);
+
     final formKey = GlobalKey<FormState>();
     final obsController = TextEditingController(text: manejo.detalhes['observacao']);
 
@@ -1596,6 +1631,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     bool _showMedicamentoList = false;
 
     dynamic concluidoPorSelecionado = allUsersList.firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
+    bool isVeterinario = true;
     
     bool _incluirControleFolicular = false;
 
@@ -1614,6 +1650,47 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       .toList();
             });
           }
+
+          List<DropdownMenuItem<dynamic>> veterinarioItems = [
+            ...allUsersList
+                .map((user) => DropdownMenuItem<dynamic>(
+                    value: user, child: Text(user.nome)))
+                .toList(),
+          ];
+
+          List<DropdownMenuItem<dynamic>> cabanhaItems = [];
+          if (propriedadeMaeSelecionada != null) {
+            cabanhaItems.add(
+              const DropdownMenuItem<dynamic>(
+                enabled: false,
+                child: Text("Dono",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: AppTheme.brown)),
+              ),
+            );
+            cabanhaItems.add(
+              DropdownMenuItem<dynamic>(
+                value: propriedadeMaeSelecionada.dono,
+                child: Text(propriedadeMaeSelecionada.dono),
+              ),
+            );
+          }
+
+          if (peoesDaPropriedade.isNotEmpty) {
+            cabanhaItems.add(const DropdownMenuItem<dynamic>(
+                enabled: false, child: Divider()));
+            cabanhaItems.add(const DropdownMenuItem<dynamic>(
+              enabled: false,
+              child: Text("Peões da Propriedade",
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: AppTheme.brown)),
+            ));
+            cabanhaItems.addAll(peoesDaPropriedade
+                .map((peao) =>
+                    DropdownMenuItem<dynamic>(value: peao, child: Text(peao.nome)))
+                .toList());
+          }
+
 
           return Padding(
             padding: EdgeInsets.only(
@@ -1777,12 +1854,28 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       const SizedBox(height: 10),
                       DropdownButtonFormField<String>(
                         value: inducaoSelecionada,
-                        hint: const Text("Indução"),
+                        decoration: InputDecoration(
+                          labelText: "Tipo de Indução", 
+                          prefixIcon: Icon(Icons.healing_outlined),
+                          suffixIcon: inducaoSelecionada != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      inducaoSelecionada = null;
+                                      dataHoraInducao = null;
+                                    });
+                                  },
+                                )
+                              : null,
+                        ),
                         items: ["HCG", "DESLO", "HCG+DESLO"]
                             .map((label) => DropdownMenuItem(child: Text(label), value: label))
                             .toList(),
-                        onChanged: (value) => setModalState(() => inducaoSelecionada = value)),
-                      const SizedBox(height: 10),
+                        onChanged: (value) => setModalState(() => inducaoSelecionada = value),
+                      ),
+                      const SizedBox(height: 15),
+                      
                       TextFormField(
                         readOnly: true,
                         controller: TextEditingController(
@@ -1838,32 +1931,33 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                     Text("Detalhes da Conclusão", style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 15),
 
+                    SwitchListTile(
+                      title: Text(
+                          isVeterinario ? 'Veterinário' : 'Da Cabanha'),
+                      value: isVeterinario,
+                      onChanged: (bool value) {
+                        setModalState(() {
+                          isVeterinario = value;
+                          concluidoPorSelecionado = null;
+                        });
+                      },
+                      secondary: Icon(isVeterinario
+                          ? Icons.medical_services_outlined
+                          : Icons.home_work_outlined),
+                    ),
                     DropdownButtonFormField<dynamic>(
                       value: concluidoPorSelecionado,
-                      hint: const Text("Responsável pela conclusão"),
-                      decoration: InputDecoration(
-                        labelText: "Concluído por",
-                        prefixIcon: Icon(Icons.person_outline),
-                        ),
-                    items: [
-                      const DropdownMenuItem<dynamic>(
-                      enabled: false,
-                      child: Text("Usuários", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
-                      ),
-                      ...allUsersList.map((user) => DropdownMenuItem<dynamic>(value: user, child: Text(user.nome))),
-                      if (peoesDaPropriedade.isNotEmpty) ...[
-                      const DropdownMenuItem<dynamic>(enabled: false, child: Divider()),
-                      const DropdownMenuItem<dynamic>(
-                          enabled: false,
-                          child: Text("Peões da Propriedade", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.brown)),
-                      ),
-                      ...peoesDaPropriedade.map((peao) => DropdownMenuItem<dynamic>(value: peao, child: Text(peao.nome))),
-                      ]
-                    ],
+                      decoration: const InputDecoration(
+                          labelText: "Concluído por",
+                          prefixIcon: Icon(Icons.person_outline)),
+                      items: isVeterinario ? veterinarioItems : cabanhaItems,
                       onChanged: (value) {
-                        if (value != null) setModalState(() => concluidoPorSelecionado = value);
+                        if (value != null) {
+                          setModalState(() => concluidoPorSelecionado = value);
+                        }
                       },
-                      validator: (v) => v == null ? "Obrigatório" : null,
+                      validator: (v) =>
+                          v == null ? "Selecione um responsável" : null,
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
@@ -1897,7 +1991,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
                         onPressed: () async {
                           if (formKey.currentState!.validate()) {
                             final Map<String, dynamic> detalhes = manejo.detalhes;
@@ -2384,7 +2477,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
                         onPressed: () async {
                           if (formKey.currentState!.validate()) {
                             final Map<String, dynamic> detalhes = {
@@ -3245,7 +3337,6 @@ class _EditEguaFormState extends State<_EditEguaForm> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
                   onPressed: _saveChanges,
                   child: const Text("Salvar Alterações"),
                 ),

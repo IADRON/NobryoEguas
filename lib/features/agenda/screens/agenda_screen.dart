@@ -49,6 +49,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
   StreamSubscription? _manejosSubscription;
 
   late AnimationController _animationController;
+  // ignore: unused_field
   late Animation<double> _animation;
 
   @override
@@ -231,110 +232,112 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
   }
 
     Widget _buildControleFolicularInputs({
-    required StateSetter setModalState,
-    required List<String> ovarioDirOp, 
-    required Function(String) onOvarioDirToggle, 
-    required TextEditingController ovarioDirTamanhoController,
-    required List<String> ovarioEsqOp,
-    required Function(String) onOvarioEsqToggle,
-    required TextEditingController ovarioEsqTamanhoController,
-    required String? edemaSelecionado,
-    required Function(String?) onEdemaChange,
-    required TextEditingController uteroController,
-  }) {
-    final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
+      required StateSetter setModalState,
+      required List<String> ovarioDirOp,
+      required Function(String) onOvarioDirToggle,
+      required TextEditingController ovarioDirTamanhoController,
+      required List<String> ovarioEsqOp,
+      required Function(String) onOvarioEsqToggle,
+      required TextEditingController ovarioEsqTamanhoController,
+      required String? edemaSelecionado,
+      required Function(String?) onEdemaChange,
+      required TextEditingController uteroController,
+    }) {
+      final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
 
-    Widget buildChipGroup(List<String> selectedOptions, Function(String) onToggle) {
-      return Wrap(
-        spacing: 8.0,
-        runSpacing: 4.0,
-        children: ovarioOptions.map((option) {
-          return FilterChip(
-            label: Text(option),
-            selected: selectedOptions.contains(option),
-            onSelected: (isSelected) {
-              onToggle(option);
-            },
-            selectedColor: AppTheme.darkGreen.withOpacity(0.2),
-            checkmarkColor: AppTheme.darkGreen,
-          );
-        }).toList(),
+      Widget buildChipGroup(
+          List<String> selectedOptions, Function(String) onToggle) {
+        return Wrap(
+          spacing: 8.0,
+          runSpacing: 4.0,
+          children: ovarioOptions.map((option) {
+            return FilterChip(
+              label: Text(option),
+              selected: selectedOptions.contains(option),
+              onSelected: (isSelected) {
+                onToggle(option);
+              },
+              selectedColor: AppTheme.darkGreen.withOpacity(0.2),
+              checkmarkColor: AppTheme.darkGreen,
+            );
+          }).toList(),
+        );
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 10),
+          Text("Dados do Controle Folicular",
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 15),
+          const Text("Ovário Direito",
+              style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: buildChipGroup(ovarioDirOp, onOvarioDirToggle),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: TextFormField(
+                  controller: ovarioDirTamanhoController,
+                  decoration: const InputDecoration(labelText: "Tamanho (mm)"),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          const Text("Ovário Esquerdo",
+              style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: buildChipGroup(ovarioEsqOp, onOvarioEsqToggle),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: TextFormField(
+                  controller: ovarioEsqTamanhoController,
+                  decoration: const InputDecoration(labelText: "Tamanho (mm)"),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: edemaSelecionado,
+            decoration: const InputDecoration(
+              labelText: "Edema",
+              prefixIcon: Icon(Icons.numbers_outlined),
+            ),
+            items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
+                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                .toList(),
+            onChanged: onEdemaChange,
+          ),
+          const SizedBox(height: 10),
+          TextFormField(
+            controller: uteroController,
+            decoration: const InputDecoration(
+                labelText: "Útero", prefixIcon: Icon(Icons.notes_outlined)),
+          ),
+        ],
       );
     }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 10),
-        Text("Dados do Controle Folicular", style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 15),
-        
-        const Text("Ovário Direito", style: TextStyle(fontSize: 12, color: Colors.grey)),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: buildChipGroup(ovarioDirOp, onOvarioDirToggle),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 2,
-              child: TextFormField(
-                controller: ovarioDirTamanhoController,
-                decoration: const InputDecoration(labelText: "Tamanho (mm)"),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 15),
-
-        const Text("Ovário Esquerdo", style: TextStyle(fontSize: 12, color: Colors.grey)),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: buildChipGroup(ovarioEsqOp, onOvarioEsqToggle),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 2,
-              child: TextFormField(
-                controller: ovarioEsqTamanhoController,
-                decoration: const InputDecoration(labelText: "Tamanho (mm)"),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 10),
-        DropdownButtonFormField<String>(
-          value: edemaSelecionado,
-          decoration: const InputDecoration(
-            labelText: "Edema",
-            prefixIcon: Icon(Icons.numbers_outlined),
-          ),
-          items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
-          onChanged: onEdemaChange,
-        ),
-        const SizedBox(height: 10),
-        TextFormField(
-          controller: uteroController,
-          decoration: const InputDecoration(
-              labelText: "Útero",
-              prefixIcon: Icon(Icons.notes_outlined)),
-        ),
-      ],
-    );
-  }
-
+    
   @override
   Widget build(BuildContext context) {
     final username = _authService.currentUserNotifier.value?.username;
@@ -724,7 +727,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
             child: const Text("Não"),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text("Sim"),
           ),
@@ -752,12 +754,13 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
   if (currentUser == null) return;
 
   final allUsersList = await SQLiteHelper.instance.getAllUsers();
-  
+
   final formKey = GlobalKey<FormState>();
 
   Propriedade? propriedadeMaeSelecionada = propriedade;
-  Propriedade? loteSelecionado; // NOVO: Estado para o lote selecionado
-  final TextEditingController propSearchController = TextEditingController(text: propriedadeMaeSelecionada?.nome ?? '');
+  Propriedade? loteSelecionado;
+  final TextEditingController propSearchController =
+      TextEditingController(text: propriedadeMaeSelecionada?.nome ?? '');
 
   List<Propriedade> _allTopLevelProps = [];
   List<Propriedade> _filteredProps = [];
@@ -768,14 +771,21 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
   String? tipoManejoSelecionado = preselectedType;
   final detalhesController = TextEditingController();
   final tiposDeManejo = [
-    "Controle Folicular", "Inseminação", "Lavado", "Diagnóstico",
-    "Transferência de Embrião", "Coleta de Embrião", "Outros Manejos"
+    "Controle Folicular",
+    "Inseminação",
+    "Lavado",
+    "Diagnóstico",
+    "Transferência de Embrião",
+    "Coleta de Embrião",
+    "Outros Manejos"
   ];
-  
-  dynamic responsavelSelecionado = allUsersList.firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
+
+  dynamic responsavelSelecionado;
+  bool isVeterinario = true;
   List<Peao> peoesDaPropriedade = [];
   if (propriedadeMaeSelecionada != null) {
-      peoesDaPropriedade = await SQLiteHelper.instance.readPeoesByPropriedade(propriedadeMaeSelecionada.id);
+    peoesDaPropriedade = await SQLiteHelper.instance
+        .readPeoesByPropriedade(propriedadeMaeSelecionada.id);
   }
 
   _allTopLevelProps = await SQLiteHelper.instance.readTopLevelPropriedades();
@@ -796,6 +806,46 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                     prop.nome.toLowerCase().contains(query.toLowerCase()))
                 .toList();
           });
+        }
+
+        List<DropdownMenuItem<dynamic>> veterinarioItems = [
+          ...allUsersList
+              .map((user) => DropdownMenuItem<dynamic>(
+                  value: user, child: Text(user.nome)))
+              .toList(),
+        ];
+
+        List<DropdownMenuItem<dynamic>> cabanhaItems = [];
+        if (propriedadeMaeSelecionada != null) {
+          cabanhaItems.add(
+            const DropdownMenuItem<dynamic>(
+              enabled: false,
+              child: Text("Dono",
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: AppTheme.brown)),
+            ),
+          );
+          cabanhaItems.add(
+            DropdownMenuItem<dynamic>(
+              value: propriedadeMaeSelecionada!.dono,
+              child: Text(propriedadeMaeSelecionada!.dono),
+            ),
+          );
+        }
+
+        if (peoesDaPropriedade.isNotEmpty) {
+          cabanhaItems.add(const DropdownMenuItem<dynamic>(
+              enabled: false, child: Divider()));
+          cabanhaItems.add(const DropdownMenuItem<dynamic>(
+            enabled: false,
+            child: Text("Peões da Propriedade",
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, color: AppTheme.brown)),
+          ));
+          cabanhaItems.addAll(peoesDaPropriedade
+              .map((peao) =>
+                  DropdownMenuItem<dynamic>(value: peao, child: Text(peao.nome)))
+              .toList());
         }
 
         return Padding(
@@ -828,7 +878,10 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                   ),
                   const SizedBox(height: 10),
                   Text("Agendar Manejo",
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold)),
                   const Divider(height: 30, thickness: 1),
                   TextFormField(
                     controller: propSearchController,
@@ -864,10 +917,9 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                     Container(
                       height: 150,
                       decoration: BoxDecoration(
-                        color: AppTheme.pageBackground,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppTheme.lightGrey)
-                      ),
+                          color: AppTheme.pageBackground,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.lightGrey)),
                       child: ListView.builder(
                         itemCount: _filteredProps.length,
                         itemBuilder: (context, index) {
@@ -875,8 +927,9 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                           return ListTile(
                             title: Text(prop.nome),
                             onTap: () async {
-                              List<Peao> peoes = await SQLiteHelper.instance.readPeoesByPropriedade(prop.id);
-                              
+                              List<Peao> peoes = await SQLiteHelper.instance
+                                  .readPeoesByPropriedade(prop.id);
+
                               setModalState(() {
                                 propriedadeMaeSelecionada = prop;
                                 propSearchController.text = prop.nome;
@@ -892,10 +945,11 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                       ),
                     ),
                   const SizedBox(height: 15),
-
-                  if (propriedadeMaeSelecionada != null && propriedadeMaeSelecionada!.hasLotes)
+                  if (propriedadeMaeSelecionada != null &&
+                      propriedadeMaeSelecionada!.hasLotes)
                     FutureBuilder<List<Propriedade>>(
-                      future: SQLiteHelper.instance.readSubPropriedades(propriedadeMaeSelecionada!.id),
+                      future: SQLiteHelper.instance
+                          .readSubPropriedades(propriedadeMaeSelecionada!.id),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData || snapshot.data!.isEmpty) {
                           return const SizedBox.shrink();
@@ -906,55 +960,66 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                               value: loteSelecionado,
                               decoration: const InputDecoration(
                                 labelText: "Lote",
-                                prefixIcon: Icon(Icons.location_on_outlined),
+                                prefixIcon:
+                                    Icon(Icons.location_on_outlined),
                               ),
                               hint: const Text("Selecione o Lote"),
                               items: snapshot.data!
                                   .map((lote) => DropdownMenuItem(
                                       value: lote, child: Text(lote.nome)))
                                   .toList(),
-                              onChanged: (lote) =>
-                                  setModalState(() {
-                                    loteSelecionado = lote;
-                                    eguaSelecionada = null;
-                                  }),
+                              onChanged: (lote) => setModalState(() {
+                                loteSelecionado = lote;
+                                eguaSelecionada = null;
+                              }),
                             ),
                             const SizedBox(height: 15),
                           ],
                         );
                       },
                     ),
-
                   if (propriedadeMaeSelecionada != null)
                     FutureBuilder<List<Egua>>(
                       future: () async {
                         if (loteSelecionado != null) {
-                          return SQLiteHelper.instance.readEguasByPropriedade(loteSelecionado!.id);
+                          return SQLiteHelper.instance
+                              .readEguasByPropriedade(loteSelecionado!.id);
                         }
                         // Se a propriedade não tem lotes, busca todas as éguas dela.
                         if (!propriedadeMaeSelecionada!.hasLotes) {
-                          return SQLiteHelper.instance.readEguasByPropriedade(propriedadeMaeSelecionada!.id);
+                          return SQLiteHelper.instance
+                              .readEguasByPropriedade(
+                                  propriedadeMaeSelecionada!.id);
                         }
                         // Se nenhum lote foi selecionado (mas a prop tem lotes), busca de todos os lotes.
-                        final subPropriedades = await SQLiteHelper.instance.readSubPropriedades(propriedadeMaeSelecionada!.id);
-                        final allPropIds = [propriedadeMaeSelecionada!.id, ...subPropriedades.map((p) => p.id)];
-                        
+                        final subPropriedades = await SQLiteHelper.instance
+                            .readSubPropriedades(
+                                propriedadeMaeSelecionada!.id);
+                        final allPropIds = [
+                          propriedadeMaeSelecionada!.id,
+                          ...subPropriedades.map((p) => p.id)
+                        ];
+
                         List<Egua> eguasDaPropriedade = [];
                         for (final propId in allPropIds) {
-                            final eguasDoLote = await SQLiteHelper.instance.readEguasByPropriedade(propId);
-                            eguasDaPropriedade.addAll(eguasDoLote);
+                          final eguasDoLote = await SQLiteHelper.instance
+                              .readEguasByPropriedade(propId);
+                          eguasDaPropriedade.addAll(eguasDoLote);
                         }
                         return eguasDaPropriedade;
                       }(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return const Center(
                               child: Padding(
                                   padding: EdgeInsets.all(8.0),
                                   child: CircularProgressIndicator()));
                         }
                         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                            return const Center(child: Text("Nenhuma égua encontrada para a seleção atual."));
+                          return const Center(
+                              child: Text(
+                                  "Nenhuma égua encontrada para a seleção atual."));
                         }
                         return DropdownButtonFormField<Egua>(
                           value: eguaSelecionada,
@@ -969,24 +1034,24 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                               .toList(),
                           onChanged: (egua) =>
                               setModalState(() => eguaSelecionada = egua),
-                          validator: (v) => v == null ? "Selecione uma égua" : null,
+                          validator: (v) =>
+                              v == null ? "Selecione uma égua" : null,
                         );
                       },
                     ),
                   const SizedBox(height: 15),
-                  
-                  // ... resto do formulário (Data, Tipo, Responsável, Detalhes) ...
-                   Row(
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: TextFormField(
                           readOnly: true,
                           controller: TextEditingController(
-                              text: dataSelecionada == null
-                                  ? ''
-                                  : DateFormat('dd/MM/yyyy').format(dataSelecionada!),
-                            ),
+                            text: dataSelecionada == null
+                                ? ''
+                                : DateFormat('dd/MM/yyyy')
+                                    .format(dataSelecionada!),
+                          ),
                           decoration: const InputDecoration(
                             labelText: "Data do Manejo",
                             prefixIcon: Icon(Icons.calendar_today_outlined),
@@ -995,15 +1060,18 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                           onTap: () async {
                             final pickedDate = await showDatePicker(
                                 context: context,
-                                initialDate: dataSelecionada ?? DateTime.now(),
+                                initialDate:
+                                    dataSelecionada ?? DateTime.now(),
                                 firstDate: DateTime(2020),
                                 lastDate: DateTime(2030));
                             if (pickedDate != null) {
-                              setModalState(() => dataSelecionada = pickedDate);
+                              setModalState(
+                                  () => dataSelecionada = pickedDate);
                             }
                           },
-                          validator: (v) =>
-                              dataSelecionada == null ? "Selecione a data" : null,
+                          validator: (v) => dataSelecionada == null
+                              ? "Selecione a data"
+                              : null,
                         ),
                       ),
                     ],
@@ -1017,36 +1085,41 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                     ),
                     hint: const Text("Selecione o Tipo"),
                     items: tiposDeManejo
-                        .map((tipo) =>
-                            DropdownMenuItem(value: tipo, child: Text(tipo)))
+                        .map((tipo) => DropdownMenuItem(
+                            value: tipo, child: Text(tipo)))
                         .toList(),
                     onChanged: (val) =>
                         setModalState(() => tipoManejoSelecionado = val),
                     validator: (v) => v == null ? "Selecione o tipo" : null,
                   ),
                   const SizedBox(height: 15),
+                  SwitchListTile(
+                    title: Text(
+                        isVeterinario ? 'Veterinário' : 'Da Cabanha'),
+                    value: isVeterinario,
+                    onChanged: (bool value) {
+                      setModalState(() {
+                        isVeterinario = value;
+                        responsavelSelecionado = null;
+                      });
+                    },
+                    secondary: Icon(isVeterinario
+                        ? Icons.medical_services_outlined
+                        : Icons.home_work_outlined),
+                  ),
                   DropdownButtonFormField<dynamic>(
                     value: responsavelSelecionado,
-                    decoration: const InputDecoration(labelText: "Responsável", prefixIcon: Icon(Icons.person_outline)),
-                    items: [
-                      const DropdownMenuItem<dynamic>(
-                        enabled: false,
-                        child: Text("Usuários", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
-                      ),
-                      ...allUsersList.map((user) => DropdownMenuItem<dynamic>(value: user, child: Text(user.nome))),
-                      if (peoesDaPropriedade.isNotEmpty) ...[
-                        const DropdownMenuItem<dynamic>(enabled: false, child: Divider()),
-                        const DropdownMenuItem<dynamic>(
-                          enabled: false,
-                          child: Text("Peões da Propriedade", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.brown)),
-                        ),
-                        ...peoesDaPropriedade.map((peao) => DropdownMenuItem<dynamic>(value: peao, child: Text(peao.nome))),
-                      ]
-                    ],
+                    decoration: const InputDecoration(
+                        labelText: "Responsável",
+                        prefixIcon: Icon(Icons.person_outline)),
+                    items: isVeterinario ? veterinarioItems : cabanhaItems,
                     onChanged: (value) {
-                      if (value != null) setModalState(() => responsavelSelecionado = value);
+                      if (value != null) {
+                        setModalState(() => responsavelSelecionado = value);
+                      }
                     },
-                    validator: (v) => v == null ? "Selecione um responsável" : null,
+                    validator: (v) =>
+                        v == null ? "Selecione um responsável" : null,
                   ),
                   const SizedBox(height: 15),
                   TextFormField(
@@ -1063,8 +1136,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                       icon: const Icon(Icons.check_circle_outline),
                       label: const Text("AGENDAR"),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.darkGreen,
-                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
@@ -1076,16 +1147,22 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                             dataAgendada: dataSelecionada!,
                             detalhes: {'descricao': detalhesController.text},
                             eguaId: eguaSelecionada!.id,
-                            // ALTERADO: Usa o ID do lote se selecionado, senão o ID da égua
-                            propriedadeId: loteSelecionado?.id ?? eguaSelecionada!.propriedadeId,
-                            responsavelId: responsavelSelecionado is AppUser ? responsavelSelecionado.uid : null,
-                            responsavelPeaoId: responsavelSelecionado is Peao ? responsavelSelecionado.id : null,
+                            propriedadeId: loteSelecionado?.id ??
+                                eguaSelecionada!.propriedadeId,
+                            responsavelId: responsavelSelecionado is AppUser
+                                ? responsavelSelecionado.uid
+                                : null,
+                            responsavelPeaoId:
+                                responsavelSelecionado is Peao
+                                    ? responsavelSelecionado.id
+                                    : null,
                           );
                           await SQLiteHelper.instance
                               .createManejo(novoManejo);
                           if (mounted) {
                             Navigator.of(ctx).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(const SnackBar(
                               content: Text("Manejo agendado com sucesso!"),
                               backgroundColor: Colors.green,
                             ));
@@ -1096,15 +1173,15 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                     ),
                   ),
                   const SizedBox(height: 20),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
-    ),
-  );
-}
+          );
+        },
+      ),
+    );
+  }
 
 void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) async {
   final currentUser = _authService.currentUserNotifier.value;
@@ -1117,7 +1194,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
   Propriedade? lote = _allPropriedades[manejo.propriedadeId];
   final Propriedade? propriedadeMae = lote?.parentId != null ? _allPropriedades[lote!.parentId] : lote;
 
-  // NOVO: Estado para lote e égua selecionados na edição
   Propriedade? loteSelecionado = lote?.parentId != null ? lote : null;
   Egua? eguaSelecionada = egua;
 
@@ -1359,8 +1435,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                       icon: const Icon(Icons.check_circle_outline),
                       label: const Text("SALVAR ALTERAÇÕES"),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.darkGreen,
-                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
@@ -1410,7 +1484,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
       responsavelNome = _allPeoes[manejo.responsavelPeaoId]?.nome ?? 'Desconhecido';
     }
     
-    // Lógica para encontrar o lote e a propriedade pai
     final Propriedade? lote = _allPropriedades[manejo.propriedadeId];
     final Propriedade? propriedadePai = lote?.parentId != null ? _allPropriedades[lote!.parentId] : null;
 
@@ -1605,9 +1678,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                         },
 
                         style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                AppTheme.darkGreen,
-                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)
                             )
@@ -1628,6 +1698,9 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
 
     final Propriedade? lote = _allPropriedades[egua.propriedadeId];
     final String propriedadeMaeId = lote?.parentId ?? egua.propriedadeId;
+    final Propriedade? propriedadeMaeSelecionada = _allPropriedades[propriedadeMaeId]; 
+
+    bool isVeterinario = true;
 
     final allUsersList = await SQLiteHelper.instance.getAllUsers();
     final peoesDaPropriedade = await SQLiteHelper.instance.readPeoesByPropriedade(propriedadeMaeId);
@@ -1696,6 +1769,46 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                       prop.nome.toLowerCase().contains(query.toLowerCase()))
                   .toList();
             });
+          }
+
+          List<DropdownMenuItem<dynamic>> veterinarioItems = [
+            ...allUsersList
+                .map((user) => DropdownMenuItem<dynamic>(
+                    value: user, child: Text(user.nome)))
+                .toList(),
+          ];
+
+          List<DropdownMenuItem<dynamic>> cabanhaItems = [];
+          if (propriedadeMaeSelecionada != null) {
+            cabanhaItems.add(
+              const DropdownMenuItem<dynamic>(
+                enabled: false,
+                child: Text("Dono",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: AppTheme.brown)),
+              ),
+            );
+            cabanhaItems.add(
+              DropdownMenuItem<dynamic>(
+                value: propriedadeMaeSelecionada.dono,
+                child: Text(propriedadeMaeSelecionada.dono),
+              ),
+            );
+          }
+
+          if (peoesDaPropriedade.isNotEmpty) {
+            cabanhaItems.add(const DropdownMenuItem<dynamic>(
+                enabled: false, child: Divider()));
+            cabanhaItems.add(const DropdownMenuItem<dynamic>(
+              enabled: false,
+              child: Text("Peões da Propriedade",
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: AppTheme.brown)),
+            ));
+            cabanhaItems.addAll(peoesDaPropriedade
+                .map((peao) =>
+                    DropdownMenuItem<dynamic>(value: peao, child: Text(peao.nome)))
+                .toList());
           }
 
           return Padding(
@@ -1898,7 +2011,21 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
 
                       DropdownButtonFormField<String>(
                         value: inducaoSelecionada,
-                        decoration: const InputDecoration(labelText: "Tipo de Indução", prefixIcon: Icon(Icons.healing_outlined)),
+                        decoration: InputDecoration(
+                          labelText: "Tipo de Indução", 
+                          prefixIcon: Icon(Icons.healing_outlined),
+                          suffixIcon: inducaoSelecionada != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      inducaoSelecionada = null;
+                                      dataHoraInducao = null;
+                                    });
+                                  },
+                                )
+                              : null,
+                        ),
                         items: ["HCG", "DESLO", "HCG+DESLO"]
                             .map((label) => DropdownMenuItem(child: Text(label), value: label))
                             .toList(),
@@ -1966,28 +2093,33 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                     Text("Finalização", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 15),
 
+                    SwitchListTile(
+                      title: Text(
+                          isVeterinario ? 'Veterinário' : 'Da Cabanha'),
+                      value: isVeterinario,
+                      onChanged: (bool value) {
+                        setModalState(() {
+                          isVeterinario = value;
+                          concluidoPorSelecionado = null;
+                        });
+                      },
+                      secondary: Icon(isVeterinario
+                          ? Icons.medical_services_outlined
+                          : Icons.home_work_outlined),
+                    ),
                     DropdownButtonFormField<dynamic>(
                       value: concluidoPorSelecionado,
-                      decoration: const InputDecoration(labelText: "Concluído por", prefixIcon: Icon(Icons.person_outline)),
-                      items: [
-                        const DropdownMenuItem<dynamic>(
-                          enabled: false,
-                          child: Text("Usuários", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
-                        ),
-                        ...allUsersList.map((user) => DropdownMenuItem<dynamic>(value: user, child: Text(user.nome))),
-                        if (peoesDaPropriedade.isNotEmpty) ...[
-                          const DropdownMenuItem<dynamic>(enabled: false, child: Divider()),
-                          const DropdownMenuItem<dynamic>(
-                            enabled: false,
-                            child: Text("Peões da Propriedade", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.brown)),
-                          ),
-                          ...peoesDaPropriedade.map((peao) => DropdownMenuItem<dynamic>(value: peao, child: Text(peao.nome))),
-                        ]
-                      ],
+                      decoration: const InputDecoration(
+                          labelText: "Concluído por",
+                          prefixIcon: Icon(Icons.person_outline)),
+                      items: isVeterinario ? veterinarioItems : cabanhaItems,
                       onChanged: (value) {
-                        if (value != null) setModalState(() => concluidoPorSelecionado = value);
+                        if (value != null) {
+                          setModalState(() => concluidoPorSelecionado = value);
+                        }
                       },
-                      validator: (v) => v == null ? "Selecione um responsável" : null,
+                      validator: (v) =>
+                          v == null ? "Selecione um responsável" : null,
                     ),
                     const SizedBox(height: 15),
 
@@ -2027,8 +2159,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                         icon: const Icon(Icons.check_circle_outline),
                         label: const Text("SALVAR CONCLUSÃO"),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.darkGreen,
-                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12))
                         ),

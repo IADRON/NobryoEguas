@@ -45,7 +45,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final XFile? image =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
 
     if (image != null && mounted) {
       setState(() {
@@ -65,11 +66,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         photoUrl: _newPhotoPath ?? widget.user.photoUrl,
       );
 
-      final String? errorResult = await _authService.updateUserProfile(updatedUser);
+      final String? errorResult =
+          await _authService.updateUserProfile(updatedUser);
 
       if (mounted) {
         setState(() => _isLoading = false);
-        
+
         if (errorResult == null) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -92,14 +94,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ImageProvider<Object> userImage;
-    if (_newPhotoPath != null) {
-      userImage = FileImage(File(_newPhotoPath!));
-    } else if (widget.user.photoUrl != null && widget.user.photoUrl!.isNotEmpty) {
-      userImage = FileImage(File(widget.user.photoUrl!));
-    } else {
-      userImage = const AssetImage('assets/images/nobryoSemFundo.png'); 
-    }
+    // --- INÍCIO DA ALTERAÇÃO ---
+    // A lógica de `ImageProvider` foi removida daqui.
+    // Vamos determinar o caminho da imagem a ser usada.
+    final String? imagePath = _newPhotoPath ?? widget.user.photoUrl;
+    // --- FIM DA ALTERAÇÃO ---
 
     return Scaffold(
       appBar: AppBar(
@@ -115,11 +114,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 onTap: _pickImage,
                 child: Stack(
                   children: [
+                    // --- INÍCIO DA ALTERAÇÃO ---
                     CircleAvatar(
                       radius: 60,
-                      backgroundImage: userImage,
                       backgroundColor: AppTheme.lightGrey,
+                      backgroundImage:
+                          (imagePath != null && imagePath.isNotEmpty)
+                              ? FileImage(File(imagePath)) as ImageProvider
+                              : null,
+                      child: (imagePath == null || imagePath.isEmpty)
+                          ? const Icon(
+                              Icons.person,
+                              size: 60, // Ajustado para o raio maior
+                              color: AppTheme.darkGreen,
+                            )
+                          : null,
                     ),
+                    // --- FIM DA ALTERAÇÃO ---
                     Positioned(
                       bottom: 0,
                       right: 0,
@@ -129,7 +140,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           color: AppTheme.brown,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.edit, color: Colors.white, size: 20),
+                        child: const Icon(Icons.edit,
+                            color: Colors.white, size: 20),
                       ),
                     ),
                   ],
