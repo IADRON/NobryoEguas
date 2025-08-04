@@ -31,7 +31,7 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
 
   Map<String, bool> _hasPendingManejosMap = {};
 
-  final SyncService _syncService = SyncService();
+  late SyncService _syncService = SyncService();
   final ExportService _exportService = ExportService();
 
   @override
@@ -40,16 +40,14 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
     _currentPropriedadePai = widget.propriedadePai;
     _refreshSubPropriedades();
     _searchController.addListener(_filterLotes);
-    Provider.of<SyncService>(context, listen: false)
-        .addListener(_refreshSubPropriedades);
-
+    _syncService = Provider.of<SyncService>(context, listen: false);  
+    _syncService.addListener(_refreshSubPropriedades);
     eguasMovedNotifier.addListener(_onEguasMoved);
   }
 
   @override
   void dispose() {
-    Provider.of<SyncService>(context, listen: false)
-        .removeListener(_refreshSubPropriedades);
+    _syncService.removeListener(_refreshSubPropriedades);
     _searchController.removeListener(_filterLotes);
     _searchController.dispose();
 
@@ -467,77 +465,16 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
     );
   }
 
-  /// ## NOVO ##
-  /// Adiciona um modal para criar o primeiro lote obrigatório e retorna a propriedade criada.
-  Future<Propriedade?> _showCreateLoteModal(
-      BuildContext context, Propriedade propriedadePai) async {
-    final formKey = GlobalKey<FormState>();
-    final nomeController = TextEditingController();
-    final donoController = TextEditingController(text: propriedadePai.dono);
-
-    return showDialog<Propriedade>(
-      context: context,
-      barrierDismissible: false, // Impede que o usuário feche o diálogo
-      builder: (context) {
-        return AlertDialog(
-          title: Text("Criar Primeiro Lote em ${propriedadePai.nome}"),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                    "Esta propriedade possui éguas. É necessário criar um lote para elas."),
-                const SizedBox(height: 15),
-                TextFormField(
-                  controller: nomeController,
-                  decoration: const InputDecoration(labelText: "Nome do Lote"),
-                  validator: (value) =>
-                      value!.isEmpty ? "Campo obrigatório" : null,
-                ),
-                TextFormField(
-                  controller: donoController,
-                  decoration: const InputDecoration(labelText: "Dono do Lote"),
-                  validator: (value) =>
-                      value!.isEmpty ? "Campo obrigatório" : null,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            // Não há botão de cancelar para forçar a criação
-            ElevatedButton(
-              onPressed: () async {
-                if (formKey.currentState!.validate()) {
-                  final novoLote = Propriedade(
-                    id: const Uuid().v4(),
-                    nome: nomeController.text,
-                    dono: donoController.text,
-                    parentId: propriedadePai.id,
-                    statusSync: 'pending_create',
-                  );
-                  await SQLiteHelper.instance.createPropriedade(novoLote);
-                  Navigator.of(context).pop(novoLote);
-                }
-              },
-              child: const Text("Criar e Mover Éguas"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void _showEditPropriedadeModal(BuildContext context) {
     final formKey = GlobalKey<FormState>();
     final nomeController =
         TextEditingController(text: _currentPropriedadePai.nome);
     final donoController =
         TextEditingController(text: _currentPropriedadePai.dono);
-    bool hasLotesSwitchValue = _currentPropriedadePai.hasLotes;
+    bool hasLotes = _currentPropriedadePai.hasLotes;
 
-    final bool canEditHasLotes =
-        !_currentPropriedadePai.hasLotes || (_allSubPropriedades.length <= 1);
+    bool canChangeHasLotes =
+        !(_currentPropriedadePai.hasLotes && _allSubPropriedades.length > 1);
 
     showModalBottomSheet(
       context: context,
@@ -595,20 +532,20 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
                       const SizedBox(height: 15),
                       SwitchListTile(
                         title: const Text("Possui Lotes?"),
-                        subtitle: !canEditHasLotes
+                        subtitle: !canChangeHasLotes
                             ? Text(
                                 "Mova as éguas para um único lote para poder desativar esta opção.",
                                 style: TextStyle(color: Colors.red[700]),
                               )
                             : null,
-                        value: hasLotesSwitchValue,
-                        onChanged: canEditHasLotes
+                        value: hasLotes,
+                        onChanged: canChangeHasLotes
                             ? (bool value) {
                                 setModalState(() {
-                                  hasLotesSwitchValue = value;
+                                  hasLotes = value;
                                 });
                               }
-                            : null,
+                            : null, // Desabilita o switch se a condição não for atendida
                         activeColor: AppTheme.darkGreen,
                       ),
                       const SizedBox(height: 20),
@@ -618,103 +555,66 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
                           style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.darkGreen),
                           onPressed: () async {
-                            if (!formKey.currentState!.validate()) {
-                              return;
-                            }
-
-                            final bool initialHasLotes =
-                                _currentPropriedadePai.hasLotes;
-                            final bool finalHasLotes = hasLotesSwitchValue;
-
-                            // CASO 1: HABILITANDO lotes
-                            if (!initialHasLotes && finalHasLotes) {
-                              final eguasNaPropriedade = await SQLiteHelper
-                                  .instance
-                                  .readEguasByPropriedade(
-                                      _currentPropriedadePai.id);
-
-                              if (eguasNaPropriedade.isNotEmpty) {
-                                final novoLote = await _showCreateLoteModal(
-                                    context, _currentPropriedadePai);
-                                if (novoLote == null) return;
-
-                                for (var egua in eguasNaPropriedade) {
-                                  await SQLiteHelper.instance
-                                      .updateEgua(egua.copyWith(
-                                    propriedadeId: novoLote.id,
-                                    statusSync: 'pending_update',
-                                  ));
-                                  final manejosDaEgua = await SQLiteHelper
+                            if (formKey.currentState!.validate()) {
+                              // Se a propriedade TINHA lotes e agora NÃO TEM MAIS
+                              if (_currentPropriedadePai.hasLotes &&
+                                  !hasLotes) {
+                                final lotes = await SQLiteHelper.instance
+                                    .readSubPropriedades(
+                                        _currentPropriedadePai.id);
+                                if (lotes.length == 1) {
+                                  final loteUnico = lotes.first;
+                                  final eguasDoLote = await SQLiteHelper
                                       .instance
-                                      .getAllEguasManejos();
-                                  final manejosFiltrados = manejosDaEgua
-                                      .where((m) => m.eguaId == egua.id)
-                                      .toList();
-                                  for (var manejo in manejosFiltrados) {
+                                      .readEguasByPropriedade(loteUnico.id);
+
+                                  for (var egua in eguasDoLote) {
                                     await SQLiteHelper.instance
-                                        .updateManejo(manejo.copyWith(
-                                      propriedadeId: novoLote.id,
+                                        .updateEgua(egua.copyWith(
+                                      propriedadeId: _currentPropriedadePai.id,
                                       statusSync: 'pending_update',
                                     ));
+                                    final manejosDaEgua = await SQLiteHelper
+                                        .instance
+                                        .readAgendadosByEgua(egua.id);
+                                    for (var manejo in manejosDaEgua) {
+                                      await SQLiteHelper.instance
+                                          .updateManejo(manejo.copyWith(
+                                        propriedadeId:
+                                            _currentPropriedadePai.id,
+                                        statusSync: 'pending_update',
+                                      ));
+                                    }
                                   }
-                                }
-                              }
-                            }
-                            // CASO 2: DESABILITANDO lotes
-                            else if (initialHasLotes && !finalHasLotes) {
-                              final lotes = await SQLiteHelper.instance
-                                  .readSubPropriedades(
-                                      _currentPropriedadePai.id);
-                              if (lotes.isNotEmpty) {
-                                final loteUnico = lotes.first;
-                                final eguasDoLote = await SQLiteHelper
-                                    .instance
-                                    .readEguasByPropriedade(loteUnico.id);
-
-                                for (var egua in eguasDoLote) {
                                   await SQLiteHelper.instance
-                                      .updateEgua(egua.copyWith(
-                                    propriedadeId: _currentPropriedadePai.id,
-                                    statusSync: 'pending_update',
-                                  ));
-                                  final manejosDaEgua = await SQLiteHelper
-                                      .instance
-                                      .getAllEguasManejos();
-                                  final manejosFiltrados = manejosDaEgua
-                                      .where((m) => m.eguaId == egua.id)
-                                      .toList();
-                                  for (var manejo in manejosFiltrados) {
-                                    await SQLiteHelper.instance
-                                        .updateManejo(manejo.copyWith(
-                                      propriedadeId:
-                                          _currentPropriedadePai.id,
-                                      statusSync: 'pending_update',
-                                    ));
-                                  }
+                                      .softDeletePropriedade(loteUnico.id);
                                 }
-                                await SQLiteHelper.instance
-                                    .softDeletePropriedade(loteUnico.id);
                               }
-                            }
+                              // O outro caso (ativar lotes) será tratado na EguasListScreen
 
-                            final updatedProp =
-                                _currentPropriedadePai.copyWith(
-                              nome: nomeController.text,
-                              dono: donoController.text,
-                              hasLotes: finalHasLotes,
-                              statusSync: 'pending_update',
-                            );
-                            await SQLiteHelper.instance
-                                .updatePropriedade(updatedProp);
+                              final updatedProp =
+                                  _currentPropriedadePai.copyWith(
+                                nome: nomeController.text,
+                                dono: donoController.text,
+                                hasLotes: hasLotes,
+                                statusSync: 'pending_update',
+                              );
+                              await SQLiteHelper.instance
+                                  .updatePropriedade(updatedProp);
 
-                            if (mounted) {
-                              Navigator.of(ctx).pop();
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(const SnackBar(
-                                content: Text("Propriedade atualizada!"),
-                                backgroundColor: Colors.green,
-                              ));
-                              _autoSync();
+                              if (mounted) {
+                                Navigator.of(ctx).pop();
+                                // Se o usuário desativou os lotes, ele deve ser levado para fora da tela de subpropriedades
+                                if (!hasLotes) {
+                                  Navigator.of(context).pop();
+                                }
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(const SnackBar(
+                                  content: Text("Propriedade atualizada!"),
+                                  backgroundColor: Colors.green,
+                                ));
+                                _autoSync();
+                              }
                             }
                           },
                           child: const Text("Salvar Alterações"),

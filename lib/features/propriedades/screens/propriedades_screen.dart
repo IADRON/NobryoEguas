@@ -29,21 +29,22 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
   Map<String, bool> _hasPendingManejosMap = {};
 
   final AuthService _authService = AuthService();
-  final SyncService _syncService = SyncService();
+  late SyncService _syncService = SyncService();
 
   @override
   void initState() {
     super.initState();
     _refreshData();
     _searchController.addListener(_filterData);
-    Provider.of<SyncService>(context, listen: false).addListener(_refreshData);
+    _syncService = Provider.of<SyncService>(context, listen: false);  
+    _syncService.addListener(_refreshData);
   }
 
   @override
   void dispose() {
     _searchController.removeListener(_filterData);
     _searchController.dispose();
-    Provider.of<SyncService>(context, listen: false).removeListener(_refreshData);
+    _syncService.removeListener(_refreshData);
     super.dispose();
   }
 
