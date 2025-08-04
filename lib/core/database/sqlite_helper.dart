@@ -108,7 +108,7 @@ import 'package:nobryo_final/core/models/egua_model.dart';
       if (oldVersion < 21) {
         await db.execute('ALTER TABLE manejos ADD COLUMN isAtrasado INTEGER DEFAULT 0 NOT NULL');
       }
-      if (oldVersion < 22) { // NOVA ATUALIZAÇÃO
+      if (oldVersion < 22) {
         await db.execute('ALTER TABLE propriedades ADD COLUMN hasLotes INTEGER DEFAULT 1 NOT NULL');
       }
     }
@@ -163,7 +163,7 @@ import 'package:nobryo_final/core/models/egua_model.dart';
           id TEXT PRIMARY KEY, firebaseId TEXT, nome TEXT NOT NULL,
           dono TEXT NOT NULL, parentId TEXT, 
           deslocamentos INTEGER DEFAULT 0 NOT NULL,
-          hasLotes INTEGER DEFAULT 1 NOT NULL, -- ADICIONADO
+          hasLotes INTEGER DEFAULT 1 NOT NULL,
           statusSync TEXT NOT NULL,
           isDeleted INTEGER DEFAULT 0 NOT NULL
         )

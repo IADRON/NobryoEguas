@@ -7,6 +7,7 @@ import 'package:nobryo_final/core/models/propriedade_model.dart';
 import 'package:nobryo_final/core/services/export_service.dart';
 import 'package:nobryo_final/core/services/sync_service.dart';
 import 'package:nobryo_final/features/eguas/screens/egua_details_page_view.dart';
+import 'package:nobryo_final/features/propriedades/widgets/peoes_management_widget.dart';
 import 'package:nobryo_final/shared/theme/theme.dart';
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
@@ -49,7 +50,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
   void initState() {
     super.initState();
     _refreshEguas();
-    _syncService = Provider.of<SyncService>(context, listen: false);  
+    _syncService = Provider.of<SyncService>(context, listen: false);
     _syncService.addListener(_refreshEguas);
     _searchController.addListener(_filterEguas);
   }
@@ -99,16 +100,16 @@ class _EguasListScreenState extends State<EguasListScreen> {
     });
   }
 
-  // ALTERAÇÃO: Renomeado e com nova lógica para buscar a propriedade.
   Future<void> _refreshEguas() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
-    // ALTERAÇÃO: Lógica aprimorada para carregar a propriedade correta (pai ou lote).
     final propIdToLoad = widget.propriedadeMaeId ?? widget.propriedadeId;
-    _currentPropriedade = await SQLiteHelper.instance.readPropriedade(propIdToLoad);
-    
-    final eguas = await SQLiteHelper.instance.readEguasByPropriedade(widget.propriedadeId);
+    _currentPropriedade =
+        await SQLiteHelper.instance.readPropriedade(propIdToLoad);
+
+    final eguas =
+        await SQLiteHelper.instance.readEguasByPropriedade(widget.propriedadeId);
 
     final List<Future<Egua>> updateFutures =
         eguas.map((egua) => _getEguaWithUpdatedDiasPrenhe(egua)).toList();
@@ -263,15 +264,14 @@ class _EguasListScreenState extends State<EguasListScreen> {
       DateTime? dataFim}) async {
     setState(() => _isLoading = true);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text("Buscando todos os dados do local..."),
+      content: Text("Buscando todos os dados do lote..."),
       backgroundColor: Colors.blue,
     ));
 
     try {
-      // ALTERAÇÃO: Usa _currentPropriedade
       if (_allEguas.isEmpty || _currentPropriedade == null) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Não há éguas neste local para exportar."),
+          content: Text("Não há éguas neste lote para exportar."),
         ));
         setState(() => _isLoading = false);
         return;
@@ -280,11 +280,14 @@ class _EguasListScreenState extends State<EguasListScreen> {
       final Map<Egua, List<Manejo>> dadosCompletos = {};
 
       final eguasParaExportar = eguasSelecionadas != null
-          ? _allEguas.where((egua) => eguasSelecionadas.contains(egua.id)).toList()
+          ? _allEguas
+              .where((egua) => eguasSelecionadas.contains(egua.id))
+              .toList()
           : _allEguas;
 
       for (final egua in eguasParaExportar) {
-        List<Manejo> historico = await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
+        List<Manejo> historico =
+            await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
 
         if (dataInicio != null && dataFim != null) {
           historico = historico
@@ -300,11 +303,10 @@ class _EguasListScreenState extends State<EguasListScreen> {
       if (dadosCompletos.values.every((list) => list.isEmpty)) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content:
-              Text("Nenhum manejo encontrado para exportar neste local."),
+              Text("Nenhum manejo encontrado para exportar neste lote."),
           backgroundColor: Colors.orange,
         ));
       } else {
-        // ALTERAÇÃO: Usa _currentPropriedade
         await exportFunction(_currentPropriedade!, dadosCompletos, context);
       }
     } catch (e) {
@@ -319,9 +321,80 @@ class _EguasListScreenState extends State<EguasListScreen> {
     }
   }
 
-  void _showOptionsModal(BuildContext context) {
-    // ALTERAÇÃO: Verifica se a propriedade pode ser editada (se for pai, sem lotes).
-    bool canEditProp = _currentPropriedade != null && _currentPropriedade!.parentId == null;
+  void _showPropOptionsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        return Wrap(
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.directions_car_outlined),
+              title: const Text('Gerenciar Deslocamentos'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showDeslocamentosDialog(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.group_outlined),
+              title: const Text('Gerenciar Peões'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showPeoesWidget();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.download_outlined),
+              title: const Text('Exportar Relatório Completo'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showExportOptions(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Editar Propriedade'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showEditPropriedadeModal(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showPeoesWidget() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppTheme.pageBackground,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: PeoesManagementWidget(
+                propriedadeId: widget.propriedadeMaeId ?? widget.propriedadeId,
+                scrollController: scrollController,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showSubPropOptionsModal(BuildContext context) {
+    bool canEditProp =
+        _currentPropriedade != null && _currentPropriedade!.parentId == null;
 
     showModalBottomSheet(
       context: context,
@@ -330,16 +403,16 @@ class _EguasListScreenState extends State<EguasListScreen> {
           children: <Widget>[
             ListTile(
               leading: const Icon(Icons.download_outlined),
-              title: const Text('Exportar Relatório do Local'),
+              title: const Text('Exportar Relatório do Lote'),
               onTap: () {
                 Navigator.of(ctx).pop();
                 _showExportOptions(context);
               },
             ),
-            if (canEditProp)
+            if (canEditProp || _currentPropriedade!.hasLotes)
               ListTile(
                 leading: const Icon(Icons.edit_outlined),
-                title: const Text('Editar Local'),
+                title: const Text('Editar Lote'),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   _showEditPropriedadeModal(context);
@@ -401,14 +474,113 @@ class _EguasListScreenState extends State<EguasListScreen> {
     }
   }
 
-  // ALTERAÇÃO: Lógica de edição da propriedade completamente nova.
-  void _showEditPropriedadeModal(BuildContext context) {
+  void _showDeslocamentosDialog(BuildContext context) {
+    int deslocamentos = _currentPropriedade!.deslocamentos;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text("Contador de Deslocamentos"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("Propriedade: ${_currentPropriedade!.nome}",
+                      style: TextStyle(color: Colors.grey[600])),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle,
+                            size: 40, color: AppTheme.statusVazia),
+                        onPressed: () {
+                          if (deslocamentos > 0) {
+                            setDialogState(() {
+                              deslocamentos--;
+                            });
+                          }
+                        },
+                      ),
+                      Text(
+                        deslocamentos.toString(),
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle,
+                            size: 40, color: AppTheme.darkGreen),
+                        onPressed: () {
+                          setDialogState(() {
+                            deslocamentos++;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text("Cancelar"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final updatedProp = _currentPropriedade!.copyWith(
+                      deslocamentos: deslocamentos,
+                      statusSync: 'pending_update',
+                    );
+                    await SQLiteHelper.instance.updatePropriedade(updatedProp);
+                    if (mounted) {
+                      Navigator.of(ctx).pop();
+                      _autoSync();
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text("Contador de deslocamentos salvo!"),
+                        backgroundColor: Colors.green,
+                      ));
+                    }
+                  },
+                  child: const Text("Salvar"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showEditPropriedadeModal(BuildContext context) async {
     if (_currentPropriedade == null) return;
 
+    Propriedade? propToEdit;
+    String modalTitle = "Editar Lote";
+
+    if (_currentPropriedade!.hasLotes) {
+      propToEdit =
+          await SQLiteHelper.instance.readPropriedade(widget.propriedadeId);
+      modalTitle = "Editar Lote";
+    } else {
+      propToEdit = _currentPropriedade;
+    }
+
+    if (propToEdit == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("Erro: Lote não encontrado para edição."),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
     final formKey = GlobalKey<FormState>();
-    final nomeController = TextEditingController(text: _currentPropriedade!.nome);
-    final donoController = TextEditingController(text: _currentPropriedade!.dono);
-    bool hasLotes = _currentPropriedade!.hasLotes;
+    final nomeController = TextEditingController(text: propToEdit.nome);
+    final donoController = TextEditingController(text: propToEdit.dono);
+    bool hasLotes = propToEdit.hasLotes;
 
     showModalBottomSheet(
       context: context,
@@ -419,7 +591,9 @@ class _EguasListScreenState extends State<EguasListScreen> {
             return Padding(
               padding: EdgeInsets.only(
                   bottom: MediaQuery.of(ctx).viewInsets.bottom,
-                  top: 20, left: 20, right: 20),
+                  top: 20,
+                  left: 20,
+                  right: 20),
               child: Form(
                 key: formKey,
                 child: SingleChildScrollView(
@@ -427,41 +601,48 @@ class _EguasListScreenState extends State<EguasListScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "Editar Local",
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            IconButton(
-                              icon:
-                                  Icon(Icons.delete_outlined, color: Colors.red[700]),
-                              onPressed: () =>
-                                  _showDeletePropriedadeConfirmationDialog(ctx),
-                            ),
-                          ],
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            modalTitle,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.delete_outlined,
+                                color: Colors.red[700]),
+                            onPressed: () =>
+                                _showDeletePropriedadeConfirmationDialog(
+                                    ctx, propToEdit!),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 20),
                       TextFormField(
                         controller: nomeController,
-                        decoration: const InputDecoration(labelText: "Nome", prefixIcon: Icon(Icons.home_work_outlined)),
+                        decoration: const InputDecoration(
+                            labelText: "Nome",
+                            prefixIcon: Icon(Icons.home_work_outlined)),
                         validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                       ),
                       const SizedBox(height: 10),
                       TextFormField(
                         controller: donoController,
-                        decoration: const InputDecoration(labelText: "Dono", prefixIcon: Icon(Icons.person_outline)),
+                        decoration: const InputDecoration(
+                            labelText: "Dono",
+                            prefixIcon: Icon(Icons.person_outline)),
                         validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                       ),
-                      if(!_currentPropriedade!.hasLotes)...[
+                      if (!_currentPropriedade!.hasLotes) ...[
                         const SizedBox(height: 15),
                         SwitchListTile(
                           title: const Text("Possui Lotes?"),
-                          subtitle: Text("Ative para organizar suas éguas em lotes.", style: TextStyle(color: Colors.grey[600])),
+                          subtitle: Text(
+                              "Ative para organizar suas éguas em lotes.",
+                              style: TextStyle(color: Colors.grey[600])),
                           value: hasLotes,
                           onChanged: (bool value) {
                             setModalState(() {
@@ -475,47 +656,67 @@ class _EguasListScreenState extends State<EguasListScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.darkGreen),
                           onPressed: () async {
                             if (formKey.currentState!.validate()) {
-                              if (!_currentPropriedade!.hasLotes && hasLotes) {
-                                if (_allEguas.isNotEmpty) {
-                                  final novoLote = await _showCreateLoteModal(context, _currentPropriedade!);
-                                  if (novoLote != null) {
-                                    for (var egua in _allEguas) {
-                                      await SQLiteHelper.instance.updateEgua(egua.copyWith(
-                                        propriedadeId: novoLote.id,
-                                        statusSync: 'pending_update',
-                                      ));
-                                      final manejosDaEgua = await SQLiteHelper.instance.readAgendadosByEgua(egua.id);
-                                      for (var manejo in manejosDaEgua) {
-                                        await SQLiteHelper.instance.updateManejo(manejo.copyWith(
+                              if (_currentPropriedade!.hasLotes) {
+                                final updatedProp = propToEdit!.copyWith(
+                                  nome: nomeController.text,
+                                  dono: donoController.text,
+                                  statusSync: 'pending_update',
+                                );
+                                await SQLiteHelper.instance
+                                    .updatePropriedade(updatedProp);
+                              } else {
+                                if (!_currentPropriedade!.hasLotes &&
+                                    hasLotes) {
+                                  if (_allEguas.isNotEmpty) {
+                                    final novoLote = await _showCreateLoteModal(
+                                        context, _currentPropriedade!);
+                                    if (novoLote != null) {
+                                      for (var egua in _allEguas) {
+                                        await SQLiteHelper.instance
+                                            .updateEgua(egua.copyWith(
                                           propriedadeId: novoLote.id,
                                           statusSync: 'pending_update',
                                         ));
+                                        final manejosDaEgua =
+                                            await SQLiteHelper.instance
+                                                .readAgendadosByEgua(egua.id);
+                                        for (var manejo in manejosDaEgua) {
+                                          await SQLiteHelper.instance
+                                              .updateManejo(manejo.copyWith(
+                                            propriedadeId: novoLote.id,
+                                            statusSync: 'pending_update',
+                                          ));
+                                        }
                                       }
+                                    } else {
+                                      return;
                                     }
-                                  } else {
-                                    return; // Cancela se o usuário não criar o lote.
                                   }
                                 }
+                                final updatedProp =
+                                    _currentPropriedade!.copyWith(
+                                  nome: nomeController.text,
+                                  dono: donoController.text,
+                                  hasLotes: hasLotes,
+                                  statusSync: 'pending_update',
+                                );
+                                await SQLiteHelper.instance
+                                    .updatePropriedade(updatedProp);
                               }
-
-                              final updatedProp = _currentPropriedade!.copyWith(
-                                nome: nomeController.text,
-                                dono: donoController.text,
-                                hasLotes: hasLotes,
-                                statusSync: 'pending_update',
-                              );
-                              await SQLiteHelper.instance.updatePropriedade(updatedProp);
 
                               if (mounted) {
                                 Navigator.of(ctx).pop();
-                                if(!_currentPropriedade!.hasLotes && hasLotes) {
+                                if (!_currentPropriedade!.hasLotes &&
+                                    hasLotes) {
                                   Navigator.of(ctx).pop();
                                 }
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                  content: Text("Local atualizado!"),
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(const SnackBar(
+                                  content: Text("Lote atualizado!"),
                                   backgroundColor: Colors.green,
                                 ));
                                 _autoSync();
@@ -537,78 +738,83 @@ class _EguasListScreenState extends State<EguasListScreen> {
     );
   }
 
-  Future<Propriedade?> _showCreateLoteModal(BuildContext context, Propriedade propriedadePai) async {
+  Future<Propriedade?> _showCreateLoteModal(
+      BuildContext context, Propriedade propriedadePai) async {
     final formKey = GlobalKey<FormState>();
     final nomeController = TextEditingController();
     final donoController = TextEditingController(text: propriedadePai.dono);
 
     return showDialog<Propriedade>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) {
-            return AlertDialog(
-                title: Text("Ativar Lotes em ${propriedadePai.nome}"),
-                content: Form(
-                    key: formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text("Para habilitar os lotes, você precisa criar o primeiro. Todas as éguas existentes neste local serão movidas para ele."),
-                        const SizedBox(height: 20),
-                        TextFormField(
-                            controller: nomeController,
-                            decoration: const InputDecoration(
-                              labelText: "Nome do Lote",
-                              prefixIcon: Icon(Icons.location_on_outlined)),
-                            validator: (value) => value!.isEmpty ? "Campo obrigatório" : null,
-                        ),
-                        const SizedBox(height: 15),
-                        TextFormField(
-                            controller: donoController,
-                            decoration: const InputDecoration(
-                              labelText: "Dono do Lote",
-                              prefixIcon: Icon(Icons.person_outline)),
-                            validator: (value) => value!.isEmpty ? "Campo obrigatório" : null,
-                        ),
-                      ],
-                    ),
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Ativar Lotes em ${propriedadePai.nome}"),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                    "Para habilitar os lotes, você precisa criar o primeiro. Todas as éguas existentes nesta propriedade serão movidas para ele."),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: nomeController,
+                  decoration: const InputDecoration(
+                      labelText: "Nome do Lote",
+                      prefixIcon: Icon(Icons.location_on_outlined)),
+                  validator: (value) =>
+                      value!.isEmpty ? "Campo obrigatório" : null,
                 ),
-                actions: [
-                    TextButton(
-                        onPressed: () => Navigator.of(context).pop(null),
-                        child: const Text("Cancelar"),
-                    ),
-                    ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.darkGreen),
-                        onPressed: () async {
-                            if (formKey.currentState!.validate()) {
-                                final novoLote = Propriedade(
-                                    id: const Uuid().v4(),
-                                    nome: nomeController.text,
-                                    dono: donoController.text,
-                                    parentId: propriedadePai.id,
-                                    statusSync: 'pending_create',
-                                );
-                                await SQLiteHelper.instance.createPropriedade(novoLote);
-                                Navigator.of(context).pop(novoLote);
-                            }
-                        },
-                        child: const Text("Criar e Mover Éguas"),
-                    ),
-                ],
-            );
-        },
+                const SizedBox(height: 15),
+                TextFormField(
+                  controller: donoController,
+                  decoration: const InputDecoration(
+                      labelText: "Dono do Lote",
+                      prefixIcon: Icon(Icons.person_outline)),
+                  validator: (value) =>
+                      value!.isEmpty ? "Campo obrigatório" : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text("Cancelar"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.darkGreen),
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  final novoLote = Propriedade(
+                    id: const Uuid().v4(),
+                    nome: nomeController.text,
+                    dono: donoController.text,
+                    parentId: propriedadePai.id,
+                    statusSync: 'pending_create',
+                  );
+                  await SQLiteHelper.instance.createPropriedade(novoLote);
+                  Navigator.of(context).pop(novoLote);
+                }
+              },
+              child: const Text("Criar e Mover Éguas"),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  void _showDeletePropriedadeConfirmationDialog(BuildContext modalContext) {
-    if (_currentPropriedade == null) return;
+  void _showDeletePropriedadeConfirmationDialog(
+      BuildContext modalContext, Propriedade propToDelete) {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
         title: const Text("Confirmar Exclusão"),
         content: Text(
-            'Tem certeza que deseja excluir "${_currentPropriedade!.nome}"? Todos os lotes, éguas e manejos associados serão perdidos.'),
+            'Tem certeza que deseja excluir "${propToDelete.nome}"? Todos os lotes, éguas e manejos associados serão perdidos.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
@@ -618,11 +824,10 @@ class _EguasListScreenState extends State<EguasListScreen> {
             style: TextButton.styleFrom(foregroundColor: Colors.red[700]),
             onPressed: () async {
               Navigator.of(dialogCtx).pop();
-              Navigator.of(modalContext).pop(); 
-              await SQLiteHelper.instance
-                  .softDeletePropriedade(_currentPropriedade!.id);
+              Navigator.of(modalContext).pop();
+              await SQLiteHelper.instance.softDeletePropriedade(propToDelete.id);
               if (mounted) {
-                Navigator.of(context).pop(); // Volta para a tela anterior
+                Navigator.of(context).pop();
                 _autoSync();
               }
             },
@@ -681,7 +886,6 @@ class _EguasListScreenState extends State<EguasListScreen> {
   }
 
   AppBar _buildDefaultAppBar() {
-    
     return AppBar(
       backgroundColor: AppTheme.darkGreen,
       foregroundColor: AppTheme.lightGrey,
@@ -692,7 +896,11 @@ class _EguasListScreenState extends State<EguasListScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.more_vert),
-          onPressed: () => _showOptionsModal(context),
+          onPressed: () {
+            _currentPropriedade!.hasLotes
+              ? _showSubPropOptionsModal(context)
+              : _showPropOptionsModal(context);
+          },
           tooltip: "Mais Opções",
         ),
       ],
@@ -806,7 +1014,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                   ),
                                 ),
                               ]),
-                        )),
+                        ),
+                      ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8.0,
@@ -933,7 +1142,6 @@ class _EguasListScreenState extends State<EguasListScreen> {
                       Text(
                           isEditing
                               ? "Editar Égua"
-                              // ALTERAÇÃO: Usa widget.propriedadeNome
                               : "Adicionar Égua em\n${widget.propriedadeNome}",
                           style: Theme.of(context)
                               .textTheme
