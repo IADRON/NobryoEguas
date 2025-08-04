@@ -33,7 +33,7 @@ class Parto {
       dataHora: DateTime.parse(map['dataHora']),
       sexoPotro: map['sexoPotro'],
       pelagemPotro: map['pelagemPotro'],
-      observacoes: map['observacoes'],
+      observacoes: map['observacoes'] ?? '',
     );
   }
 }
