@@ -14,7 +14,7 @@ import 'package:printing/printing.dart';
 class ExportService {
 
   Future<void> exportarPropriedadeParaPdf(
-    Propriedade propriedade,
+    Propriedade propriedade, // ALTERADO DE String PARA Propriedade
     Map<Egua, List<Manejo>> dadosCompletos,
     BuildContext context,
   ) async {

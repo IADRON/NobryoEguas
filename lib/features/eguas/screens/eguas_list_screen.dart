@@ -146,9 +146,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
     final Map<String, DateTime?> newMap = {};
     for (final egua in eguas) {
       if (egua.statusReprodutivo.toLowerCase() == 'prenhe') {
-        final historicoDinamico =
+        final historico =
             await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
-        final historico = historicoDinamico.whereType<Manejo>().toList(); 
         historico.sort((a, b) => b.dataAgendada.compareTo(a.dataAgendada));
 
         Manejo? diagnosticoPositivo;
@@ -193,16 +192,15 @@ class _EguasListScreenState extends State<EguasListScreen> {
       return egua.copyWith(diasPrenhe: 0);
     }
 
-    final historicoDinamico = await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
-      final historico = historicoDinamico.whereType<Manejo>().toList(); 
-      if (historico.isEmpty) {
-        return egua;
-      }
+    final historico = await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
+    if (historico.isEmpty) {
+      return egua;
+    }
 
-      historico.sort((a, b) => b.dataAgendada.compareTo(a.dataAgendada));
+    historico.sort((a, b) => b.dataAgendada.compareTo(a.dataAgendada));
 
-      Manejo? ultimoDiagnosticoPrenhe;
-      for (var manejo in historico) {
+    Manejo? ultimoDiagnosticoPrenhe;
+    for (var manejo in historico) {
       if (manejo.tipo.toLowerCase() == 'diagnóstico' &&
           manejo.detalhes['resultado']?.toString().toLowerCase() == 'prenhe') {
         ultimoDiagnosticoPrenhe = manejo;
@@ -288,9 +286,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
           : _allEguas;
 
       for (final egua in eguasParaExportar) {
-        final historicoDinamico =
+        List<Manejo> historico =
             await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
-        List<Manejo> historico = historicoDinamico.whereType<Manejo>().toList();
 
         if (dataInicio != null && dataFim != null) {
           historico = historico

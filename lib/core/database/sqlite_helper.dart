@@ -1,7 +1,6 @@
 import 'package:nobryo_final/core/models/egua_model.dart';
 import 'package:nobryo_final/core/models/manejo_model.dart';
 import 'package:nobryo_final/core/models/medicamento_model.dart';
-import 'package:nobryo_final/core/models/parto_model.dart';
 import 'package:nobryo_final/core/models/peao_model.dart';
 import 'package:nobryo_final/core/models/propriedade_model.dart';
 import 'package:nobryo_final/core/models/user_model.dart';
@@ -115,8 +114,6 @@ class SQLiteHelper {
       await db.execute('ALTER TABLE propriedades ADD COLUMN hasLotes INTEGER DEFAULT 1 NOT NULL');
     }
     if (oldVersion < 23) {
-      await _createPartosTable(db);
-      await _createTemporadaTable(db);
       await db.execute('ALTER TABLE manejos ADD COLUM dataConclusao DATETIME');
     }
   }
@@ -133,8 +130,6 @@ class SQLiteHelper {
     await _createManejosTable(db);
     await _createMedicamentosTable(db);
     await _createPeoesTable(db);
-    await _createPartosTable(db);
-    await _createTemporadaTable(db);
   }
 
   Future<void> _createUsersTable(Database db) async {
@@ -220,7 +215,6 @@ class SQLiteHelper {
           inducao TEXT,
           dataHoraInducao TEXT,
           isAtrasado INTEGER DEFAULT 0 NOT NULL,
-          dataConclusao DATETIME,
           FOREIGN KEY (eguaId) REFERENCES eguas (id) ON DELETE CASCADE,
           FOREIGN KEY (responsavelId) REFERENCES users (uid),
           FOREIGN KEY (concluidoPorId) REFERENCES users (uid)
@@ -246,31 +240,6 @@ class SQLiteHelper {
         propriedadeId TEXT NOT NULL,
         isDeleted INTEGER DEFAULT 0 NOT NULL,
         FOREIGN KEY (propriedadeId) REFERENCES propriedades (id) ON DELETE CASCADE
-      )
-    ''');
-  }
-
-  Future<void> _createPartosTable(Database db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS partos (
-        id TEXT PRIMARY KEY,
-        eguaId TEXT NOT NULL,
-        dataHora TEXT NOT NULL,
-        sexoPotro TEXT NOT NULL,
-        pelagemPotro TEXT NOT NULL,
-        observacoes TEXT,
-        FOREIGN KEY (eguaId) REFERENCES eguas (id) ON DELETE CASCADE
-      )
-    ''');
-  }
-
-  Future<void> _createTemporadaTable(Database db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS temporadas (
-        id TEXT PRIMARY KEY,
-        nome TEXT NOT NULL,
-        dataInicio TEXT NOT NULL,
-        dataFim TEXT NOT NULL
       )
     ''');
   }
@@ -582,30 +551,13 @@ class SQLiteHelper {
     return db.delete('manejos', where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<List<dynamic>> readHistoricoByEgua(String eguaId) async {
+  Future<List<Manejo>> readHistoricoByEgua(String eguaId) async {
     final db = await instance.database;
-
-    final manejosResult = await db.query('manejos',
+    final result = await db.query('manejos',
         where: 'eguaId = ? AND status = ? AND isDeleted = 0',
         whereArgs: [eguaId, 'Concluído'],
         orderBy: 'dataAgendada DESC');
-    List<Manejo> manejos = manejosResult.map((json) => Manejo.fromMap(json)).toList();
-
-    final partosResult = await db.query('partos',
-        where: 'eguaId = ?',
-        whereArgs: [eguaId],
-        orderBy: 'dataHora DESC');
-    List<Parto> partos = partosResult.map((json) => Parto.fromMap(json)).toList();
-
-    List<dynamic> historicoUnificado = [...manejos, ...partos];
-
-    historicoUnificado.sort((a, b) {
-      DateTime dateA = a is Manejo ? a.dataAgendada : (a as Parto).dataHora;
-      DateTime dateB = b is Manejo ? b.dataAgendada : (b as Parto).dataHora;
-      return dateB.compareTo(dateA);
-    });
-
-    return historicoUnificado;
+    return result.map((json) => Manejo.fromMap(json)).toList();
   }
 
   Future<List<Manejo>> readAgendadosByEgua(String eguaId) async {
@@ -706,12 +658,6 @@ class SQLiteHelper {
     }
 
     return count;
-  }
-
-  Future<void> createParto(Parto parto) async {
-    final db = await instance.database;
-    await db.insert('partos', parto.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future close() async {

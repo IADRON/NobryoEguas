@@ -9,9 +9,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nobryo_final/core/database/sqlite_helper.dart';
 import 'package:nobryo_final/core/models/egua_model.dart';
 import 'package:nobryo_final/core/models/manejo_model.dart';
-import 'package:nobryo_final/core/models/peao_model.dart';
 import 'package:nobryo_final/core/models/propriedade_model.dart';
 import 'package:nobryo_final/core/models/medicamento_model.dart';
+import 'package:nobryo_final/core/models/peao_model.dart';
 import 'package:nobryo_final/core/models/user_model.dart';
 import 'package:nobryo_final/core/services/sync_service.dart';
 import 'package:provider/provider.dart';
@@ -37,7 +37,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
   bool _isFabVisible = true;
   bool _isTodayFilterActive = true;
   bool _myTasksFilterActive = true;
-
 
   List<Manejo> _allManejos = [];
   Map<String, Propriedade> _allPropriedades = {};
@@ -1709,10 +1708,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     final formKey = GlobalKey<FormState>();
     final obsController = TextEditingController(text: manejo.detalhes['observacao']);
 
-    String sexoPotro = "Macho";
-    final pelagemController = TextEditingController();
-    DateTime? dataParto = manejo.dataAgendada;
-
     final garanhaoController = TextEditingController(text: egua.cobertura);
     String? tipoSememSelecionado;
     DateTime? dataHoraInseminacao;
@@ -1916,13 +1911,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                       onPropDoadoraChange: (val) => setModalState(() => propDoadoraSelecionada = val),
                       onFilterPropsDoadora: filterPropsDoadora,
                       onShowPropDoadoraListChange: (val) => setModalState(() => _showPropDoadoraList = val),
-                      allPropsDoadora: allPropsDoadora,
-                      sexoPotro: sexoPotro,
-                      onSexoPotroChange: (val) => setModalState(() => sexoPotro = val),
-                      pelagemController: pelagemController,
-                      dataParto: dataParto,
-                      onDataPartoChange: (val) => setModalState(() => dataParto = val),
-                      obsController: obsController,
+                      allPropsDoadora: allPropsDoadora
                     ),
 
                     if (manejo.tipo != 'Controle Folicular') ...[
@@ -2327,10 +2316,12 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     required Medicamento? medicamentoSelecionado,
     required Function(Medicamento?) onMedicamentoChange,
     required List<Medicamento> allMeds,
+    // MODIFICADO AQUI
     required List<String> ovarioDirOp,
     required Function(String) onOvarioDirToggle,
     required List<String> ovarioEsqOp,
     required Function(String) onOvarioEsqToggle,
+    // FIM DA MODIFICAÇÃO
     required TextEditingController ovarioDirTamanhoController,
     required TextEditingController ovarioEsqTamanhoController,
     required String? edemaSelecionado,
@@ -2352,12 +2343,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     required Function(String) onFilterPropsDoadora,
     required Function(bool) onShowPropDoadoraListChange,
     required List<Propriedade> allPropsDoadora,
-    required String sexoPotro,
-    required Function(String) onSexoPotroChange,
-    required TextEditingController pelagemController,
-    required DateTime? dataParto,
-    required Function(DateTime?) onDataPartoChange,
-    required TextEditingController obsController,
   }) {
     final idadeEmbriaoOptions = ['D6', 'D7', 'D8', 'D9', 'D10', 'D11'];
     final tiposSemem = ['Refrigerado', 'Congelado', 'A Fresco', 'Monta Natural'];
@@ -2368,7 +2353,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
           DropdownButtonFormField<String>(
             value: resultadoDiagnostico,
             hint: const Text("Resultado do Diagnóstico"),
-            items: ["Indeterminado", "Prenhe", "Vazia", "Pariu"]
+            items: ["Indeterminado", "Prenhe", "Vazia"]
                 .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                 .toList(),
             onChanged: (val) => setModalState(() => onResultadoChange(val)),
@@ -2385,69 +2370,10 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
             const SizedBox(height: 10),
             TextFormField(
               controller: garanhaoController,
-              decoration: InputDecoration(labelText: "Cobertura"),
+              decoration: const InputDecoration(labelText: "Cobertura"),
               validator: (v) => v!.isEmpty ? "Informe a cobertura" : null,
             ),
-          ],
-          if (resultadoDiagnostico == 'Pariu') ...[
-            const SizedBox(height: 15),
-            const Text("Sexo do Potro"),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Text("Macho", style: TextStyle(fontWeight: sexoPotro == "Macho" ? FontWeight.bold : FontWeight.normal, color: sexoPotro == "Macho" ? AppTheme.darkGreen: Colors.grey[600])),
-                Switch(
-                  value: sexoPotro == "Fêmea",
-                  onChanged: (value) {
-                    onSexoPotroChange(value ? "Fêmea" : "Macho");
-                  },
-                  activeColor: Colors.pink[200],
-                  inactiveThumbColor: AppTheme.darkGreen,
-                  inactiveTrackColor: AppTheme.darkGreen.withOpacity(0.5),
-                    thumbColor: MaterialStateProperty.resolveWith((states) {
-                    if (states.contains(MaterialState.selected)) {
-                      return Colors.pink[200];
-                    }
-                    return AppTheme.darkGreen;
-                  }),
-                ),
-                Text("Fêmea", style: TextStyle(fontWeight: sexoPotro == "Fêmea" ? FontWeight.bold : FontWeight.normal, color: sexoPotro == "Fêmea" ? Colors.pink[300]: Colors.grey[600])),
-              ],
-            ),
-            const SizedBox(height: 15),
-            TextFormField(controller: pelagemController,
-              decoration: const InputDecoration(
-                labelText: "Pelagem",
-                prefixIcon: Icon(Icons.pets)
-                ),  
-              validator: (v) => v!.isEmpty ? "Obrigatório" : null),
-            const SizedBox(height: 15),
-            TextFormField(
-              readOnly: true,
-              controller: TextEditingController(
-                text: dataParto == null ? '' : DateFormat('dd/MM/yyyy').format(dataParto),
-              ),
-              decoration: const InputDecoration(
-                labelText: "Data do Parto",
-                prefixIcon: Icon(Icons.calendar_today_outlined),
-                hintText: 'Selecione a data',
-              ),
-              onTap: () async {
-                final pickedDate = await showDatePicker(context: context, initialDate: dataParto ?? DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime.now());
-                if (pickedDate != null) {
-                  onDataPartoChange(pickedDate);
-                }
-              },
-              validator: (v) => v!.isEmpty ? "Informe a data e hora do parto" : null,
-            ),
-            const SizedBox(height: 15),
-            TextFormField(
-                controller: obsController,  
-                decoration: const InputDecoration(
-                  labelText: "Observação",
-                  prefixIcon: Icon(Icons.comment_outlined)), maxLines: 3),
-            const SizedBox(height: 20),
-          ],
+          ]
         ];
       case "Inseminação":
         return [

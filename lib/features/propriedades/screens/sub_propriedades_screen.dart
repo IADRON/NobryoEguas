@@ -410,14 +410,13 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
         if (eguasDoLote.isEmpty) continue;
 
         for (final egua in eguasDoLote) {
-          final historicoDinamico =
-              await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
-          
           final List<Manejo> historico =
-              historicoDinamico.whereType<Manejo>().toList();
-
+              await SQLiteHelper.instance.readHistoricoByEgua(egua.id);
           dadosCompletos[egua] = historico;
         }
+      }
+
+      if (dadosCompletos.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content:
               Text("Não há éguas ou manejos nesta propriedade para exportar."),
