@@ -242,7 +242,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
       required String? edemaSelecionado,
       required Function(String?) onEdemaChange,
       required TextEditingController uteroController,
-    }) {
+  }) {
       final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
 
       Widget buildChipGroup(
@@ -319,9 +319,19 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
             value: edemaSelecionado,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: "Edema",
               prefixIcon: Icon(Icons.numbers_outlined),
+              suffixIcon: edemaSelecionado != null
+                ? IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      setModalState(() {
+                        edemaSelecionado = null;
+                      });
+                    },
+                  )
+                : null,
             ),
             items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -544,7 +554,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
         ),
         
         if (meusManejos.isNotEmpty && !_myTasksFilterActive) ...[
-           const Padding(
+          const Padding(
             padding: EdgeInsets.only(top: 8.0, bottom: 4.0),
             child: Text(
               "MEUS AGENDAMENTOS",
@@ -585,6 +595,17 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
 
   Widget _buildPropriedadeGroup(Propriedade? propriedade, List<Manejo> manejos) {
     if (propriedade == null) return const SizedBox.shrink();
+
+    // Ordena a lista de manejos para colocar os pendentes (isAtrasado) no início.
+    manejos.sort((a, b) {
+      // 1. Se 'a' está atrasado e 'b' não está, 'a' vem primeiro (-1).
+      if (a.isAtrasado && !b.isAtrasado) return -1;
+      // 2. Se 'b' está atrasado e 'a' não está, 'b' vem primeiro (1).
+      if (!a.isAtrasado && b.isAtrasado) return 1;
+      // 3. Se ambos têm o mesmo status (ambos atrasados ou não),
+      //    mantém a ordem original por data/hora agendada.
+      return a.dataAgendada.compareTo(b.dataAgendada);
+    });
     
     final Propriedade? propriedadePai = propriedade.parentId != null ? _allPropriedades[propriedade.parentId] : null;
     final String nomeExibido = propriedadePai != null ? '${propriedadePai.nome.toUpperCase()} / ${propriedade.nome}' : propriedade.nome.toUpperCase();
@@ -607,18 +628,24 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
     );
   }
 
+  // CÓDIGO MODIFICADO ABAIXO
   Widget _buildAgendaCard(Manejo manejo, Egua? egua) {
     final styleColor = _getManejoColor(manejo.tipo);
-    
+    // Verifica se o manejo tem um horário específico (diferente da meia-noite)
+    final bool showTime =
+        manejo.dataAgendada.hour != 0 || manejo.dataAgendada.minute != 0;
+
     String responsavelNome = '...';
     if (manejo.responsavelId != null) {
-      responsavelNome = _allUsers[manejo.responsavelId]?.nome ?? 'Usuário desconhecido';
+      responsavelNome =
+          _allUsers[manejo.responsavelId]?.nome ?? 'Usuário desconhecido';
     } else if (manejo.responsavelPeaoId != null) {
-      responsavelNome = _allPeoes[manejo.responsavelPeaoId]?.nome ?? 'Peão desconhecido';
+      responsavelNome =
+          _allPeoes[manejo.responsavelPeaoId]?.nome ?? 'Peão desconhecido';
     }
 
     final bool isPendente = manejo.isAtrasado && manejo.status != 'Concluído';
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -648,16 +675,32 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                 ],
               ),
               const SizedBox(height: 12),
-              Text(egua?.nome ?? "Égua não encontrada",
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(egua?.nome ?? "Égua não encontrada",
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                  if (showTime)
+                    Text(
+                      DateFormat('HH:mm', 'pt_BR').format(manejo.dataAgendada),
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.darkGreen),
+                    ),
+                ],
+              ),
               if (egua != null) ...[
                 if (egua.rp.isNotEmpty) ...[
-                Text("RP: ${egua.rp}",
-                    style: TextStyle(color: Colors.grey[700], fontSize: 14)),
-                    ] else ...[
-                Text("Pelagem: ${egua.pelagem}",
-                    style: TextStyle(color: Colors.grey[700], fontSize: 14)),
+                  Text("RP: ${egua.rp}",
+                      style: TextStyle(color: Colors.grey[700], fontSize: 14)),
+                ] else ...[
+                  Text("Pelagem: ${egua.pelagem}",
+                      style: TextStyle(color: Colors.grey[700], fontSize: 14)),
                 ],
               ],
               const SizedBox(height: 8),
@@ -696,6 +739,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
       ),
     );
   }
+  // FIM DO CÓDIGO MODIFICADO
 
   void _setupFirebaseListener() {
     final collectionRef = FirebaseFirestore.instance.collection('manejos');
@@ -711,6 +755,42 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
       print("Erro ao ouvir as atualizações do Firebase: $error");
       },
     );
+  }
+
+  Future<void> _promptForInseminationScheduleOnInduction(
+      BuildContext context, Egua egua, Propriedade propriedade, DateTime inductionDate) async {
+    final DateTime inseminationDate = inductionDate.add(const Duration(hours: 36));
+    final String formattedDate =
+        DateFormat('dd/MM/yyyy \'às\' HH:mm', 'pt_BR').format(inseminationDate);
+
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Agendamento Automático"),
+        content: Text(
+            "Indução concluída para a égua ${egua.nome}. Deseja agendar a inseminação para daqui a 36 horas (${formattedDate}h)?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text("Não"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text("Sim"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      _showAddAgendamentoModal(
+        context,
+        propriedade: propriedade,
+        egua: egua,
+        preselectedType: "Inseminação",
+        preselectedDate: inseminationDate,
+      );
+    }
   }
 
   Future<void> _promptForDiagnosticScheduleOnAgenda(
@@ -745,434 +825,485 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
     }
   }
 
-  void _showAddAgendamentoModal(BuildContext context,
-    {Propriedade? propriedade,
-    Egua? egua,
-    DateTime? preselectedDate,
-    String? preselectedType}) async {
-  final currentUser = _authService.currentUserNotifier.value;
-  if (currentUser == null) return;
+  Future<void> _promptForFollicularControlSchedule(DateTime controlDate, String follicleSizeRight, String follicleSizeLeft) async {
+    final double? sizeRight = double.tryParse(follicleSizeRight.replaceAll(',', '.'));
+    final double? sizeLeft = double.tryParse(follicleSizeLeft.replaceAll(',', '.'));
 
-  final allUsersList = await SQLiteHelper.instance.getAllUsers();
+    double? currentMaxSize;
+    if (sizeRight != null && sizeLeft != null) {
+      currentMaxSize = sizeRight > sizeLeft ? sizeRight : sizeLeft;
+    } else if (sizeRight != null) {
+      currentMaxSize = sizeRight;
+    } else if (sizeLeft != null) {
+      currentMaxSize = sizeLeft;
+    }
 
-  final formKey = GlobalKey<FormState>();
+    if (currentMaxSize == null || currentMaxSize >= 33) {
+      return;
+    }
 
-  Propriedade? propriedadeMaeSelecionada = propriedade;
-  Propriedade? loteSelecionado;
-  final TextEditingController propSearchController =
-      TextEditingController(text: propriedadeMaeSelecionada?.nome ?? '');
+    const double targetSize = 33.0;
+    const double growthRate = 3.0;
+    final double sizeDifference = targetSize - currentMaxSize;
+    final int daysToReachTarget = (sizeDifference / growthRate).ceil();
 
-  List<Propriedade> _allTopLevelProps = [];
-  List<Propriedade> _filteredProps = [];
-  bool _showPropList = false;
+    if (daysToReachTarget <= 0) {
+      return;
+    }
 
-  Egua? eguaSelecionada = egua;
-  DateTime? dataSelecionada = preselectedDate;
-  String? tipoManejoSelecionado = preselectedType;
-  final detalhesController = TextEditingController();
-  final tiposDeManejo = [
-    "Controle Folicular",
-    "Inseminação",
-    "Lavado",
-    "Diagnóstico",
-    "Transferência de Embrião",
-    "Coleta de Embrião",
-    "Outros Manejos"
-  ];
+    final DateTime scheduledDate = controlDate.add(Duration(days: daysToReachTarget));
+    final String formattedDate = DateFormat('dd/MM/yyyy').format(scheduledDate);
 
-  dynamic responsavelSelecionado;
-  bool isVeterinario = true;
-  List<Peao> peoesDaPropriedade = [];
-  if (propriedadeMaeSelecionada != null) {
-    peoesDaPropriedade = await SQLiteHelper.instance
-        .readPeoesByPropriedade(propriedadeMaeSelecionada.id);
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Agendamento Automático"),
+        content: Text(
+            "O folículo atingirá aproximadamente 33mm em $formattedDate. Deseja agendar um novo Controle Folicular para este dia?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text("Não"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text("Sim"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      _showAddAgendamentoModal(
+        context,
+        preselectedType: "Controle Folicular",
+        preselectedDate: scheduledDate,
+      );
+    }
   }
 
-  _allTopLevelProps = await SQLiteHelper.instance.readTopLevelPropriedades();
-  _filteredProps = _allTopLevelProps;
+  void _showAddAgendamentoModal(BuildContext context,
+      {Propriedade? propriedade,
+      Egua? egua,
+      DateTime? preselectedDate,
+      String? preselectedType}) async {
+    final currentUser = _authService.currentUserNotifier.value;
+    if (currentUser == null) return;
 
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (ctx) => StatefulBuilder(
-      builder: (BuildContext context, StateSetter setModalState) {
-        void filterProps(String query) {
-          setModalState(() {
-            _filteredProps = _allTopLevelProps
-                .where((prop) =>
-                    prop.nome.toLowerCase().contains(query.toLowerCase()))
-                .toList();
-          });
-        }
+    final allUsersList = await SQLiteHelper.instance.getAllUsers();
 
-        List<DropdownMenuItem<dynamic>> veterinarioItems = [
-          ...allUsersList
-              .map((user) => DropdownMenuItem<dynamic>(
-                  value: user, child: Text(user.nome)))
-              .toList(),
-        ];
+    final formKey = GlobalKey<FormState>();
 
-        List<DropdownMenuItem<dynamic>> cabanhaItems = [];
-        if (propriedadeMaeSelecionada != null) {
-          cabanhaItems.add(
-            const DropdownMenuItem<dynamic>(
+    Propriedade? propriedadeMaeSelecionada = propriedade;
+    Propriedade? loteSelecionado;
+    final TextEditingController propSearchController =
+        TextEditingController(text: propriedadeMaeSelecionada?.nome ?? '');
+
+    List<Propriedade> _allTopLevelProps = [];
+    List<Propriedade> _filteredProps = [];
+    bool _showPropList = false;
+
+    Egua? eguaSelecionada = egua;
+    DateTime? dataSelecionada = preselectedDate;
+    String? tipoManejoSelecionado = preselectedType;
+    final detalhesController = TextEditingController();
+    final tiposDeManejo = [
+      "Controle Folicular",
+      "Inseminação",
+      "Lavado",
+      "Diagnóstico",
+      "Transferência de Embrião",
+      "Coleta de Embrião",
+      "Outros Manejos"
+    ];
+
+    dynamic responsavelSelecionado;
+    bool isVeterinario = true;
+    List<Peao> peoesDaPropriedade = [];
+    if (propriedadeMaeSelecionada != null) {
+      peoesDaPropriedade = await SQLiteHelper.instance
+          .readPeoesByPropriedade(propriedadeMaeSelecionada.id);
+    }
+
+    _allTopLevelProps = await SQLiteHelper.instance.readTopLevelPropriedades();
+    _filteredProps = _allTopLevelProps;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setModalState) {
+          void filterProps(String query) {
+            setModalState(() {
+              _filteredProps = _allTopLevelProps
+                  .where((prop) =>
+                      prop.nome.toLowerCase().contains(query.toLowerCase()))
+                  .toList();
+            });
+          }
+
+          List<DropdownMenuItem<dynamic>> veterinarioItems = [
+            ...allUsersList
+                .map((user) => DropdownMenuItem<dynamic>(
+                    value: user, child: Text(user.nome)))
+                .toList(),
+          ];
+
+          List<DropdownMenuItem<dynamic>> cabanhaItems = [];
+          if (propriedadeMaeSelecionada != null) {
+            cabanhaItems.add(
+              const DropdownMenuItem<dynamic>(
+                enabled: false,
+                child: Text("Dono",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: AppTheme.brown)),
+              ),
+            );
+            cabanhaItems.add(
+              DropdownMenuItem<dynamic>(
+                value: propriedadeMaeSelecionada!.dono,
+                child: Text(propriedadeMaeSelecionada!.dono),
+              ),
+            );
+          }
+
+          if (peoesDaPropriedade.isNotEmpty) {
+            cabanhaItems.add(const DropdownMenuItem<dynamic>(
+                enabled: false, child: Divider()));
+            cabanhaItems.add(const DropdownMenuItem<dynamic>(
               enabled: false,
-              child: Text("Dono",
+              child: Text("Peões da Propriedade",
                   style: TextStyle(
                       fontWeight: FontWeight.bold, color: AppTheme.brown)),
-            ),
-          );
-          cabanhaItems.add(
-            DropdownMenuItem<dynamic>(
-              value: propriedadeMaeSelecionada!.dono,
-              child: Text(propriedadeMaeSelecionada!.dono),
-            ),
-          );
-        }
+            ));
+            cabanhaItems.addAll(peoesDaPropriedade
+                .map((peao) =>
+                    DropdownMenuItem<dynamic>(value: peao, child: Text(peao.nome)))
+                .toList());
+          }
 
-        if (peoesDaPropriedade.isNotEmpty) {
-          cabanhaItems.add(const DropdownMenuItem<dynamic>(
-              enabled: false, child: Divider()));
-          cabanhaItems.add(const DropdownMenuItem<dynamic>(
-            enabled: false,
-            child: Text("Peões da Propriedade",
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, color: AppTheme.brown)),
-          ));
-          cabanhaItems.addAll(peoesDaPropriedade
-              .map((peao) =>
-                  DropdownMenuItem<dynamic>(value: peao, child: Text(peao.nome)))
-              .toList());
-        }
-
-        return Padding(
-          padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom,
-              top: 20,
-              left: 20,
-              right: 20),
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 40,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(12),
+          return Padding(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                top: 20,
+                left: 20,
+                right: 20),
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text("Agendar Manejo",
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold)),
+                    const Divider(height: 30, thickness: 1),
+                    TextFormField(
+                      controller: propSearchController,
+                      readOnly: propriedadeMaeSelecionada != null,
+                      decoration: InputDecoration(
+                        labelText: "Propriedade",
+                        hintText: "Busque pelo nome da propriedade",
+                        prefixIcon: const Icon(Icons.home_work_outlined),
+                        suffixIcon: propriedadeMaeSelecionada != null
+                            ? null
+                            : const Icon(Icons.search),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text("Agendar Manejo",
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold)),
-                  const Divider(height: 30, thickness: 1),
-                  TextFormField(
-                    controller: propSearchController,
-                    readOnly: propriedadeMaeSelecionada != null,
-                    decoration: InputDecoration(
-                      labelText: "Propriedade",
-                      hintText: "Busque pelo nome da propriedade",
-                      prefixIcon: const Icon(Icons.home_work_outlined),
-                      suffixIcon: propriedadeMaeSelecionada != null
-                          ? IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () {
+                      onChanged: filterProps,
+                      onTap: () => setModalState(() => _showPropList = true),
+                      validator: (v) => propriedadeMaeSelecionada == null
+                          ? "Selecione uma propriedade"
+                          : null,
+                    ),
+                    if (_showPropList && propriedadeMaeSelecionada == null)
+                      Container(
+                        height: 150,
+                        decoration: BoxDecoration(
+                            color: AppTheme.pageBackground,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.lightGrey)),
+                        child: ListView.builder(
+                          itemCount: _filteredProps.length,
+                          itemBuilder: (context, index) {
+                            final prop = _filteredProps[index];
+                            return ListTile(
+                              title: Text(prop.nome),
+                              onTap: () async {
+                                List<Peao> peoes = await SQLiteHelper.instance
+                                    .readPeoesByPropriedade(prop.id);
+
                                 setModalState(() {
-                                  propriedadeMaeSelecionada = null;
-                                  propSearchController.clear();
-                                  loteSelecionado = null;
+                                  propriedadeMaeSelecionada = prop;
+                                  propSearchController.text = prop.nome;
                                   eguaSelecionada = null;
-                                  peoesDaPropriedade = [];
-                                  _showPropList = true;
-                                  _filteredProps = _allTopLevelProps;
+                                  loteSelecionado = null;
+                                  peoesDaPropriedade = peoes;
+                                  _showPropList = false;
+                                  FocusScope.of(context).unfocus();
                                 });
                               },
-                            )
-                          : const Icon(Icons.search),
-                    ),
-                    onChanged: filterProps,
-                    onTap: () => setModalState(() => _showPropList = true),
-                    validator: (v) => propriedadeMaeSelecionada == null
-                        ? "Selecione uma propriedade"
-                        : null,
-                  ),
-                  if (_showPropList && propriedadeMaeSelecionada == null)
-                    Container(
-                      height: 150,
-                      decoration: BoxDecoration(
-                          color: AppTheme.pageBackground,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppTheme.lightGrey)),
-                      child: ListView.builder(
-                        itemCount: _filteredProps.length,
-                        itemBuilder: (context, index) {
-                          final prop = _filteredProps[index];
-                          return ListTile(
-                            title: Text(prop.nome),
-                            onTap: () async {
-                              List<Peao> peoes = await SQLiteHelper.instance
-                                  .readPeoesByPropriedade(prop.id);
-
-                              setModalState(() {
-                                propriedadeMaeSelecionada = prop;
-                                propSearchController.text = prop.nome;
-                                eguaSelecionada = null;
-                                loteSelecionado = null;
-                                peoesDaPropriedade = peoes;
-                                _showPropList = false;
-                                FocusScope.of(context).unfocus();
-                              });
-                            },
+                            );
+                          },
+                        ),
+                      ),
+                    const SizedBox(height: 15),
+                    if (propriedadeMaeSelecionada != null &&
+                        propriedadeMaeSelecionada!.hasLotes)
+                      FutureBuilder<List<Propriedade>>(
+                        future: SQLiteHelper.instance
+                            .readSubPropriedades(propriedadeMaeSelecionada!.id),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return Column(
+                            children: [
+                              DropdownButtonFormField<Propriedade>(
+                                value: loteSelecionado,
+                                decoration: InputDecoration(
+                                  labelText: "Lote",
+                                  prefixIcon: Icon(Icons.location_on_outlined),
+                                  suffixIcon: loteSelecionado != null
+                                    ? IconButton(
+                                        icon: const Icon(Icons.close),
+                                        onPressed: () {
+                                          setModalState(() {
+                                            loteSelecionado = null;
+                                            eguaSelecionada = null;
+                                          });
+                                        },
+                                      )
+                                    : null,
+                                ),
+                                hint: const Text("Selecione o Lote"),
+                                items: snapshot.data!
+                                    .map((lote) => DropdownMenuItem(
+                                        value: lote, child: Text(lote.nome)))
+                                    .toList(),
+                                onChanged: (lote) => setModalState(() {
+                                  loteSelecionado = lote;
+                                  eguaSelecionada = null;
+                                }),
+                              ),
+                              const SizedBox(height: 15),
+                            ],
                           );
                         },
                       ),
-                    ),
-                  const SizedBox(height: 15),
-                  if (propriedadeMaeSelecionada != null &&
-                      propriedadeMaeSelecionada!.hasLotes)
-                    FutureBuilder<List<Propriedade>>(
-                      future: SQLiteHelper.instance
-                          .readSubPropriedades(propriedadeMaeSelecionada!.id),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-                        return Column(
-                          children: [
-                            DropdownButtonFormField<Propriedade>(
-                              value: loteSelecionado,
-                              decoration: const InputDecoration(
-                                labelText: "Lote",
-                                prefixIcon:
-                                    Icon(Icons.location_on_outlined),
-                              ),
-                              hint: const Text("Selecione o Lote"),
-                              items: snapshot.data!
-                                  .map((lote) => DropdownMenuItem(
-                                      value: lote, child: Text(lote.nome)))
-                                  .toList(),
-                              onChanged: (lote) => setModalState(() {
-                                loteSelecionado = lote;
-                                eguaSelecionada = null;
-                              }),
-                            ),
-                            const SizedBox(height: 15),
-                          ],
-                        );
-                      },
-                    ),
-                  if (propriedadeMaeSelecionada != null)
-                    FutureBuilder<List<Egua>>(
-                      future: () async {
-                        if (loteSelecionado != null) {
-                          return SQLiteHelper.instance
-                              .readEguasByPropriedade(loteSelecionado!.id);
-                        }
-                        // Se a propriedade não tem lotes, busca todas as éguas dela.
-                        if (!propriedadeMaeSelecionada!.hasLotes) {
-                          return SQLiteHelper.instance
-                              .readEguasByPropriedade(
+                    if (propriedadeMaeSelecionada != null)
+                      FutureBuilder<List<Egua>>(
+                        future: () async {
+                          if (loteSelecionado != null) {
+                            return SQLiteHelper.instance
+                                .readEguasByPropriedade(loteSelecionado!.id);
+                          }
+                          if (!propriedadeMaeSelecionada!.hasLotes) {
+                            return SQLiteHelper.instance
+                                .readEguasByPropriedade(
+                                    propriedadeMaeSelecionada!.id);
+                          }
+                          final subPropriedades = await SQLiteHelper.instance
+                              .readSubPropriedades(
                                   propriedadeMaeSelecionada!.id);
-                        }
-                        // Se nenhum lote foi selecionado (mas a prop tem lotes), busca de todos os lotes.
-                        final subPropriedades = await SQLiteHelper.instance
-                            .readSubPropriedades(
-                                propriedadeMaeSelecionada!.id);
-                        final allPropIds = [
-                          propriedadeMaeSelecionada!.id,
-                          ...subPropriedades.map((p) => p.id)
-                        ];
+                          final allPropIds = [
+                            propriedadeMaeSelecionada!.id,
+                            ...subPropriedades.map((p) => p.id)
+                          ];
 
-                        List<Egua> eguasDaPropriedade = [];
-                        for (final propId in allPropIds) {
-                          final eguasDoLote = await SQLiteHelper.instance
-                              .readEguasByPropriedade(propId);
-                          eguasDaPropriedade.addAll(eguasDoLote);
-                        }
-                        return eguasDaPropriedade;
-                      }(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                              child: Padding(
+                          List<Egua> eguasDaPropriedade = [];
+                          for (final propId in allPropIds) {
+                            final eguasDoLote = await SQLiteHelper.instance
+                                .readEguasByPropriedade(propId);
+                            eguasDaPropriedade.addAll(eguasDoLote);
+                          }
+                          return eguasDaPropriedade;
+                        }(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                                child: Padding(
                                   padding: EdgeInsets.all(8.0),
                                   child: CircularProgressIndicator()));
-                        }
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return const Center(
-                              child: Text(
-                                  "Nenhuma égua encontrada para a seleção atual."));
-                        }
-                        return DropdownButtonFormField<Egua>(
-                          value: eguaSelecionada,
-                          decoration: const InputDecoration(
-                            labelText: "Égua",
-                            prefixIcon: Icon(Icons.female_outlined),
-                          ),
-                          hint: const Text("Selecione a Égua"),
-                          items: snapshot.data!
-                              .map((egua) => DropdownMenuItem(
-                                  value: egua, child: Text(egua.nome)))
-                              .toList(),
-                          onChanged: (egua) =>
-                              setModalState(() => eguaSelecionada = egua),
-                          validator: (v) =>
-                              v == null ? "Selecione uma égua" : null,
-                        );
-                      },
-                    ),
-                  const SizedBox(height: 15),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          readOnly: true,
-                          controller: TextEditingController(
-                            text: dataSelecionada == null
-                                ? ''
-                                : DateFormat('dd/MM/yyyy')
-                                    .format(dataSelecionada!),
-                          ),
-                          decoration: const InputDecoration(
-                            labelText: "Data do Manejo",
-                            prefixIcon: Icon(Icons.calendar_today_outlined),
-                            hintText: 'Toque para selecionar',
-                          ),
-                          onTap: () async {
-                            final pickedDate = await showDatePicker(
-                                context: context,
-                                initialDate:
-                                    dataSelecionada ?? DateTime.now(),
-                                firstDate: DateTime(2020),
-                                lastDate: DateTime(2030));
-                            if (pickedDate != null) {
-                              setModalState(
-                                  () => dataSelecionada = pickedDate);
-                            }
-                          },
-                          validator: (v) => dataSelecionada == null
-                              ? "Selecione a data"
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-                  DropdownButtonFormField<String>(
-                    value: tipoManejoSelecionado,
-                    decoration: const InputDecoration(
-                      labelText: "Tipo de Manejo",
-                      prefixIcon: Icon(Icons.edit_note_outlined),
-                    ),
-                    hint: const Text("Selecione o Tipo"),
-                    items: tiposDeManejo
-                        .map((tipo) => DropdownMenuItem(
-                            value: tipo, child: Text(tipo)))
-                        .toList(),
-                    onChanged: (val) =>
-                        setModalState(() => tipoManejoSelecionado = val),
-                    validator: (v) => v == null ? "Selecione o tipo" : null,
-                  ),
-                  const SizedBox(height: 15),
-                  SwitchListTile(
-                    title: Text(
-                        isVeterinario ? 'Veterinário' : 'Da Cabanha'),
-                    value: isVeterinario,
-                    onChanged: (bool value) {
-                      setModalState(() {
-                        isVeterinario = value;
-                        responsavelSelecionado = null;
-                      });
-                    },
-                    secondary: Icon(isVeterinario
-                        ? Icons.medical_services_outlined
-                        : Icons.home_work_outlined),
-                  ),
-                  DropdownButtonFormField<dynamic>(
-                    value: responsavelSelecionado,
-                    decoration: const InputDecoration(
-                        labelText: "Responsável",
-                        prefixIcon: Icon(Icons.person_outline)),
-                    items: isVeterinario ? veterinarioItems : cabanhaItems,
-                    onChanged: (value) {
-                      if (value != null) {
-                        setModalState(() => responsavelSelecionado = value);
-                      }
-                    },
-                    validator: (v) =>
-                        v == null ? "Selecione um responsável" : null,
-                  ),
-                  const SizedBox(height: 15),
-                  TextFormField(
-                      controller: detalhesController,
-                      decoration: const InputDecoration(
-                          labelText: "Detalhes/Observações",
-                          prefixIcon: Icon(Icons.comment_outlined)),
-                      maxLines: 2),
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: const Text("AGENDAR"),
-                      style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onPressed: () async {
-                        if (formKey.currentState!.validate()) {
-                          final novoManejo = Manejo(
-                            id: const Uuid().v4(),
-                            tipo: tipoManejoSelecionado!,
-                            dataAgendada: dataSelecionada!,
-                            detalhes: {'descricao': detalhesController.text},
-                            eguaId: eguaSelecionada!.id,
-                            propriedadeId: loteSelecionado?.id ??
-                                eguaSelecionada!.propriedadeId,
-                            responsavelId: responsavelSelecionado is AppUser
-                                ? responsavelSelecionado.uid
-                                : null,
-                            responsavelPeaoId:
-                                responsavelSelecionado is Peao
-                                    ? responsavelSelecionado.id
-                                    : null,
-                          );
-                          await SQLiteHelper.instance
-                              .createManejo(novoManejo);
-                          if (mounted) {
-                            Navigator.of(ctx).pop();
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(const SnackBar(
-                              content: Text("Manejo agendado com sucesso!"),
-                              backgroundColor: Colors.green,
-                            ));
-                            _autoSync();
                           }
+                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                            return const Center(
+                                child: Text(
+                                    "Nenhuma égua encontrada para a seleção atual."));
+                          }
+                          return DropdownButtonFormField<Egua>(
+                            value: eguaSelecionada,
+                            decoration: const InputDecoration(
+                              labelText: "Égua",
+                              prefixIcon: Icon(Icons.female_outlined),
+                            ),
+                            hint: const Text("Selecione a Égua"),
+                            items: snapshot.data!
+                                .map((egua) => DropdownMenuItem(
+                                    value: egua, child: Text(egua.nome)))
+                                .toList(),
+                            onChanged: (egua) =>
+                                setModalState(() => eguaSelecionada = egua),
+                            validator: (v) =>
+                                v == null ? "Selecione uma égua" : null,
+                          );
+                        },
+                      ),
+                    const SizedBox(height: 15),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            readOnly: true,
+                            controller: TextEditingController(
+                              text: dataSelecionada == null
+                                  ? ''
+                                  : DateFormat('dd/MM/yyyy')
+                                      .format(dataSelecionada!),
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: "Data do Manejo",
+                              prefixIcon: Icon(Icons.calendar_today_outlined),
+                              hintText: 'Toque para selecionar',
+                            ),
+                            onTap: () async {
+                              final pickedDate = await showDatePicker(
+                                  context: context,
+                                  initialDate:
+                                      dataSelecionada ?? DateTime.now(),
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime(2030));
+                              if (pickedDate != null) {
+                                setModalState(
+                                    () => dataSelecionada = pickedDate);
+                              }
+                            },
+                            validator: (v) => dataSelecionada == null
+                                ? "Selecione a data"
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    DropdownButtonFormField<String>(
+                      value: tipoManejoSelecionado,
+                      decoration: const InputDecoration(
+                        labelText: "Tipo de Manejo",
+                        prefixIcon: Icon(Icons.edit_note_outlined),
+                      ),
+                      hint: const Text("Selecione o Tipo"),
+                      items: tiposDeManejo
+                          .map((tipo) => DropdownMenuItem(
+                              value: tipo, child: Text(tipo)))
+                          .toList(),
+                      onChanged: (val) =>
+                          setModalState(() => tipoManejoSelecionado = val),
+                      validator: (v) => v == null ? "Selecione o tipo" : null,
+                    ),
+                    const SizedBox(height: 15),
+                    SwitchListTile(
+                      title: Text(
+                          isVeterinario ? 'Veterinário' : 'Da Cabanha'),
+                      value: isVeterinario,
+                      onChanged: (bool value) {
+                        setModalState(() {
+                          isVeterinario = value;
+                          responsavelSelecionado = null;
+                        });
+                      },
+                      secondary: Icon(isVeterinario
+                          ? Icons.medical_services_outlined
+                          : Icons.home_work_outlined),
+                    ),
+                    DropdownButtonFormField<dynamic>(
+                      value: responsavelSelecionado,
+                      decoration: const InputDecoration(
+                          labelText: "Responsável",
+                          prefixIcon: Icon(Icons.person_outline)),
+                      items: isVeterinario ? veterinarioItems : cabanhaItems,
+                      onChanged: (value) {
+                        if (value != null) {
+                          setModalState(() => responsavelSelecionado = value);
                         }
                       },
+                      validator: (v) => v == null ? "Selecione um responsável" : null,
                     ),
-                  ),
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 15),
+                    TextFormField(
+                        controller: detalhesController,
+                        decoration: const InputDecoration(
+                            labelText: "Detalhes/Observações",
+                            prefixIcon: Icon(Icons.comment_outlined)),
+                        maxLines: 2),
+                    const SizedBox(height: 30),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text("AGENDAR"),
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () async {
+                          if (formKey.currentState!.validate()) {
+                            final novoManejo = Manejo(
+                              id: const Uuid().v4(),
+                              tipo: tipoManejoSelecionado!,
+                              dataAgendada: dataSelecionada!,
+                              detalhes: {'descricao': detalhesController.text},
+                              eguaId: eguaSelecionada!.id,
+                              propriedadeId: loteSelecionado?.id ??
+                                  eguaSelecionada!.propriedadeId,
+                              responsavelId: responsavelSelecionado is AppUser
+                                  ? responsavelSelecionado.uid
+                                  : null,
+                              responsavelPeaoId:
+                                  responsavelSelecionado is Peao
+                                      ? responsavelSelecionado.id
+                                      : null,
+                            );
+                            await SQLiteHelper.instance
+                                .createManejo(novoManejo);
+                            if (mounted) {
+                              Navigator.of(ctx).pop();
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(const SnackBar(
+                                content: Text("Manejo agendado com sucesso!"),
+                                backgroundColor: Colors.green,
+                              ));
+                              _autoSync();
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -1245,15 +1376,15 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Center(
-                        child: Container(
-                          width: 40,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            width: 40,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
-                      ),
                   const SizedBox(height: 10),
                   Text("Editar Agendamento",
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
@@ -1269,7 +1400,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                   ),
                   const SizedBox(height: 15),
                   
-                  // NOVO: Campo de Lote Condicional na Edição
                   if (propriedadeMae != null && propriedadeMae.hasLotes)
                     FutureBuilder<List<Propriedade>>(
                       future: SQLiteHelper.instance.readSubPropriedades(propriedadeMae.id),
@@ -1277,18 +1407,28 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                         if (!snapshot.hasData || snapshot.data!.isEmpty) {
                           return const SizedBox.shrink();
                         }
-                        // Garante que o lote selecionado esteja na lista
                         if (loteSelecionado != null && !snapshot.data!.any((l) => l.id == loteSelecionado!.id)) {
-                           loteSelecionado = null;
+                             loteSelecionado = null;
                         }
 
                         return Column(
                           children: [
                             DropdownButtonFormField<Propriedade>(
                               value: loteSelecionado,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: "Lote",
                                 prefixIcon: Icon(Icons.location_on_outlined),
+                                suffixIcon: loteSelecionado != null
+                                  ? IconButton(
+                                      icon: const Icon(Icons.close),
+                                      onPressed: () {
+                                        setModalState(() {
+                                          loteSelecionado = null;
+                                          eguaSelecionada = null;
+                                        });
+                                      },
+                                    )
+                                  : null,
                               ),
                               hint: const Text("Selecione o Lote"),
                               items: snapshot.data!
@@ -1334,7 +1474,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                         if (!snapshot.hasData || snapshot.data!.isEmpty) {
                             return const Center(child: Text("Nenhuma égua encontrada."));
                         }
-                        // Garante que a égua selecionada esteja na lista
                         if (eguaSelecionada != null && !snapshot.data!.any((e) => e.id == eguaSelecionada!.id)) {
                           eguaSelecionada = null;
                         }
@@ -1445,7 +1584,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                             dataAgendada: dataSelecionada!,
                             detalhes: {'descricao': detalhesController.text},
                             eguaId: eguaSelecionada!.id,
-                            // ALTERADO: Atualiza a propriedade para o lote, se houver
                             propriedadeId: loteSelecionado?.id ?? eguaSelecionada!.propriedadeId,
                             responsavelId: responsavelSelecionado is AppUser ? responsavelSelecionado.uid : null,
                             responsavelPeaoId: responsavelSelecionado is Peao ? responsavelSelecionado.id : null,
@@ -1466,15 +1604,15 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                     ),
                   ),
                   const SizedBox(height: 20),
-                  ],
-                ),
+                ],
               ),
-            )
-          );
-        },
-      ),
-    );
-  }
+            ),
+          )
+        );
+      },
+    ),
+  );
+}
 
   void _showConfirmationModal(BuildContext context, Manejo manejo, Egua? egua) {
     String responsavelNome = '...';
@@ -1506,10 +1644,10 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
               manejo.statusSync = 'pending_update';
               await SQLiteHelper.instance.updateManejo(manejo);
                if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text("Data do manejo reagendada!"),
-                    backgroundColor: Colors.green));
-              }
+                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                     content: Text("Data do manejo reagendada!"),
+                     backgroundColor: Colors.green));
+               }
               _autoSync();
             }
           }
@@ -1630,37 +1768,37 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                       Icons.home_work_outlined, "Propriedade", propriedadePai?.nome ?? lote?.nome ?? '...'),
                   
                   if(propriedadePai != null) ...[
-                     const SizedBox(height: 16),
+                      const SizedBox(height: 16),
                     _buildDetailRow(Icons.location_on_outlined, "Lote", lote?.nome ?? '...'),
                   ],
 
                   const SizedBox(height: 16),
-                   Row(
-                     children: [
-                       Expanded(
-                         child: _buildDetailRow(
-                            Icons.female_outlined, "Égua", egua?.nome ?? '...'),
-                       ),
-                       if(egua != null)
-                        IconButton(
-                          icon: const Icon(Icons.visibility_outlined, color: AppTheme.darkGreen),
-                          tooltip: "Ver detalhes da égua",
-                          onPressed: () async {
-                              final Propriedade? loteDaEgua = _allPropriedades[egua.propriedadeId];
-                              final String propriedadeMaeId = loteDaEgua?.parentId ?? egua.propriedadeId;
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => EguaDetailsScreen(
-                                    egua: egua,
-                                    propriedadeMaeId: propriedadeMaeId,
-                                  ),
-                                ),
-                              );
-                          },
-                        )
-                     ],
-                   ),
+                    Row(
+                        children: [
+                          Expanded(
+                            child: _buildDetailRow(
+                                Icons.female_outlined, "Égua", egua?.nome ?? '...'),
+                          ),
+                          if(egua != null)
+                           IconButton(
+                            icon: const Icon(Icons.visibility_outlined, color: AppTheme.darkGreen),
+                            tooltip: "Ver detalhes da égua",
+                            onPressed: () async {
+                               final Propriedade? loteDaEgua = _allPropriedades[egua.propriedadeId];
+                               final String propriedadeMaeId = loteDaEgua?.parentId ?? egua.propriedadeId;
+                               Navigator.push(
+                                 context,
+                                 MaterialPageRoute(
+                                   builder: (context) => EguaDetailsScreen(
+                                     egua: egua,
+                                     propriedadeMaeId: propriedadeMaeId,
+                                   ),
+                                 ),
+                               );
+                            },
+                           )
+                        ],
+                      ),
                   const SizedBox(height: 16),
                   _buildDetailRow(Icons.person_outline, "Responsável", responsavelNome),
                   const SizedBox(height: 16),
@@ -1676,10 +1814,9 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                           Navigator.of(ctx).pop();
                           _showMarkAsCompleteModal(context, manejo, egua);
                         },
-
                         style: ElevatedButton.styleFrom(
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)
+                                borderRadius: BorderRadius.circular(12)
                             )
                           ),
                     ),
@@ -1741,6 +1878,12 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     final allPropsDoadora = await SQLiteHelper.instance.readAllPropriedades();
     List<Propriedade> _filteredPropsDoadora = allPropsDoadora;
     bool _showPropDoadoraList = false;
+
+    String? sexoPotro;
+    final pelagemController = TextEditingController();
+    DateTime? dataHoraParto;
+    final observacoesPartoController = TextEditingController();
+    bool partoComSucesso = true;
 
     showModalBottomSheet(
       context: context,
@@ -1854,12 +1997,13 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                       ],
                     ),
                     Text("Égua: ${egua.nome}",
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[600])),
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[600])),
                     if (manejo.tipo != 'Outros Manejos')
                       const Divider(height: 30, thickness: 1),
 
                     ..._buildSpecificForm(
                       context: context,
+                      egua: egua,
                       tipo: manejo.tipo,
                       setModalState: setModalState,
                       onDataHoraInseminacaoChange: (val) => setModalState(() => dataHoraInseminacao = val),
@@ -1904,6 +2048,14 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                       avaliacaoUterinaController: avaliacaoUterinaController,
                       resultadoDiagnostico: resultadoDiagnostico,
                       diasPrenheController: diasPrenheController,
+                      sexoPotro: sexoPotro,
+                      onSexoPotroChange: (val) => setModalState(() => sexoPotro = val),
+                      pelagemController: pelagemController,
+                      dataHoraParto: dataHoraParto,
+                      onDataHoraPartoChange: (val) => setModalState(() => dataHoraParto = val),
+                      observacoesPartoController: observacoesPartoController,
+                      partoComSucesso: partoComSucesso,
+                      onPartoComSucessoChange: (val) => setModalState(() => partoComSucesso = val),
                       propDoadoraSelecionada: propDoadoraSelecionada,
                       propDoadoraSearchController: propDoadoraSearchController,
                       filteredPropsDoadora: _filteredPropsDoadora,
@@ -1911,7 +2063,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                       onPropDoadoraChange: (val) => setModalState(() => propDoadoraSelecionada = val),
                       onFilterPropsDoadora: filterPropsDoadora,
                       onShowPropDoadoraListChange: (val) => setModalState(() => _showPropDoadoraList = val),
-                      allPropsDoadora: allPropsDoadora
+                      allPropsDoadora: allPropsDoadora,
                     ),
 
                     if (manejo.tipo != 'Controle Folicular') ...[
@@ -2123,26 +2275,27 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                     ),
                     const SizedBox(height: 15),
 
-                     TextFormField(
-                      readOnly: true,
-                      controller: TextEditingController(
-                        text: DateFormat('dd/MM/yyyy').format(dataFinalManejo)
+                      TextFormField(
+                        readOnly: true,
+                        controller: TextEditingController(
+                          text: DateFormat('dd/MM/yyyy').format(dataFinalManejo)
+                        ),
+                        decoration: const InputDecoration(
+                            labelText: "Data da Conclusão",
+                            prefixIcon: Icon(Icons.event_available_outlined),
+                            hintText: 'Toque para selecionar a data'),
+                        validator: (v) => v == null ? "Obrigatório" : null,
+                        onTap: () async {
+                          final pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: dataFinalManejo,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2030));
+                          if (pickedDate != null) {
+                            setModalState(() => dataFinalManejo = pickedDate);
+                          }
+                        },
                       ),
-                      decoration: const InputDecoration(
-                          labelText: "Data da Conclusão",
-                          prefixIcon: Icon(Icons.event_available_outlined),
-                          hintText: 'Toque para selecionar a data'),
-                      onTap: () async {
-                        final pickedDate = await showDatePicker(
-                            context: context,
-                            initialDate: dataFinalManejo,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2030));
-                        if (pickedDate != null) {
-                          setModalState(() => dataFinalManejo = pickedDate);
-                        }
-                      },
-                    ),
                     const SizedBox(height: 15),
 
                     TextFormField(
@@ -2160,12 +2313,13 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                         label: const Text("SALVAR CONCLUSÃO"),
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12))
+                              borderRadius: BorderRadius.circular(12))
                         ),
                         onPressed: () async {
                           if (formKey.currentState!.validate()) {
                             final Map<String, dynamic> detalhes = manejo.detalhes;
                             detalhes['observacao'] = obsController.text;
+                            detalhes['dataHoraConclusao'] = DateTime.now().toIso8601String();
 
                             if (_incluirControleFolicular && manejo.tipo != 'Controle Folicular') {
                                 detalhes['ovarioDireito'] = ovarioDirOp;
@@ -2177,9 +2331,9 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                             }
 
                             if (manejo.tipo == 'Controle Folicular') {
-                               manejo.medicamentoId = medicamentoSelecionado?.id;
-                               manejo.inducao = inducaoSelecionada;
-                               manejo.dataHoraInducao = dataHoraInducao;
+                                manejo.medicamentoId = medicamentoSelecionado?.id;
+                                manejo.inducao = inducaoSelecionada;
+                                manejo.dataHoraInducao = dataHoraInducao;
                             }
                             
                             if (manejo.tipo == 'Diagnóstico') {
@@ -2187,8 +2341,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                             if (resultadoDiagnostico == 'Prenhe') {
                               final dias = int.tryParse(diasPrenheController.text) ?? 0;
                               detalhes['diasPrenhe'] = dias;
-                              // ignore: unnecessary_null_comparison
-                              if (egua != null) {
                                 final eguaAtualizada = egua.copyWith(
                                   statusReprodutivo: 'Prenhe',
                                   diasPrenhe: dias,
@@ -2196,16 +2348,26 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                                   statusSync: 'pending_update'
                                 );
                                 await SQLiteHelper.instance.updateEgua(eguaAtualizada);
+                            } else if (resultadoDiagnostico == 'Pariu') {
+                                detalhes['sexoPotro'] = sexoPotro;
+                                detalhes['pelagemPotro'] = pelagemController.text;
+                                detalhes['dataHoraParto'] = dataHoraParto?.toIso8601String();
+                                detalhes['observacoesParto'] = observacoesPartoController.text;
+
+                                 final eguaAtualizada = egua.copyWith(
+                                   statusReprodutivo: 'Vazia',
+                                   dataParto: dataHoraParto,
+                                   sexoPotro: sexoPotro,
+                                   statusSync: 'pending_update'
+                                 );
+                                 await SQLiteHelper.instance.updateEgua(eguaAtualizada);
                               }
-                              // ignore: unnecessary_null_comparison
-                            } else if (egua != null) {
                               final eguaAtualizada = egua.copyWith(
                                   statusReprodutivo: 'Vazia',
                                   diasPrenhe: 0,
                                   statusSync: 'pending_update'
                                 );
                               await SQLiteHelper.instance.updateEgua(eguaAtualizada);
-                            }
                             } else if (manejo.tipo == 'Inseminação') {
                               detalhes['garanhao'] = garanhaoController.text;
                               detalhes['tipoSemem'] = tipoSememSelecionado;
@@ -2249,21 +2411,29 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                             if (mounted) {
                               _autoSync();
                               Navigator.of(ctx).pop();
-                                final Propriedade? lote = _allPropriedades[egua.propriedadeId];
-                                final String propMaeId = lote?.parentId ?? egua.propriedadeId;
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => EguaDetailsScreen(egua: egua, propriedadeMaeId: propMaeId),
-                                  ),
-                                );
                             }
 
-                             if (manejo.tipo == "Inseminação") {
-                                if(_allPropriedades[egua.propriedadeId] != null){
-                                    _promptForDiagnosticScheduleOnAgenda(dataHoraInseminacao ?? dataFinalManejo, egua, _allPropriedades[egua.propriedadeId]!);
-                                }
+                            if (manejo.tipo == 'Controle Folicular' && dataHoraInducao != null) {
+                              final Propriedade? prop = _allPropriedades[propriedadeMaeId];
+                              if (prop != null) {
+                                await _promptForInseminationScheduleOnInduction(context, egua, prop, dataHoraInducao!);
                               }
+                            }
+                            
+                            final isFollicularControl = manejo.tipo == 'Controle Folicular' || _incluirControleFolicular;
+                              if (isFollicularControl) {
+                                await _promptForFollicularControlSchedule(
+                                  dataFinalManejo,
+                                  ovarioDirTamanhoController.text,
+                                  ovarioEsqTamanhoController.text,
+                                );
+                              }
+
+                            if (manejo.tipo == "Inseminação") {
+                                if(_allPropriedades[egua.propriedadeId] != null){
+                                  _promptForDiagnosticScheduleOnAgenda(dataHoraInseminacao ?? dataFinalManejo, egua, _allPropriedades[egua.propriedadeId]!);
+                                }
+                            }
                           }
                         },
                       ),
@@ -2305,6 +2475,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
 
   List<Widget> _buildSpecificForm({
     required BuildContext context,
+    required Egua egua,
     required String tipo,
     required StateSetter setModalState,
     required TextEditingController garanhaoController,
@@ -2316,12 +2487,10 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     required Medicamento? medicamentoSelecionado,
     required Function(Medicamento?) onMedicamentoChange,
     required List<Medicamento> allMeds,
-    // MODIFICADO AQUI
     required List<String> ovarioDirOp,
     required Function(String) onOvarioDirToggle,
     required List<String> ovarioEsqOp,
     required Function(String) onOvarioEsqToggle,
-    // FIM DA MODIFICAÇÃO
     required TextEditingController ovarioDirTamanhoController,
     required TextEditingController ovarioEsqTamanhoController,
     required String? edemaSelecionado,
@@ -2343,17 +2512,29 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     required Function(String) onFilterPropsDoadora,
     required Function(bool) onShowPropDoadoraListChange,
     required List<Propriedade> allPropsDoadora,
+    String? sexoPotro,
+    required Function(String?) onSexoPotroChange,
+    required TextEditingController pelagemController,
+    DateTime? dataHoraParto,
+    required Function(DateTime?) onDataHoraPartoChange,
+    required TextEditingController observacoesPartoController,
+    required bool partoComSucesso,
+    required Function(bool) onPartoComSucessoChange,
   }) {
     final idadeEmbriaoOptions = ['D6', 'D7', 'D8', 'D9', 'D10', 'D11'];
     final tiposSemem = ['Refrigerado', 'Congelado', 'A Fresco', 'Monta Natural'];
 
     switch (tipo) {
       case "Diagnóstico":
+        final List<String> diagnosticoItems = ["Indeterminado", "Prenhe", "Vazia"];
+          if (egua.statusReprodutivo.toLowerCase() == 'prenhe' && egua.categoria != 'Doadora') {
+            diagnosticoItems.add("Pariu");
+          }
         return [
           DropdownButtonFormField<String>(
             value: resultadoDiagnostico,
             hint: const Text("Resultado do Diagnóstico"),
-            items: ["Indeterminado", "Prenhe", "Vazia"]
+            items: diagnosticoItems
                 .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                 .toList(),
             onChanged: (val) => setModalState(() => onResultadoChange(val)),
@@ -2373,6 +2554,137 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
               decoration: const InputDecoration(labelText: "Cobertura"),
               validator: (v) => v!.isEmpty ? "Informe a cobertura" : null,
             ),
+          ],
+          if (resultadoDiagnostico == 'Pariu') ...[
+            const SizedBox(height: 15),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text("Dados do parto", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Row(
+                  children: [
+                    Text("Perdeu", style: TextStyle(color: partoComSucesso ? Colors.grey[600] : Colors.red, fontWeight: partoComSucesso ? FontWeight.normal : FontWeight.bold)),
+                    const SizedBox(width: 4),
+                    Switch(
+                      value: partoComSucesso,
+                      onChanged: (value) {
+                        setModalState(() => onPartoComSucessoChange(value));
+                      },
+                      activeColor: AppTheme.darkGreen,
+                      inactiveThumbColor: Colors.red,
+                      inactiveTrackColor: Colors.red.withOpacity(0.4),
+                    ),
+                    const SizedBox(width: 4),
+                    Text("Criou", style: TextStyle(color: partoComSucesso ? AppTheme.darkGreen : Colors.grey[600], fontWeight: partoComSucesso ? FontWeight.bold : FontWeight.normal)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (partoComSucesso) ...[
+              const Text("Sexo do Potro"),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                    Text("Macho", style: TextStyle(fontWeight: sexoPotro == "Macho" ? FontWeight.bold : FontWeight.normal, color: sexoPotro == "Macho" ? AppTheme.darkGreen: Colors.grey[600])),
+                    Switch(
+                      value: sexoPotro == "Fêmea",
+                      onChanged: (value) {
+                        final novoSexo = value ? "Fêmea" : "Macho";
+                        onSexoPotroChange(novoSexo);
+                      },
+                      activeColor: Colors.pink[200],
+                      inactiveThumbColor: AppTheme.darkGreen,
+                      inactiveTrackColor: AppTheme.darkGreen.withOpacity(0.5),
+                        thumbColor: MaterialStateProperty.resolveWith((states) {
+                          if (states.contains(MaterialState.selected)) {
+                            return Colors.pink[200];
+                          }
+                          return AppTheme.darkGreen;
+                        }),
+                    ),
+                    Text("Fêmea", style: TextStyle(fontWeight: sexoPotro == "Fêmea" ? FontWeight.bold : FontWeight.normal, color: sexoPotro == "Fêmea" ? Colors.pink[300]: Colors.grey[600])),
+                ],
+              ),
+              const SizedBox(height: 15),
+              TextFormField(
+                controller: pelagemController,
+                decoration: const InputDecoration(
+                labelText: "Pelagem do Potro",
+                prefixIcon: Icon(Icons.pets_outlined)),
+                validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+              ),
+              const SizedBox(height: 15),
+              TextFormField(
+                readOnly: true,
+                controller: TextEditingController(
+                  text: dataHoraParto == null
+                      ? ''
+                      : DateFormat('dd/MM/yyyy HH:mm').format(dataHoraParto),
+                ),
+                decoration: const InputDecoration(
+                  labelText: "Data e Hora do Parto",
+                  hintText: 'Toque para selecionar',
+                  prefixIcon: Icon(Icons.calendar_today_outlined),
+                ),
+                onTap: () async {
+                  final date = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now());
+                  if (date == null) return;
+                  TimeOfDay? time;
+                  await showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: const Text("Selecione a Hora"),
+                        content: TimePickerSpinner(
+                          is24HourMode: true,
+                          minutesInterval: 5,
+                          onTimeChange: (dateTime) {
+                            time = TimeOfDay.fromDateTime(dateTime);
+                          },
+                        ),
+                        actions: <Widget>[
+                          TextButton(
+                            child: const Text("CANCELAR"),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                          TextButton(
+                            child: const Text("OK"),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                  if (time != null) {
+                    onDataHoraPartoChange(DateTime(date.year, date.month, date.day, time!.hour, time!.minute));
+                  }
+                },
+                validator: (v) => dataHoraParto == null ? "Obrigatório" : null,
+              ),
+              const SizedBox(height: 15),
+              TextFormField(
+                controller: observacoesPartoController,
+                decoration: const InputDecoration(
+                  labelText: "Observações",
+                  prefixIcon: Icon(Icons.comment_outlined)),
+                maxLines: 2,
+              ),
+            ] else ...[
+              const SizedBox(height: 10),
+               TextFormField(
+                controller: observacoesPartoController,
+                decoration: const InputDecoration(
+                  labelText: "Observações sobre a perda",
+                  prefixIcon: Icon(Icons.comment_outlined)),
+                maxLines: 2,
+              ),
+            ]
           ]
         ];
       case "Inseminação":
@@ -2384,7 +2696,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
           const SizedBox(height: 15),
           DropdownButtonFormField<String>(
             value: tipoSememSelecionado,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
                 labelText: "Tipo de Sêmen",
                 prefixIcon: Icon(Icons.science_outlined)),
             hint: const Text("Selecione o tipo"),
@@ -2471,7 +2783,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
           )
         ];
       case "Controle Folicular":
-        // CONTEÚDO TOTALMENTE SUBSTITUÍDO
         return [
           _buildControleFolicularInputs(
             setModalState: setModalState,
@@ -2501,17 +2812,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
               labelText: "Propriedade da Doadora",
               prefixIcon: const Icon(Icons.home_work_outlined),
               suffixIcon: propDoadoraSelecionada != null
-                  ? IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () {
-                        setModalState(() {
-                          onPropDoadoraChange(null);
-                          propDoadoraSearchController.clear();
-                          onDoadoraChange(null);
-                          onShowPropDoadoraListChange(true);
-                        });
-                      },
-                    )
+                  ? null
                   : const Icon(Icons.search),
             ),
             onChanged: onFilterPropsDoadora,
@@ -2562,8 +2863,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                       .map((e) => DropdownMenuItem(value: e, child: Text(e.nome)))
                       .toList(),
                   onChanged: (val) => setModalState(() => onDoadoraChange(val)),
-                  validator: (v) =>
-                      v == null ? "Selecione a égua doadora" : null,
+                  validator: (v) => v == null ? "Selecione a égua doadora" : null,
                 );
               },
             ),

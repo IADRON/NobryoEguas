@@ -1,18 +1,9 @@
-notificações:
-
-    monitoramento de controle folicular: 		
-    
-        agendamento automático de diagnóstico (com alerta de egua prenha)para égua prenha (14 dias após a inseminação)
-
-        fl >= 34 {alerta para concluir controle folicular}
-
-        conclusão de controle folicular:
-        verificar em qual dia o tamanho folicular vai bater 34mm e dar um alert se deseja marcar um controle folicular
-
-    conclusão de indução:
-        verificar em qual dia bate a indução e dar um alert se deseja marcar uma inseminação
-        após 36 hrs da conclusão, notificar para realizar a inseminação
+notificações
 
 função limpar campos (todos)
 
 foto eguas*
+
+deslocamentos nos relatórios
+
+filtro de temporada no histórico

@@ -114,7 +114,7 @@ class SQLiteHelper {
       await db.execute('ALTER TABLE propriedades ADD COLUMN hasLotes INTEGER DEFAULT 1 NOT NULL');
     }
     if (oldVersion < 23) {
-      await db.execute('ALTER TABLE manejos ADD COLUM dataConclusao DATETIME');
+      await db.execute('ALTER TABLE manejos ADD COLUM dataConclusao TEXT');
     }
   }
 
@@ -201,6 +201,7 @@ class SQLiteHelper {
           firebaseId TEXT,
           tipo TEXT NOT NULL,
           dataAgendada TEXT NOT NULL,
+          dataConclusao TEXT,
           status TEXT NOT NULL,
           detalhes TEXT NOT NULL,
           eguaId TEXT NOT NULL,
@@ -638,23 +639,22 @@ class SQLiteHelper {
     final db = await instance.database;
     final now = DateTime.now();
 
-    // Usar apenas a data, sem as horas, para a comparação
     final today = DateTime(now.year, now.month, now.day);
-    final todayString = today.toIso8601String().split('T').first;
+    final todayString = today.toIso8601String();
 
-    // Atualiza apenas os manejos que estão 'Agendado' e cuja data passou
     final count = await db.update(
       'manejos',
       {
         'isAtrasado': 1,
-        'statusSync': 'pending_update' // Mantém a lógica de sincronização
+        'dataAgendada': todayString,
+        'statusSync': 'pending_update'
       },
-      where: 'status = ? AND dataAgendada < ? AND isAtrasado = 0', // Condição mais precisa
-      whereArgs: ['Agendado', todayString], // Argumentos corretos
+      where: 'status != ? AND dataAgendada < ?',
+      whereArgs: ['Concluído', todayString],
     );
 
     if (count > 0) {
-      print("$count manejos foram marcados como atrasados.");
+      print("$count manejos atrasados foram atualizados e reagendados para hoje.");
     }
 
     return count;

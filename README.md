@@ -1,6 +1,6 @@
-# nobryo_final
+# Nobryo Éguas
 
-A new Flutter project.
+Gestor de ciclo de reprodução de equinos.
 
 ## Getting Started
 
