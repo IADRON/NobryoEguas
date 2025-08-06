@@ -21,33 +21,49 @@ class MedicamentosScreen extends StatefulWidget {
 class _MedicamentosScreenState extends State<MedicamentosScreen> {
   late Future<List<Medicamento>> _medicamentosFuture;
 
-  final SyncService _syncService = SyncService();
+  // ALTERAÇÃO 1: Declaramos a variável para guardar a instância do Provider.
+  late SyncService _syncService;
+
+  // A instância de AuthService continua local, pois não era a causa do erro.
   final AuthService _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
     _refreshMedicamentos();
-    Provider.of<SyncService>(context, listen: false)
-        .addListener(_refreshMedicamentos);
+    // A chamada para addListener foi movida para didChangeDependencies.
+  }
+
+  // ALTERAÇÃO 2: Adicionamos o método didChangeDependencies.
+  // Este é o local seguro para obter a referência do Provider.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Obtemos a instância do SyncService do Provider.
+    _syncService = Provider.of<SyncService>(context, listen: false);
+    // Adicionamos o listener usando a referência segura.
+    _syncService.addListener(_refreshMedicamentos);
   }
 
   @override
   void dispose() {
-    Provider.of<SyncService>(context, listen: false)
-        .removeListener(_refreshMedicamentos);
+    // ALTERAÇÃO 3: Usamos a variável _syncService para remover o listener.
+    // Isso é seguro porque a referência já foi guardada.
+    _syncService.removeListener(_refreshMedicamentos);
     super.dispose();
   }
 
   void _refreshMedicamentos() {
-    setState(() {
-      _medicamentosFuture = SQLiteHelper.instance.readAllMedicamentos();
-    });
+    if (mounted) {
+      setState(() {
+        _medicamentosFuture = SQLiteHelper.instance.readAllMedicamentos();
+      });
+    }
   }
 
   Future<void> _autoSync() async {
+    // A chamada agora usa a instância correta do Provider (_syncService)
     final bool _ = await _syncService.syncData(isManual: false);
-    if (mounted) {}
     _refreshMedicamentos();
   }
 
@@ -58,6 +74,7 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
       builder: (BuildContext context) => const LoadingScreen(),
     );
 
+    // A chamada agora usa a instância correta do Provider (_syncService)
     final bool online = await _syncService.syncData(isManual: true);
 
     if (mounted) {

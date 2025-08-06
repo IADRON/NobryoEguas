@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:nobryo_final/features/auth/screens/splash_screen.dart';
+import 'package:nobryo_final/core/services/notification_service.dart';
 import 'package:nobryo_final/core/services/realtime_sync_service.dart';
 import 'package:nobryo_final/core/services/sync_service.dart';
 import 'package:nobryo_final/shared/theme/theme.dart';
@@ -16,6 +17,7 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await NotificationService().init();
   runApp(const MyApp());
 }
 

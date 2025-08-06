@@ -13,6 +13,7 @@ import 'package:nobryo_final/core/models/propriedade_model.dart';
 import 'package:nobryo_final/core/models/medicamento_model.dart';
 import 'package:nobryo_final/core/models/peao_model.dart';
 import 'package:nobryo_final/core/models/user_model.dart';
+import 'package:nobryo_final/core/services/notification_service.dart';
 import 'package:nobryo_final/core/services/sync_service.dart';
 import 'package:provider/provider.dart';
 import 'package:nobryo_final/features/auth/screens/manage_users_screen.dart';
@@ -595,15 +596,9 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
 
   Widget _buildPropriedadeGroup(Propriedade? propriedade, List<Manejo> manejos) {
     if (propriedade == null) return const SizedBox.shrink();
-
-    // Ordena a lista de manejos para colocar os pendentes (isAtrasado) no início.
     manejos.sort((a, b) {
-      // 1. Se 'a' está atrasado e 'b' não está, 'a' vem primeiro (-1).
       if (a.isAtrasado && !b.isAtrasado) return -1;
-      // 2. Se 'b' está atrasado e 'a' não está, 'b' vem primeiro (1).
       if (!a.isAtrasado && b.isAtrasado) return 1;
-      // 3. Se ambos têm o mesmo status (ambos atrasados ou não),
-      //    mantém a ordem original por data/hora agendada.
       return a.dataAgendada.compareTo(b.dataAgendada);
     });
     
@@ -801,39 +796,65 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
         preselectedType: "Inseminação",
         preselectedDate: inseminationDate,
       );
+      NotificationService().scheduleNotification(
+        DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        'Lembrete de Inseminação',
+        ' passaram 36 horas desde a indução da égua ${egua.nome}.',
+        inseminationDate,
+      );
     }
   }
 
-  Future<void> _promptForDiagnosticScheduleOnAgenda(
-      DateTime inseminationDate, Egua egua, Propriedade propriedade) async {
-    final bool? confirm = await showDialog<bool>(
+  void _promptForDiagnosticScheduleOnInsemination(
+    BuildContext context,
+    Propriedade propriedade,
+    Egua egua,
+    DateTime inseminationDate,
+  ) {
+    showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Agendamento Automático"),
-        content: Text(
-            "Inseminação concluída para a égua ${egua.nome}. Deseja agendar o diagnóstico de prenhez para daqui a 14 dias?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text("Não"),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Agendar Diagnóstico?"),
+          content: Text(
+            "A égua ${egua.nome} foi inseminada. Deseja agendar o diagnóstico para 14 dias a partir de agora?",
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text("Sim"),
-          ),
-        ],
-      ),
-    );
+          actions: <Widget>[
+            TextButton(
+              child: const Text("Não"),
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+            ),
+            TextButton(
+              child: const Text("Sim"),
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+            ),
+          ],
+        );
+      },
+    ).then((confirm) {
+      if (confirm == true && mounted) {
+        final diagnosticDate = inseminationDate.add(const Duration(days: 14));
 
-    if (confirm == true && mounted) {
-      _showAddAgendamentoModal(
-        context,
-        propriedade: propriedade,
-        egua: egua,
-        preselectedType: "Diagnóstico",
-        preselectedDate: inseminationDate.add(const Duration(days: 14)),
-      );
-    }
+        _showAddAgendamentoModal(
+          context,
+          propriedade: propriedade,
+          egua: egua,
+          preselectedType: "Diagnóstico",
+          preselectedDate: diagnosticDate,
+        );
+
+        NotificationService().scheduleNotification(
+          DateTime.now().millisecondsSinceEpoch.remainder(100000),
+          'Lembrete de Diagnóstico',
+          'Hoje é o dia do diagnóstico de prenhez da égua ${egua.nome}.',
+          diagnosticDate,
+        );
+      }
+    });
   }
 
   Future<void> _promptForFollicularControlSchedule(DateTime controlDate, String follicleSizeRight, String follicleSizeLeft) async {
@@ -889,6 +910,12 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
         context,
         preselectedType: "Controle Folicular",
         preselectedDate: scheduledDate,
+      );
+      NotificationService().scheduleNotification(
+        DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        'Controle Folicular',
+        'O folículo da égua atingiu o tamanho ideal de 33mm.',
+        scheduledDate,
       );
     }
   }
@@ -2441,9 +2468,15 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                               }
 
                             if (manejo.tipo == "Inseminação") {
-                                if(_allPropriedades[egua.propriedadeId] != null){
-                                  _promptForDiagnosticScheduleOnAgenda(dataHoraInseminacao ?? dataFinalManejo, egua, _allPropriedades[egua.propriedadeId]!);
-                                }
+                              final Propriedade? propriedade = _allPropriedades[egua.propriedadeId];
+                              if (propriedade != null) {
+                                _promptForDiagnosticScheduleOnInsemination(
+                                    context,
+                                    propriedade,
+                                    egua,
+                                    dataHoraInseminacao ?? dataFinalManejo,
+                                );
+                              }
                             }
                           }
                         },

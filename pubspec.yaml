@@ -56,8 +56,12 @@ dependencies:
   shared_preferences: ^2.2.3
   provider: ^6.1.5
   flutter_time_picker_spinner: ^2.0.0
-  #.env
+  # .env
   flutter_dotenv: ^5.1.0
+
+  # Notificações
+  flutter_local_notifications: ^17.1.2
+
 
 dev_dependencies:
   flutter_test:
