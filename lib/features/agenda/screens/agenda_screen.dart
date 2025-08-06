@@ -628,10 +628,8 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
     );
   }
 
-  // CÓDIGO MODIFICADO ABAIXO
   Widget _buildAgendaCard(Manejo manejo, Egua? egua) {
     final styleColor = _getManejoColor(manejo.tipo);
-    // Verifica se o manejo tem um horário específico (diferente da meia-noite)
     final bool showTime =
         manejo.dataAgendada.hour != 0 || manejo.dataAgendada.minute != 0;
 
@@ -653,85 +651,99 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                        color: styleColor,
-                        borderRadius: BorderRadius.circular(20)),
-                    child: Text(manejo.tipo.toUpperCase(),
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12)),
+              if (egua != null && egua.photoPath != null && egua.photoPath!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: CircleAvatar(
+                    radius: 25,
+                    backgroundImage: FileImage(File(egua.photoPath!)),
                   ),
-                  const Icon(Icons.chevron_right, color: Colors.grey),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(egua?.nome ?? "Égua não encontrada",
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
-                  ),
-                  if (showTime)
-                    Text(
-                      DateFormat('HH:mm', 'pt_BR').format(manejo.dataAgendada),
-                      style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.darkGreen),
-                    ),
-                ],
-              ),
-              if (egua != null) ...[
-                if (egua.rp.isNotEmpty) ...[
-                  Text("RP: ${egua.rp}",
-                      style: TextStyle(color: Colors.grey[700], fontSize: 14)),
-                ] else ...[
-                  Text("Pelagem: ${egua.pelagem}",
-                      style: TextStyle(color: Colors.grey[700], fontSize: 14)),
-                ],
-              ],
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      "Responsável: $responsavelNome",
-                      style: TextStyle(color: Colors.grey[700], fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (isPendente)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.red[700],
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        "PENDENTE",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                              color: styleColor,
+                              borderRadius: BorderRadius.circular(20)),
+                          child: Text(manejo.tipo.toUpperCase(),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12)),
                         ),
-                      ),
+                        const Icon(Icons.chevron_right, color: Colors.grey),
+                      ],
                     ),
-                ],
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(egua?.nome ?? "Égua não encontrada",
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                        if (showTime)
+                          Text(
+                            DateFormat('HH:mm', 'pt_BR').format(manejo.dataAgendada),
+                            style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.darkGreen),
+                          ),
+                      ],
+                    ),
+                    if (egua != null)
+                      if (egua.rp.isNotEmpty) ...[
+                        Text("RP: ${egua.rp}",
+                            style: TextStyle(color: Colors.grey[700], fontSize: 14)),
+                      ] else ...[
+                        Text("Pelagem: ${egua.pelagem}",
+                            style: TextStyle(color: Colors.grey[700], fontSize: 14)),
+                      ],
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            "Responsável: $responsavelNome",
+                            style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isPendente)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.red[700],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              "PENDENTE",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -739,7 +751,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
       ),
     );
   }
-  // FIM DO CÓDIGO MODIFICADO
 
   void _setupFirebaseListener() {
     final collectionRef = FirebaseFirestore.instance.collection('manejos');

@@ -1,7 +1,9 @@
 import 'package:collection/collection.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:nobryo_final/core/database/sqlite_helper.dart';
 import 'package:nobryo_final/core/models/egua_model.dart';
 import 'package:nobryo_final/core/models/manejo_model.dart';
@@ -94,6 +96,26 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     await _syncService.syncData(isManual: false);
     if (mounted) {
       _refreshData();
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+
+    if (image != null && mounted) {
+      final updatedEgua = _currentEgua.copyWith(
+        photoPath: image.path,
+        statusSync: 'pending_update',
+      );
+
+      await SQLiteHelper.instance.updateEgua(updatedEgua);
+      
+      setState(() {
+        _currentEgua = updatedEgua;
+      });
+
+      _autoSync();
     }
   }
 
@@ -425,7 +447,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     await SQLiteHelper.instance.updateEgua(eguaParaAtualizar.copyWith(statusSync: 'pending_update'));
   }
 
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -457,84 +478,128 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
       body: Column(
         children: [
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Informações da Égua",
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.darkText)),
-                  const SizedBox(height: 16),
-                  _buildInfoCard(_currentEgua),
-                  const SizedBox(height: 24),
-                  const Text("Próximos Agendamentos",
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.darkText)),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.add, size: 20),
-                      label: const Text("Agendar Novo Manejo"),
-                      onPressed: () => _showAddAgendamentoModal(context),
-                      style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8)),
-                    ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_currentEgua.photoPath != null &&
+                          _currentEgua.photoPath!.isNotEmpty) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12.0),
+                          child: Image.file(
+                            File(_currentEgua.photoPath!),
+                            height: 200,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(height: 25),
+                      ],
+
+                      const Text("Informações da Égua",
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.darkText)),
+                      const SizedBox(height: 16),
+                      _buildInfoCard(_currentEgua),
+                      const SizedBox(height: 24),
+                      const Text("Próximos Agendamentos",
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.darkText)),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.add, size: 20),
+                          label: const Text("Agendar Novo Manejo"),
+                          onPressed: () => _showAddAgendamentoModal(context),
+                          style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 8)),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildManejoList(_agendadosFuture, isHistorico: false),
+                      const SizedBox(height: 24),
+                      const Text("Histórico de Manejos Concluídos",
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.darkText)),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        value: _selectedManejoType,
+                        hint: const Text("Filtrar por tipo"),
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                          prefixIcon: const Icon(Icons.filter_list),
+                          suffixIcon: _selectedManejoType != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 20),
+                                  onPressed: () {
+                                    setState(() {
+                                      _selectedManejoType = null;
+                                    });
+                                  },
+                                )
+                              : null,
+                        ),
+                        items: _manejoTypes
+                            .map((tipo) => DropdownMenuItem(
+                                  value: tipo,
+                                  child: Text(tipo),
+                                ))
+                            .toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            if (val == "Todos") {
+                              _selectedManejoType = null;
+                            } else {
+                              _selectedManejoType = val;
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildManejoList(_historicoFuture, isHistorico: true),
+                      const SizedBox(height: 20),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  _buildManejoList(_agendadosFuture, isHistorico: false),
-                  const SizedBox(height: 24),
-                  const Text("Histórico de Manejos Concluídos",
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.darkText)),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: _selectedManejoType,
-                    hint: const Text("Filtrar por tipo"),
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      contentPadding:
-                          const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                      prefixIcon: const Icon(Icons.filter_list),
-                      suffixIcon: _selectedManejoType != null
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 20),
-                              onPressed: () {
-                                setState(() {
-                                  _selectedManejoType = null;
-                                });
-                              },
+                ),
+
+                if (_currentEgua.photoPath != null &&
+                    _currentEgua.photoPath!.isNotEmpty)
+                  Positioned(
+                    top: 185,
+                    right: 10,
+                    child: GestureDetector(
+                      onTap: () => _pickImage(),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: const BoxDecoration(
+                          color: AppTheme.brown,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 6,
+                              offset: Offset(0, 2),
                             )
-                          : null,
+                          ]
+                        ),
+                        child: const Icon(Icons.edit, color: Colors.white, size: 24),
+                      ),
                     ),
-                    items: _manejoTypes
-                        .map((tipo) => DropdownMenuItem(
-                              value: tipo,
-                              child: Text(tipo),
-                            ))
-                        .toList(),
-                    onChanged: (val) {
-                      setState(() {
-                        if (val == "Todos") {
-                          _selectedManejoType = null;
-                        } else {
-                          _selectedManejoType = val;
-                        }
-                      });
-                    },
                   ),
-                  const SizedBox(height: 16),
-                  _buildManejoList(_historicoFuture, isHistorico: true),
-                  const SizedBox(height: 20),
-                ],
-              ),
+              ],
             ),
           ),
           Container(
@@ -3594,6 +3659,8 @@ class _EditEguaFormState extends State<_EditEguaForm> {
   late final TextEditingController _coberturaController;
   late final TextEditingController _obsController;
 
+  String? _newPhotoPath;
+
   late String _categoriaSelecionada;
   late bool _teveParto;
   late DateTime? _dataParto;
@@ -3612,6 +3679,7 @@ class _EditEguaFormState extends State<_EditEguaForm> {
     _teveParto = widget.egua.dataParto != null;
     _dataParto = widget.egua.dataParto;
     _sexoPotro = widget.egua.sexoPotro;
+    _newPhotoPath = widget.egua.photoPath;
   }
 
   @override
@@ -3622,6 +3690,17 @@ class _EditEguaFormState extends State<_EditEguaForm> {
     _coberturaController.dispose();
     _obsController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+
+    if (image != null && mounted) {
+      setState(() {
+        _newPhotoPath = image.path;
+      });
+    }
   }
 
   Future<void> _saveChanges() async {
@@ -3636,6 +3715,7 @@ class _EditEguaFormState extends State<_EditEguaForm> {
         dataParto: _teveParto ? _dataParto : null,
         sexoPotro: _teveParto ? _sexoPotro : null,
         statusSync: 'pending_update',
+        photoPath: _newPhotoPath,
       );
 
       await SQLiteHelper.instance.updateEgua(updatedEgua);
@@ -3651,7 +3731,7 @@ class _EditEguaFormState extends State<_EditEguaForm> {
     return Padding(
       padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
-          top: 20,
+          top: 25,
           left: 20,
           right: 20),
         child: Form(
@@ -3661,20 +3741,45 @@ class _EditEguaFormState extends State<_EditEguaForm> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: (
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(Icons.close),
+                    )
+                  )
+                ),
+                Center(
+                  child: GestureDetector(
+                    onTap: _pickImage,
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 60,
+                          backgroundColor: AppTheme.lightGrey,
+                          backgroundImage: (_newPhotoPath != null && _newPhotoPath!.isNotEmpty)
+                              ? FileImage(File(_newPhotoPath!))
+                              : null,
+                          child: (_newPhotoPath == null || _newPhotoPath!.isEmpty)
+                              ? const Icon(Icons.camera_alt, size: 60, color: AppTheme.darkGreen)
+                              : null,
                         ),
-                      ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: AppTheme.brown,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.edit, color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  )
                 ),
                 const SizedBox(height: 10),
                 Row(

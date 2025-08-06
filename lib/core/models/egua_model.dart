@@ -16,7 +16,8 @@ class Egua {
   String statusSync;
   bool isDeleted;
   String categoria;
-  int orderIndex; // NOVO CAMPO
+  int orderIndex;
+  String? photoPath;
 
   Egua({
     required this.id,
@@ -34,7 +35,8 @@ class Egua {
     this.statusSync = 'pending_create',
     this.isDeleted = false,
     this.categoria = 'Matriz',
-    required this.orderIndex, // NOVO CAMPO
+    required this.orderIndex,
+    this.photoPath
   });
 
   @override
@@ -62,7 +64,8 @@ class Egua {
       'statusSync': statusSync,
       'isDeleted': isDeleted ? 1 : 0,
       'categoria': categoria,
-      'orderIndex': orderIndex, // NOVO CAMPO
+      'orderIndex': orderIndex,
+      'photoPath' : photoPath
     };
   }
 
@@ -84,7 +87,8 @@ class Egua {
       statusSync: map['statusSync'],
       isDeleted: map['isDeleted'] == 1,
       categoria: map['categoria'] ?? 'Matriz',
-      orderIndex: map['orderIndex'] ?? 0, // NOVO CAMPO
+      orderIndex: map['orderIndex'] ?? 0,
+      photoPath: map['photoPath']
     );
   }
 
@@ -102,7 +106,8 @@ class Egua {
       'diasPrenhe': diasPrenhe,
       'propriedadeFirebaseId': propriedadeFirebaseId,
       'categoria': categoria,
-      'orderIndex': orderIndex, // NOVO CAMPO
+      'orderIndex': orderIndex,
+      'photoPath' : photoPath
     };
   }
 
@@ -125,7 +130,8 @@ class Egua {
       statusSync: 'synced',
       isDeleted: false,
       categoria: map['categoria'] ?? 'Matriz',
-      orderIndex: map['orderIndex'] ?? 0, // NOVO CAMPO
+      orderIndex: map['orderIndex'] ?? 0,
+      photoPath: map['photoPath']
     );
   }
 
@@ -145,7 +151,8 @@ class Egua {
     String? statusSync,
     bool? isDeleted,
     String? categoria,
-    int? orderIndex, // NOVO CAMPO
+    int? orderIndex,
+    String? photoPath,
   }) {
     return Egua(
       id: id ?? this.id,
@@ -163,7 +170,8 @@ class Egua {
       statusSync: statusSync ?? this.statusSync,
       isDeleted: isDeleted ?? this.isDeleted,
       categoria: categoria ?? this.categoria,
-      orderIndex: orderIndex ?? this.orderIndex, // NOVO CAMPO
+      orderIndex: orderIndex ?? this.orderIndex,
+      photoPath: photoPath ?? this.photoPath
     );
   }
 }

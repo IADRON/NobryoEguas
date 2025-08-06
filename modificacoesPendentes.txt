@@ -2,8 +2,6 @@ notificações
 
 função limpar campos (todos)
 
-foto eguas*
-
 deslocamentos nos relatórios
 
 filtro de temporada no histórico

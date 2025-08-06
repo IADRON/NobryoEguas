@@ -25,7 +25,7 @@ class SQLiteHelper {
 
     return await openDatabase(
       path,
-      version: 23,
+      version: 24,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -114,7 +114,10 @@ class SQLiteHelper {
       await db.execute('ALTER TABLE propriedades ADD COLUMN hasLotes INTEGER DEFAULT 1 NOT NULL');
     }
     if (oldVersion < 23) {
-      await db.execute('ALTER TABLE manejos ADD COLUM dataConclusao TEXT');
+      await db.execute('ALTER TABLE manejos ADD COLUMN dataConclusao TEXT');
+    }
+    if (oldVersion < 24) {
+      await db.execute('ALTER TABLE eguas ADD COLUMN photoPath TEXT');
     }
   }
 
@@ -189,6 +192,7 @@ class SQLiteHelper {
         isDeleted INTEGER DEFAULT 0 NOT NULL,
         categoria TEXT NOT NULL DEFAULT 'Matriz',
         orderIndex INTEGER NOT NULL DEFAULT 0,
+        photoPath TEXT,
         FOREIGN KEY (propriedadeId) REFERENCES propriedades (id) ON DELETE CASCADE
       )
     ''');

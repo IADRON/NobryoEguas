@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:nobryo_final/core/database/sqlite_helper.dart';
@@ -9,8 +10,8 @@ import 'package:nobryo_final/core/services/sync_service.dart';
 import 'package:nobryo_final/features/eguas/screens/egua_details_page_view.dart';
 import 'package:nobryo_final/features/propriedades/widgets/peoes_management_widget.dart';
 import 'package:nobryo_final/shared/theme/theme.dart';
-import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 final ValueNotifier<bool> eguasMovedNotifier = ValueNotifier<bool>(false);
 
@@ -966,6 +967,14 @@ class _EguasListScreenState extends State<EguasListScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
+              if (egua.photoPath != null && egua.photoPath!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: CircleAvatar(
+                  radius: 25,
+                  backgroundImage: FileImage(File(egua.photoPath!)),
+                ),
+              ),
               if (_isSelectionMode)
                 Padding(
                   padding: const EdgeInsets.only(right: 12.0),
