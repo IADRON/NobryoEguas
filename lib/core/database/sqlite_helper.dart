@@ -556,11 +556,35 @@ class SQLiteHelper {
     return db.delete('manejos', where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<List<Manejo>> readHistoricoByEgua(String eguaId) async {
+  Future<List<Manejo>> readHistoricoByEgua(String eguaId, {String? season}) async {
     final db = await instance.database;
+    String? whereClause = 'eguaId = ? AND status = ? AND isDeleted = 0';
+    List<dynamic> whereArgs = [eguaId, 'Concluído'];
+
+    if (season != null) {
+      final now = DateTime.now();
+      int currentYear = now.year;
+      DateTime startDate;
+      DateTime endDate;
+
+      if (season == 'current') {
+        startDate = DateTime(currentYear, 9, 1);
+        endDate = DateTime(currentYear + 1, 2, 28);
+      } else if (season == 'previous') {
+        startDate = DateTime(currentYear - 1, 9, 1);
+        endDate = DateTime(currentYear, 2, 28);
+      } else {
+        startDate = DateTime(1900);
+        endDate = DateTime(2100);
+      }
+
+      whereClause += ' AND dataAgendada BETWEEN ? AND ?';
+      whereArgs.addAll([startDate.toIso8601String(), endDate.toIso8601String()]);
+    }
+
     final result = await db.query('manejos',
-        where: 'eguaId = ? AND status = ? AND isDeleted = 0',
-        whereArgs: [eguaId, 'Concluído'],
+        where: whereClause,
+        whereArgs: whereArgs,
         orderBy: 'dataAgendada DESC');
     return result.map((json) => Manejo.fromMap(json)).toList();
   }

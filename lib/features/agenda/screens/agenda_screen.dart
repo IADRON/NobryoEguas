@@ -106,12 +106,10 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
   }
 
   Future<void> _refreshAgenda() async {
-    await SQLiteHelper.instance.updateOverdueStatus();
-
     final rescheduledCount = await SQLiteHelper.instance.updateOverdueStatus();
 
     if (rescheduledCount > 0 && mounted) {
-      _autoSync(); 
+      _autoSync();
     }
 
     final results = await Future.wait([

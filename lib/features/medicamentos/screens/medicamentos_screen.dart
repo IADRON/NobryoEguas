@@ -19,50 +19,58 @@ class MedicamentosScreen extends StatefulWidget {
 }
 
 class _MedicamentosScreenState extends State<MedicamentosScreen> {
-  late Future<List<Medicamento>> _medicamentosFuture;
+  List<Medicamento> _allMedicamentos = [];
+  List<Medicamento> _filteredMedicamentos = [];
+  final TextEditingController _searchController = TextEditingController();
 
-  // ALTERAÇÃO 1: Declaramos a variável para guardar a instância do Provider.
   late SyncService _syncService;
 
-  // A instância de AuthService continua local, pois não era a causa do erro.
   final AuthService _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
     _refreshMedicamentos();
-    // A chamada para addListener foi movida para didChangeDependencies.
+    _searchController.addListener(_filterMedicamentos);
   }
 
-  // ALTERAÇÃO 2: Adicionamos o método didChangeDependencies.
-  // Este é o local seguro para obter a referência do Provider.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Obtemos a instância do SyncService do Provider.
     _syncService = Provider.of<SyncService>(context, listen: false);
-    // Adicionamos o listener usando a referência segura.
     _syncService.addListener(_refreshMedicamentos);
   }
 
   @override
   void dispose() {
-    // ALTERAÇÃO 3: Usamos a variável _syncService para remover o listener.
-    // Isso é seguro porque a referência já foi guardada.
     _syncService.removeListener(_refreshMedicamentos);
+    _searchController.removeListener(_filterMedicamentos);
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _filterMedicamentos() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredMedicamentos = _allMedicamentos
+          .where((med) => med.nome.toLowerCase().contains(query))
+          .toList();
+    });
   }
 
   void _refreshMedicamentos() {
     if (mounted) {
-      setState(() {
-        _medicamentosFuture = SQLiteHelper.instance.readAllMedicamentos();
+      SQLiteHelper.instance.readAllMedicamentos().then((medicamentos) {
+        setState(() {
+          _allMedicamentos = medicamentos;
+          _filteredMedicamentos = medicamentos;
+          _filterMedicamentos();
+        });
       });
     }
   }
 
   Future<void> _autoSync() async {
-    // A chamada agora usa a instância correta do Provider (_syncService)
     final bool _ = await _syncService.syncData(isManual: false);
     _refreshMedicamentos();
   }
@@ -74,7 +82,6 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
       builder: (BuildContext context) => const LoadingScreen(),
     );
 
-    // A chamada agora usa a instância correta do Provider (_syncService)
     final bool online = await _syncService.syncData(isManual: true);
 
     if (mounted) {
@@ -136,75 +143,79 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
             ),
         ],
       ),
-      body: FutureBuilder<List<Medicamento>>(
-        future: _medicamentosFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text("Erro: ${snapshot.error}"));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(20.0),
-                child: Text(
-                  "Nenhum medicamento cadastrado.\nClique no '+' para adicionar o primeiro.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
-                ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: 'Buscar medicamento...',
+                prefixIcon: Icon(Icons.search),
               ),
-            );
-          }
-
-          final medicamentos = snapshot.data!;
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
-            itemCount: medicamentos.length,
-            itemBuilder: (context, index) {
-              final med = medicamentos[index];
-              return Card(
-                child: ListTile(
-                  title: Text(med.nome,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.darkText)),
-                  subtitle: Text(med.descricao,
-                      style: TextStyle(color: Colors.grey[700])),
-                  trailing: PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        _showAddOrEditMedicamentoModal(context,
-                            medicamento: med);
-                      } else if (value == 'delete') {
-                        _confirmDeleteMedicamento(med);
-                      }
+            ),
+          ),
+          Expanded(
+            child: _filteredMedicamentos.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: Text(
+                        "Nenhum medicamento encontrado.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
+                    itemCount: _filteredMedicamentos.length,
+                    itemBuilder: (context, index) {
+                      final med = _filteredMedicamentos[index];
+                      return Card(
+                        child: ListTile(
+                          title: Text(med.nome,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.darkText)),
+                          subtitle: Text(med.descricao,
+                              style: TextStyle(color: Colors.grey[700])),
+                          trailing: PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert),
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                _showAddOrEditMedicamentoModal(context,
+                                    medicamento: med);
+                              } else if (value == 'delete') {
+                                _confirmDeleteMedicamento(med);
+                              }
+                            },
+                            itemBuilder: (BuildContext context) =>
+                                <PopupMenuEntry<String>>[
+                              const PopupMenuItem<String>(
+                                value: 'edit',
+                                child: ListTile(
+                                  leading: Icon(Icons.edit_outlined),
+                                  title: Text('Editar'),
+                                ),
+                              ),
+                              const PopupMenuItem<String>(
+                                value: 'delete',
+                                child: ListTile(
+                                  leading: Icon(Icons.delete_outline,
+                                      color: Colors.red),
+                                  title: Text('Excluir',
+                                      style: TextStyle(color: Colors.red)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
                     },
-                    itemBuilder: (BuildContext context) =>
-                        <PopupMenuEntry<String>>[
-                      const PopupMenuItem<String>(
-                        value: 'edit',
-                        child: ListTile(
-                          leading: Icon(Icons.edit_outlined),
-                          title: Text('Editar'),
-                        ),
-                      ),
-                      const PopupMenuItem<String>(
-                        value: 'delete',
-                        child: ListTile(
-                          leading:
-                              Icon(Icons.delete_outline, color: Colors.red),
-                          title:
-                              Text('Excluir', style: TextStyle(color: Colors.red)),
-                        ),
-                      ),
-                    ],
                   ),
-                ),
-              );
-            },
-          );
-        },
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddOrEditMedicamentoModal(context),
@@ -284,7 +295,10 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      Text(isEditing ? "Editar Medicamento" : "Adicionar Medicamento",
+                      Text(
+                          isEditing
+                              ? "Editar Medicamento"
+                              : "Adicionar Medicamento",
                           style: Theme.of(context)
                               .textTheme
                               .headlineSmall
@@ -314,17 +328,24 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
                           onPressed: () async {
                             if (formKey.currentState!.validate()) {
                               final med = Medicamento(
-                                id: isEditing ? medicamento.id : const Uuid().v4(),
-                                firebaseId: isEditing ? medicamento.firebaseId : null,
+                                id: isEditing
+                                    ? medicamento.id
+                                    : const Uuid().v4(),
+                                firebaseId:
+                                    isEditing ? medicamento.firebaseId : null,
                                 nome: nomeController.text,
                                 descricao: descController.text,
-                                statusSync: isEditing ? 'pending_update' : 'pending_create',
+                                statusSync: isEditing
+                                    ? 'pending_update'
+                                    : 'pending_create',
                               );
 
-                              if(isEditing) {
-                                await SQLiteHelper.instance.updateMedicamento(med);
+                              if (isEditing) {
+                                await SQLiteHelper.instance
+                                    .updateMedicamento(med);
                               } else {
-                                await SQLiteHelper.instance.createMedicamento(med);
+                                await SQLiteHelper.instance
+                                    .createMedicamento(med);
                               }
 
                               if (mounted) {
@@ -333,7 +354,8 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
                               }
                             }
                           },
-                          child: Text(isEditing ? "Salvar Alterações" : "Salvar"),
+                          child: Text(
+                              isEditing ? "Salvar Alterações" : "Salvar"),
                         ),
                       ),
                       const SizedBox(height: 20),

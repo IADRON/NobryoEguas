@@ -48,7 +48,10 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
   final SyncService _syncService = SyncService();
   final AuthService _authService = AuthService();
 
+  String? _selectedSeason;
+
   String? _selectedManejoType;
+  // ignore: unused_field
   final List<String> _manejoTypes = [
     "Todos",
     "Controle Folicular",
@@ -81,9 +84,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
 
       if (mounted) {
         setState(() {
-          _currentEgua = refreshedEgua;
-          _historicoFuture =
-              SQLiteHelper.instance.readHistoricoByEgua(_currentEgua.id);
+          _historicoFuture = SQLiteHelper.instance
+              .readHistoricoByEgua(_currentEgua.id, season: _selectedSeason);
           _agendadosFuture =
               SQLiteHelper.instance.readAgendadosByEgua(_currentEgua.id);
         });
@@ -527,48 +529,41 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       const SizedBox(height: 16),
                       _buildManejoList(_agendadosFuture, isHistorico: false),
                       const SizedBox(height: 24),
-                      const Text("Histórico de Manejos Concluídos",
-                          style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.darkText)),
-                      const SizedBox(height: 10),
-                      DropdownButtonFormField<String>(
-                        value: _selectedManejoType,
-                        hint: const Text("Filtrar por tipo"),
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                          prefixIcon: const Icon(Icons.filter_list),
-                          suffixIcon: _selectedManejoType != null
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 20),
-                                  onPressed: () {
-                                    setState(() {
-                                      _selectedManejoType = null;
-                                    });
-                                  },
-                                )
-                              : null,
-                        ),
-                        items: _manejoTypes
-                            .map((tipo) => DropdownMenuItem(
-                                  value: tipo,
-                                  child: Text(tipo),
-                                ))
-                            .toList(),
-                        onChanged: (val) {
-                          setState(() {
-                            if (val == "Todos") {
-                              _selectedManejoType = null;
-                            } else {
-                              _selectedManejoType = val;
-                            }
-                          });
-                        },
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text("Histórico de Manejos Concluídos",
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.darkText)),
+                          DropdownButton<String>(
+                            value: _selectedSeason,
+                            hint: const Text("Temporada"),
+                            items: const [
+                              DropdownMenuItem(
+                                value: null,
+                                child: Text("Todas"),
+                              ),
+                              DropdownMenuItem(
+                                value: 'current',
+                                child: Text("Temporada Atual"),
+                              ),
+                              DropdownMenuItem(
+                                value: 'previous',
+                                child: Text("Temporada Anterior"),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedSeason = value;
+                                _refreshData();
+                              });
+                            },
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
                       _buildManejoList(_historicoFuture, isHistorico: true),
                       const SizedBox(height: 20),
                     ],
