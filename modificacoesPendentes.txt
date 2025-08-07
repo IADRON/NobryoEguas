@@ -1,5 +1,7 @@
+faltante:
+
+crop de imagens
 função limpar campos (todos)
-
 deslocamentos nos relatórios
-
 filtro de temporada no histórico
+correção reagendamento automático

@@ -14,7 +14,6 @@ android {
     ndkVersion = "27.0.12077973"
 
     compileOptions {
-        // LINHA ADICIONADA PARA ATIVAR O DESUGARING
         isCoreLibraryDesugaringEnabled = true 
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
