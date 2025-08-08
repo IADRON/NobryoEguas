@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:firebase_auth/firebase_auth.dart'; // NOVO: Importar Firebase Auth
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:nobryo_final/core/database/sqlite_helper.dart';
@@ -9,6 +9,7 @@ import 'package:nobryo_final/core/services/sync_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
 import 'package:nobryo_final/core/services/realtime_sync_service.dart';
+import 'package:nobryo_final/core/services/storage_service.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -16,9 +17,9 @@ class AuthService {
   AuthService._internal();
 
   final SQLiteHelper _dbHelper = SQLiteHelper.instance;
-  // NOVO: Instância do Firebase Auth
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-  
+  final StorageService _storageService = StorageService();
+
   final ValueNotifier<AppUser?> currentUserNotifier = ValueNotifier(null);
 
   static const String _sessionTimestampKey = 'session_timestamp';
@@ -32,7 +33,6 @@ class AuthService {
       final user = await _dbHelper.getUserByUsernameAndPassword(username, password);
       if (user != null) {
         
-        // NOVO: Fazer login anônimo no Firebase
         try {
           await _firebaseAuth.signInAnonymously();
           print("Firebase anonymous sign-in successful. UID: ${_firebaseAuth.currentUser?.uid}");
@@ -59,7 +59,6 @@ class AuthService {
   }
 
   Future<void> signOut(BuildContext context) async {
-    // NOVO: Fazer logout do Firebase
     await _firebaseAuth.signOut();
     print("Firebase session signed out.");
 
@@ -127,9 +126,23 @@ class AuthService {
         }
       }
       
-      updatedUser.statusSync = 'pending_create';
-      await _dbHelper.updateUser(updatedUser);
-      currentUserNotifier.value = updatedUser;
+      String? photoUrl = updatedUser.photoUrl;
+      if (photoUrl != null && !photoUrl.startsWith('http')) {
+        final newPhotoUrl = await _storageService.uploadProfilePhoto(photoUrl, updatedUser.uid);
+        if (newPhotoUrl != null) {
+          photoUrl = newPhotoUrl;
+        } else {
+          return 'Erro ao fazer upload da foto.';
+        }
+      }
+
+      final userToSave = updatedUser.copyWith(
+        photoUrl: photoUrl,
+        statusSync: 'pending_create',
+      );
+
+      await _dbHelper.updateUser(userToSave);
+      currentUserNotifier.value = userToSave;
       return null;
     } catch (e) {
       print("Erro ao atualizar perfil: $e");

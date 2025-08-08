@@ -94,11 +94,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // --- INÍCIO DA ALTERAÇÃO ---
-    // A lógica de `ImageProvider` foi removida daqui.
-    // Vamos determinar o caminho da imagem a ser usada.
     final String? imagePath = _newPhotoPath ?? widget.user.photoUrl;
-    // --- FIM DA ALTERAÇÃO ---
+
+    ImageProvider? backgroundImage;
+    if (imagePath != null && imagePath.isNotEmpty) {
+      if (imagePath.startsWith('http')) {
+        backgroundImage = NetworkImage(imagePath);
+      } else {
+        backgroundImage = FileImage(File(imagePath));
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -114,23 +119,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 onTap: _pickImage,
                 child: Stack(
                   children: [
-                    // --- INÍCIO DA ALTERAÇÃO ---
                     CircleAvatar(
                       radius: 60,
                       backgroundColor: AppTheme.lightGrey,
-                      backgroundImage:
-                          (imagePath != null && imagePath.isNotEmpty)
-                              ? FileImage(File(imagePath)) as ImageProvider
-                              : null,
-                      child: (imagePath == null || imagePath.isEmpty)
+                      backgroundImage: backgroundImage,
+                      child: (backgroundImage == null)
                           ? const Icon(
                               Icons.person,
-                              size: 60, // Ajustado para o raio maior
+                              size: 60,
                               color: AppTheme.darkGreen,
                             )
                           : null,
                     ),
-                    // --- FIM DA ALTERAÇÃO ---
                     Positioned(
                       bottom: 0,
                       right: 0,

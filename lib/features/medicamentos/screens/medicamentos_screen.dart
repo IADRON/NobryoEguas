@@ -101,6 +101,15 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
     final bool isAdmin = username == 'admin' || username == 'Bruna';
     final currentUser = _authService.currentUserNotifier.value;
 
+    ImageProvider? backgroundImage;
+    if (currentUser?.photoUrl != null && currentUser!.photoUrl!.isNotEmpty) {
+      if (currentUser.photoUrl!.startsWith('http')) {
+        backgroundImage = NetworkImage(currentUser.photoUrl!);
+      } else {
+        backgroundImage = FileImage(File(currentUser.photoUrl!));
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("MEDICAMENTOS"),
@@ -130,12 +139,8 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
                 child: CircleAvatar(
                   radius: 20,
                   backgroundColor: AppTheme.lightGrey,
-                  backgroundImage: (currentUser.photoUrl != null &&
-                          currentUser.photoUrl!.isNotEmpty)
-                      ? FileImage(File(currentUser.photoUrl!)) as ImageProvider
-                      : null,
-                  child: (currentUser.photoUrl == null ||
-                          currentUser.photoUrl!.isEmpty)
+                  backgroundImage: backgroundImage,
+                  child: (backgroundImage == null)
                       ? const Icon(Icons.person, color: AppTheme.darkGreen)
                       : null,
                 ),

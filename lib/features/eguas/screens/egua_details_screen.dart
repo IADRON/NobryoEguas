@@ -490,24 +490,65 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                     children: [
                       if (_currentEgua.photoPath != null &&
                           _currentEgua.photoPath!.isNotEmpty) ...[
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12.0),
-                          child: Image.file(
-                            File(_currentEgua.photoPath!),
-                            height: 200,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
+                        Column(
+                          children: [
+                            Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12.0),
+                                  child: Image.file(
+                                    File(_currentEgua.photoPath!),
+                                    height: 200,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 175,
+                                  right: 0,
+                                  child: GestureDetector(
+                                    onTap: () => _pickImage(),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: const BoxDecoration(
+                                        color: AppTheme.brown,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black26,
+                                            blurRadius: 6,
+                                            offset: Offset(0, 2),
+                                          )
+                                        ],
+                                      ),
+                                      child: const Icon(Icons.edit,
+                                          color: Colors.white, size: 24),
+                                    ),
+                                  ),
+                                ),
+                                Column(
+                                  children: [
+                                    const SizedBox(height: 220),
+                                    const Text("Informações da Égua",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.darkText)),
+                                    const SizedBox(height: 15),
+                                  ],
+                                )
+                              ],
+                            ),
+                          ]
                         ),
-                        const SizedBox(height: 25),
-                      ],
-
-                      const Text("Informações da Égua",
+                      ] else ...[
+                        const Text("Informações da Égua",
                           style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.darkText)),
-                      const SizedBox(height: 16),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.darkText)),
+                        const SizedBox(height: 15)
+                      ],
                       _buildInfoCard(_currentEgua),
                       const SizedBox(height: 24),
                       const Text("Próximos Agendamentos",
@@ -529,71 +570,101 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       const SizedBox(height: 16),
                       _buildManejoList(_agendadosFuture, isHistorico: false),
                       const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
                           const Text("Histórico de Manejos Concluídos",
                               style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: AppTheme.darkText)),
-                          DropdownButton<String>(
-                            value: _selectedSeason,
-                            hint: const Text("Temporada"),
-                            items: const [
-                              DropdownMenuItem(
-                                value: null,
-                                child: Text("Todas"),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  isExpanded: true,
+                                  value: _selectedSeason,
+                                  hint: const Text("Temporada"),
+                                  decoration: InputDecoration(
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                                    suffixIcon: _selectedSeason != null
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear, size: 20),
+                                            onPressed: () {
+                                              setState(() {
+                                                _selectedSeason = null;
+                                                _refreshData();
+                                              });
+                                            },
+                                          )
+                                        : null,
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: null,
+                                      child: Text("Temporada"),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'current',
+                                      child: Text("Atual"),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'previous',
+                                      child: Text("Anterior"),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedSeason = value;
+                                      _refreshData();
+                                    });
+                                  },
+                                ),
                               ),
-                              DropdownMenuItem(
-                                value: 'current',
-                                child: Text("Temporada Atual"),
-                              ),
-                              DropdownMenuItem(
-                                value: 'previous',
-                                child: Text("Temporada Anterior"),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _selectedManejoType,
+                                  hint: const Text("Tipo"),
+                                  isExpanded: true,
+                                  decoration: InputDecoration(
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                                    prefixIcon: const Icon(Icons.filter_list),
+                                    suffixIcon: _selectedManejoType != null
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear, size: 20),
+                                            onPressed: () {
+                                              setState(() {
+                                                _selectedManejoType = null;
+                                              });
+                                            },
+                                          )
+                                        : null,
+                                  ),
+                                  items: _manejoTypes
+                                      .map((tipo) => DropdownMenuItem(
+                                            value: tipo,
+                                            child: Text(tipo),
+                                          ))
+                                      .toList(),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      if (val == "Todos") {
+                                        _selectedManejoType = null;
+                                      } else {
+                                        _selectedManejoType = val;
+                                      }
+                                    });
+                                  },
+                                ),
                               ),
                             ],
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedSeason = value;
-                                _refreshData();
-                              });
-                            },
                           ),
-                        ],
-                      ),
                       const SizedBox(height: 10),
                       _buildManejoList(_historicoFuture, isHistorico: true),
                       const SizedBox(height: 20),
                     ],
                   ),
                 ),
-
-                if (_currentEgua.photoPath != null &&
-                    _currentEgua.photoPath!.isNotEmpty)
-                  Positioned(
-                    top: 185,
-                    right: 10,
-                    child: GestureDetector(
-                      onTap: () => _pickImage(),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: const BoxDecoration(
-                          color: AppTheme.brown,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black26,
-                              blurRadius: 6,
-                              offset: Offset(0, 2),
-                            )
-                          ]
-                        ),
-                        child: const Icon(Icons.edit, color: Colors.white, size: 24),
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),

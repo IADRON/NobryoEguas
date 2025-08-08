@@ -11,6 +11,15 @@ void showUserProfileModal(BuildContext context) {
 
   if (user == null) return;
 
+  ImageProvider? backgroundImage;
+  if (user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+    if (user.photoUrl!.startsWith('http')) {
+      backgroundImage = NetworkImage(user.photoUrl!);
+    } else {
+      backgroundImage = FileImage(File(user.photoUrl!));
+    }
+  }
+
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
@@ -32,11 +41,8 @@ void showUserProfileModal(BuildContext context) {
                 CircleAvatar(
                   radius: 40,
                   backgroundColor: AppTheme.lightGrey,
-                  backgroundImage: (user.photoUrl != null &&
-                          user.photoUrl!.isNotEmpty)
-                      ? FileImage(File(user.photoUrl!)) as ImageProvider
-                      : null,
-                  child: (user.photoUrl == null || user.photoUrl!.isEmpty)
+                  backgroundImage: backgroundImage,
+                  child: (backgroundImage == null)
                       ? const Icon(
                           Icons.person,
                           size: 45,

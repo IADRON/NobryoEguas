@@ -14,7 +14,7 @@ import 'package:printing/printing.dart';
 class ExportService {
 
   Future<void> exportarPropriedadeParaPdf(
-    Propriedade propriedade, // ALTERADO DE String PARA Propriedade
+    Propriedade propriedade,
     Map<Egua, List<Manejo>> dadosCompletos,
     BuildContext context,
   ) async {
@@ -43,12 +43,14 @@ class ExportService {
               style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 24),
             ));
             
-            // NOVO: Adiciona contagem de deslocamentos
-            widgets.add(pw.SizedBox(height: 8));
-            widgets.add(pw.Text(
-              'Deslocamentos: ${propriedade.deslocamentos}',
-              style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700),
-            ));
+            // ALTERAÇÃO: Adiciona contagem de deslocamentos somente se for a propriedade principal
+            if (propriedade.parentId == null) {
+              widgets.add(pw.SizedBox(height: 8));
+              widgets.add(pw.Text(
+                'Deslocamentos: ${propriedade.deslocamentos}',
+                style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700),
+              ));
+            }
 
             widgets.add(pw.Divider(thickness: 2, height: 30));
 
@@ -86,7 +88,7 @@ class ExportService {
   }
 
   Future<void> exportarPropriedadeParaExcel(
-    Propriedade propriedade, // ALTERADO DE String PARA Propriedade
+    Propriedade propriedade,
     Map<Egua, List<Manejo>> dadosCompletos,
     BuildContext context,
   ) async {
@@ -97,19 +99,20 @@ class ExportService {
       sheet.cell(CellIndex.indexByString("A1")).value = "Histórico Completo - Propriedade: ${propriedade.nome}";
       sheet.merge(CellIndex.indexByString("A1"), CellIndex.indexByString("F1"));
 
-      // NOVO: Adiciona contagem de deslocamentos
-      sheet.cell(CellIndex.indexByString("A2")).value = "Deslocamentos: ${propriedade.deslocamentos}";
-      sheet.merge(CellIndex.indexByString("A2"), CellIndex.indexByString("F2"));
+      // ALTERAÇÃO: Adiciona contagem de deslocamentos somente se for a propriedade principal
+      if (propriedade.parentId == null) {
+        sheet.cell(CellIndex.indexByString("A2")).value = "Deslocamentos: ${propriedade.deslocamentos}";
+        sheet.merge(CellIndex.indexByString("A2"), CellIndex.indexByString("F2"));
+      }
 
       final headers = ["Égua", "RP", "Data", "Tipo de Manejo", "Detalhes", "Observações"];
       for (var i = 0; i < headers.length; i++) {
-        // Aumenta o rowIndex para acomodar a nova linha
         final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 3));
         cell.value = headers[i];
         cell.cellStyle = CellStyle(bold: true, backgroundColorHex: "#FF4CAF50", fontColorHex: "#FFFFFFFF", textWrapping: TextWrapping.WrapText);
       }
 
-      int rowIndex = 4; // Inicia na linha 4
+      int rowIndex = 4;
       dadosCompletos.forEach((egua, manejos) {
         for (final manejo in manejos) {
           final detalhesString = _getFormattedDetalhesExcel(manejo.detalhes);
