@@ -2,7 +2,10 @@ faltante:
 
 crop de imagens
 função limpar campos (todos)
+melhoria na lógica de deslocamentos
+
+em execução:
+
+
 correção upload de fotos
 correção reagendamento automático
-trocar temporada por data
-melhoria na lógica de deslocamentos

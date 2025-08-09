@@ -48,7 +48,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
   final SyncService _syncService = SyncService();
   final AuthService _authService = AuthService();
 
-  String? _selectedSeason;
+  DateTime? _startDate;
+  DateTime? _endDate;
 
   String? _selectedManejoType;
   // ignore: unused_field
@@ -85,7 +86,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
       if (mounted) {
         setState(() {
           _historicoFuture = SQLiteHelper.instance
-              .readHistoricoByEgua(_currentEgua.id, season: _selectedSeason);
+              .readHistoricoByEgua(_currentEgua.id, startDate: _startDate, endDate: _endDate);
           _agendadosFuture =
               SQLiteHelper.instance.readAgendadosByEgua(_currentEgua.id);
         });
@@ -98,6 +99,26 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     await _syncService.syncData(isManual: false);
     if (mounted) {
       _refreshData();
+    }
+  }
+
+  Future<void> _pickAndUpdateEguaImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+
+    if (image != null && mounted) {
+      final updatedEgua = _currentEgua.copyWith(
+        photoPath: image.path,
+        statusSync: 'pending_update',
+      );
+
+      await SQLiteHelper.instance.updateEgua(updatedEgua);
+      
+      setState(() {
+        _currentEgua = updatedEgua;
+      });
+
+      _autoSync();
     }
   }
 
@@ -507,7 +528,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                                   top: 175,
                                   right: 0,
                                   child: GestureDetector(
-                                    onTap: () => _pickImage(),
+                                    onTap: () => _pickAndUpdateEguaImage(),
                                     child: Container(
                                       padding: const EdgeInsets.all(12),
                                       decoration: const BoxDecoration(
@@ -578,47 +599,43 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                           Row(
                             children: [
                               Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  isExpanded: true,
-                                  value: _selectedSeason,
-                                  hint: const Text("Temporada"),
-                                  decoration: InputDecoration(
-                                    contentPadding:
-                                        const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                                    suffixIcon: _selectedSeason != null
-                                        ? IconButton(
-                                            icon: const Icon(Icons.clear, size: 20),
-                                            onPressed: () {
-                                              setState(() {
-                                                _selectedSeason = null;
-                                                _refreshData();
-                                              });
-                                            },
-                                          )
-                                        : null,
+                                child: ListTile(
+                                  title: Text(
+                                    _startDate == null || _endDate == null
+                                        ? 'Selecione um período'
+                                        : '${DateFormat('dd/MM/yyyy').format(_startDate!)} - ${DateFormat('dd/MM/yyyy').format(_endDate!)}',
                                   ),
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: null,
-                                      child: Text("Temporada"),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'current',
-                                      child: Text("Atual"),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'previous',
-                                      child: Text("Anterior"),
-                                    ),
-                                  ],
-                                  onChanged: (value) {
+                                  trailing: Icon(Icons.calendar_today),
+                                  onTap: () async {
+                                    final picked = await showDateRangePicker(
+                                      context: context,
+                                      firstDate: DateTime(2000),
+                                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                                      initialDateRange: _startDate != null && _endDate != null
+                                          ? DateTimeRange(start: _startDate!, end: _endDate!)
+                                          : null,
+                                    );
+                                    if (picked != null) {
+                                      setState(() {
+                                        _startDate = picked.start;
+                                        _endDate = picked.end;
+                                        _refreshData();
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                              if (_startDate != null || _endDate != null)
+                                IconButton(
+                                  icon: Icon(Icons.clear),
+                                  onPressed: () {
                                     setState(() {
-                                      _selectedSeason = value;
+                                      _startDate = null;
+                                      _endDate = null;
                                       _refreshData();
                                     });
                                   },
                                 ),
-                              ),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: DropdownButtonFormField<String>(

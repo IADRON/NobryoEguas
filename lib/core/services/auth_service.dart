@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -128,21 +129,27 @@ class AuthService {
       
       String? photoUrl = updatedUser.photoUrl;
       if (photoUrl != null && !photoUrl.startsWith('http')) {
-        final newPhotoUrl = await _storageService.uploadProfilePhoto(photoUrl, updatedUser.uid);
-        if (newPhotoUrl != null) {
-          photoUrl = newPhotoUrl;
-        } else {
-          return 'Erro ao fazer upload da foto.';
+        final file = File(photoUrl);
+        if (await file.exists()) {
+            final newPhotoUrl = await _storageService.uploadProfilePhoto(photoUrl, updatedUser.uid);
+            if (newPhotoUrl != null) {
+              photoUrl = newPhotoUrl;
+            } else {
+              return 'Erro ao fazer upload da foto.';
+            }
+        } else if (updatedUser.photoUrl != currentUserNotifier.value?.photoUrl) {
+            return 'Arquivo de imagem não encontrado.';
         }
       }
 
       final userToSave = updatedUser.copyWith(
         photoUrl: photoUrl,
-        statusSync: 'pending_create',
+        statusSync: 'pending_update',
       );
 
       await _dbHelper.updateUser(userToSave);
       currentUserNotifier.value = userToSave;
+      await SyncService().syncData(isManual: false);
       return null;
     } catch (e) {
       print("Erro ao atualizar perfil: $e");
