@@ -244,25 +244,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
   }) {
       final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
 
-      Widget buildChipGroup(
-          List<String> selectedOptions, Function(String) onToggle) {
-        return Wrap(
-          spacing: 8.0,
-          runSpacing: 4.0,
-          children: ovarioOptions.map((option) {
-            return FilterChip(
-              label: Text(option),
-              selected: selectedOptions.contains(option),
-              onSelected: (isSelected) {
-                onToggle(option);
-              },
-              selectedColor: AppTheme.darkGreen.withOpacity(0.2),
-              checkmarkColor: AppTheme.darkGreen,
-            );
-          }).toList(),
-        );
-      }
-
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -277,19 +258,26 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                flex: 3,
-                child: buildChipGroup(ovarioDirOp, onOvarioDirToggle),
-              ),
+                  child: DropdownButtonFormField<String>(
+                      value: ovarioDirOp,
+                      decoration: const InputDecoration(
+                        labelText: "Ovário Direito",
+                        prefixIcon: Icon(Icons.join_right_outlined)
+                      ),
+                      validator: (v) => v == null ? "Obrigatório" : null,
+                      items: ovarioOptions
+                          .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+                          .toList(),
+                      onChanged: (val) => setModalState(() => onOvarioDirChange(val)))),
               const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
+              SizedBox(
+                width: 120,
                 child: TextFormField(
                   controller: ovarioDirTamanhoController,
-                  decoration: const InputDecoration(labelText: "Tamanho (mm)"),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration:
+                      const InputDecoration(labelText: "Tamanho (mm)"),
                 ),
-              ),
+              )
             ],
           ),
           const SizedBox(height: 15),
@@ -300,19 +288,26 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                flex: 3,
-                child: buildChipGroup(ovarioEsqOp, onOvarioEsqToggle),
-              ),
+                  child: DropdownButtonFormField<String>(
+                      value: ovarioEsqOp,
+                      decoration: const InputDecoration(
+                        labelText: "Ovário Direito",
+                        prefixIcon: Icon(Icons.join_left_outlined)
+                      ),
+                      validator: (v) => v == null ? "Obrigatório" : null,
+                      items: ovarioOptions
+                          .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+                          .toList(),
+                      onChanged: (val) => setModalState(() => onOvarioEsqChange(val)))),
               const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
+              SizedBox(
+                width: 120,
                 child: TextFormField(
                   controller: ovarioEsqTamanhoController,
-                  decoration: const InputDecoration(labelText: "Tamanho (mm)"),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration:
+                      const InputDecoration(labelText: "Tamanho (mm)"),
                 ),
-              ),
+              )
             ],
           ),
           const SizedBox(height: 10),
