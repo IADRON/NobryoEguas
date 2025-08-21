@@ -3814,7 +3814,7 @@ class _EditEguaFormState extends State<_EditEguaForm> {
     return Padding(
       padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
-          top: 25,
+          top: 20,
           left: 20,
           right: 20),
         child: Form(
@@ -3833,6 +3833,9 @@ class _EditEguaFormState extends State<_EditEguaForm> {
                     )
                   )
                 ),
+
+                /*
+
                 Center(
                   child: GestureDetector(
                     onTap: _pickImage,
@@ -3864,7 +3867,10 @@ class _EditEguaFormState extends State<_EditEguaForm> {
                     ),
                   )
                 ),
+
                 const SizedBox(height: 10),
+                
+                */
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

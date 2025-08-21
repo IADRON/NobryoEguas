@@ -115,6 +115,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           key: _formKey,
           child: Column(
             children: [
+
+              /*
+
               GestureDetector(
                 onTap: _pickImage,
                 child: Stack(
@@ -148,6 +151,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
               const SizedBox(height: 30),
+              
+              */
+
               TextFormField(
                 controller: _nomeController,
                 decoration: const InputDecoration(labelText: 'Nome Completo'),

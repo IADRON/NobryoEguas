@@ -232,16 +232,20 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
 
     Widget _buildControleFolicularInputs({
       required StateSetter setModalState,
-      required List<String> ovarioDirOp,
-      required Function(String) onOvarioDirToggle,
+      // MODIFICADO: De List<String> para String?
+      required String? ovarioDirOp,
+      // MODIFICADO: Nome e tipo da função
+      required Function(String?) onOvarioDirChange,
       required TextEditingController ovarioDirTamanhoController,
-      required List<String> ovarioEsqOp,
-      required Function(String) onOvarioEsqToggle,
+      // MODIFICADO: De List<String> para String?
+      required String? ovarioEsqOp,
+      // MODIFICADO: Nome e tipo da função
+      required Function(String?) onOvarioEsqChange,
       required TextEditingController ovarioEsqTamanhoController,
       required String? edemaSelecionado,
       required Function(String?) onEdemaChange,
       required TextEditingController uteroController,
-  }) {
+    }) {
       final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
 
       return Column(
@@ -251,23 +255,21 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
           Text("Dados do Controle Folicular",
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 15),
-          const Text("Ovário Direito",
-              style: TextStyle(fontSize: 12, color: Colors.grey)),
-          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                   child: DropdownButtonFormField<String>(
+                      // A propriedade 'value' agora recebe o tipo correto (String?)
                       value: ovarioDirOp,
                       decoration: const InputDecoration(
-                        labelText: "Ovário Direito",
-                        prefixIcon: Icon(Icons.join_right_outlined)
-                      ),
+                          labelText: "Ovário Direito",
+                          prefixIcon: Icon(Icons.join_right_outlined)),
                       validator: (v) => v == null ? "Obrigatório" : null,
                       items: ovarioOptions
                           .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                           .toList(),
+                      // MODIFICADO: Chama a função correta passada por parâmetro
                       onChanged: (val) => setModalState(() => onOvarioDirChange(val)))),
               const SizedBox(width: 10),
               SizedBox(
@@ -281,23 +283,21 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
             ],
           ),
           const SizedBox(height: 15),
-          const Text("Ovário Esquerdo",
-              style: TextStyle(fontSize: 12, color: Colors.grey)),
-          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                   child: DropdownButtonFormField<String>(
+                      // A propriedade 'value' agora recebe o tipo correto (String?)
                       value: ovarioEsqOp,
                       decoration: const InputDecoration(
-                        labelText: "Ovário Direito",
-                        prefixIcon: Icon(Icons.join_left_outlined)
-                      ),
+                          labelText: "Ovário Esquerdo", // Corrigido o Label
+                          prefixIcon: Icon(Icons.join_left_outlined)),
                       validator: (v) => v == null ? "Obrigatório" : null,
                       items: ovarioOptions
                           .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                           .toList(),
+                      // MODIFICADO: Chama a função correta passada por parâmetro
                       onChanged: (val) => setModalState(() => onOvarioEsqChange(val)))),
               const SizedBox(width: 10),
               SizedBox(
@@ -317,15 +317,16 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
               labelText: "Edema",
               prefixIcon: Icon(Icons.numbers_outlined),
               suffixIcon: edemaSelecionado != null
-                ? IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      setModalState(() {
-                        edemaSelecionado = null;
-                      });
-                    },
-                  )
-                : null,
+                  ? IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        setModalState(() {
+                          // Correção aqui também: não se atribui a um parâmetro
+                          onEdemaChange(null);
+                        });
+                      },
+                    )
+                  : null,
             ),
             items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -1880,8 +1881,8 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     String? tipoSememSelecionado;
     DateTime? dataHoraInseminacao;
     final litrosController = TextEditingController();
-    List<String> ovarioDirOp = [];
-    List<String> ovarioEsqOp = [];
+    String? ovarioDirOp;
+    String? ovarioEsqOp;
     final ovarioDirTamanhoController = TextEditingController();
     final ovarioEsqTamanhoController = TextEditingController();
     String? edemaSelecionado;
@@ -2039,24 +2040,9 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                       setModalState: setModalState,
                       onDataHoraInseminacaoChange: (val) => setModalState(() => dataHoraInseminacao = val),
                       onMedicamentoChange: (val) => setModalState(() => medicamentoSelecionado = val),
-                      onOvarioDirToggle: (option) {
-                        setModalState(() {
-                          if (ovarioDirOp.contains(option)) {
-                            ovarioDirOp.remove(option);
-                          } else {
-                            ovarioDirOp.add(option);
-                          }
-                        });
-                      },
-                      onOvarioEsqToggle: (option) {
-                        setModalState(() {
-                          if (ovarioEsqOp.contains(option)) {
-                            ovarioEsqOp.remove(option);
-                          } else {
-                            ovarioEsqOp.add(option);
-                          }
-                        });
-                      },
+                      onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
+                      // MODIFICADO: A função agora simplesmente atribui o novo valor (String?)
+                      onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
                       onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
                       onIdadeEmbriaoChange: (val) => setModalState(() => idadeEmbriaoSelecionada = val),
                       onDoadoraChange: (val) => setModalState(() => doadoraSelecionada = val),
@@ -2113,26 +2099,12 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                         _buildControleFolicularInputs(
                           setModalState: setModalState,
                           ovarioDirOp: ovarioDirOp,
-                          onOvarioDirToggle: (option) {
-                            setModalState(() {
-                              if (ovarioDirOp.contains(option)) {
-                                ovarioDirOp.remove(option);
-                              } else {
-                                ovarioDirOp.add(option);
-                              }
-                            });
-                          },
+                          // MODIFICADO: Lógica de atualização para item único
+                          onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
                           ovarioDirTamanhoController: ovarioDirTamanhoController,
                           ovarioEsqOp: ovarioEsqOp,
-                          onOvarioEsqToggle: (option) {
-                            setModalState(() {
-                              if (ovarioEsqOp.contains(option)) {
-                                ovarioEsqOp.remove(option);
-                              } else {
-                                ovarioEsqOp.add(option);
-                              }
-                            });
-                          },
+                          // MODIFICADO: Lógica de atualização para item único
+                          onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
                           ovarioEsqTamanhoController: ovarioEsqTamanhoController,
                           edemaSelecionado: edemaSelecionado,
                           onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
@@ -2524,10 +2496,10 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     required Medicamento? medicamentoSelecionado,
     required Function(Medicamento?) onMedicamentoChange,
     required List<Medicamento> allMeds,
-    required List<String> ovarioDirOp,
-    required Function(String) onOvarioDirToggle,
-    required List<String> ovarioEsqOp,
-    required Function(String) onOvarioEsqToggle,
+    required String? ovarioDirOp,
+    required Function(String?) onOvarioDirChange,
+    required String? ovarioEsqOp,
+    required Function(String?) onOvarioEsqChange,
     required TextEditingController ovarioDirTamanhoController,
     required TextEditingController ovarioEsqTamanhoController,
     required String? edemaSelecionado,
@@ -2824,10 +2796,12 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
           _buildControleFolicularInputs(
             setModalState: setModalState,
             ovarioDirOp: ovarioDirOp,
-            onOvarioDirToggle: onOvarioDirToggle,
+            // CORRIGIDO: de onOvarioDirToggle para onOvarioDirChange
+            onOvarioDirChange: onOvarioDirChange,
             ovarioDirTamanhoController: ovarioDirTamanhoController,
             ovarioEsqOp: ovarioEsqOp,
-            onOvarioEsqToggle: onOvarioEsqToggle,
+            // CORRIGIDO: de onOvarioEsqToggle para onOvarioEsqChange
+            onOvarioEsqChange: onOvarioEsqChange,
             ovarioEsqTamanhoController: ovarioEsqTamanhoController,
             edemaSelecionado: edemaSelecionado,
             onEdemaChange: onEdemaChange,
