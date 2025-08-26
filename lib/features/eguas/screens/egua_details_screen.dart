@@ -71,10 +71,10 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
   void initState() {
     super.initState();
     _currentEgua = widget.egua;
-    _refreshData();
+    refreshData();
   }
 
-  void _refreshData() {
+  void refreshData() {
     SQLiteHelper.instance.getEguaById(widget.egua.id).then((refreshedEgua) {
       if (refreshedEgua == null) {
         if (mounted) {
@@ -98,7 +98,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
   Future<void> _autoSync() async {
     await _syncService.syncData(isManual: false);
     if (mounted) {
-      _refreshData();
+      refreshData();
     }
   }
 
@@ -304,7 +304,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
         content: Text("Dados da égua atualizados!"),
         backgroundColor: Colors.green,
       ));
-      _refreshData();
+      refreshData();
     }
   }
 
@@ -619,7 +619,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                                       setState(() {
                                         _startDate = picked.start;
                                         _endDate = picked.end;
-                                        _refreshData();
+                                        refreshData();
                                       });
                                     }
                                   },
@@ -632,7 +632,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                                     setState(() {
                                       _startDate = null;
                                       _endDate = null;
-                                      _refreshData();
+                                      refreshData();
                                     });
                                   },
                                 ),
@@ -1233,7 +1233,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
               }
 
               if (mounted) {
-                _refreshData();
+                refreshData();
                 _autoSync();
                 ScaffoldMessenger.of(context)
                   ..removeCurrentSnackBar()
@@ -1553,7 +1553,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             manejo.dataAgendada = novaData;
             manejo.statusSync = 'pending_update';
             await SQLiteHelper.instance.updateManejo(manejo);
-            _refreshData();
+            refreshData();
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                   content: Text("Data do manejo reagendada!"),
@@ -1580,7 +1580,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       await SQLiteHelper.instance.softDeleteManejo(manejo.id);
                       if (mounted) {
                         Navigator.of(dialogCtx).pop();
-                        _refreshData();
+                        refreshData();
                         _autoSync();
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: Text("Agendamento excluído."),
@@ -2450,7 +2450,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                             if (mounted) {
                               Navigator.of(ctx).pop();
                             }
-                            _refreshData();
+                            refreshData();
                             _autoSync();
 
                             if (manejo.tipo == 'Controle Folicular' && dataHoraInducao != null) {
@@ -3043,7 +3043,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                               await SQLiteHelper.instance.createManejo(novoManejo);
                             }
                             
-                            _refreshData();
+                            refreshData();
                             if (mounted) {
                               Navigator.of(ctx).pop();
                               _autoSync();
@@ -3207,7 +3207,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                           }
                           return AppTheme.darkGreen;
                         }),
-                    ),
+                      ),
                     Text("Fêmea", style: TextStyle(fontWeight: sexoPotro == "Fêmea" ? FontWeight.bold : FontWeight.normal, color: sexoPotro == "Fêmea" ? Colors.pink[300]: Colors.grey[600])),
                 ],
               ),
@@ -3434,7 +3434,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                         labelText: "Ovário Direito",
                         prefixIcon: Icon(Icons.join_right_outlined)
                       ),
-                      validator: (v) => v == null ? "Obrigatório" : null,
                       items: ovarioOptions
                           .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                           .toList(),
@@ -3461,7 +3460,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                         labelText: "Ovário Esquerdo",
                         prefixIcon: Icon(Icons.join_left_outlined)
                       ),
-                      validator: (v) => v == null ? "Obrigatório" : null,
                       items: ovarioOptions
                           .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                           .toList(),
@@ -3483,8 +3481,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
               labelText: "Edema",
               prefixIcon: Icon(Icons.numbers_outlined)
             ),
-            validator: (v) => v == null ? "Obrigatório" : null,
-            items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
+            items: ['0', '1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
             onChanged: (val) => setModalState(() => onEdemaChange(val)),
@@ -3709,7 +3706,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       )
                     : null,
           ),
-          items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
+          items: ['0', '1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
               .map((e) => DropdownMenuItem(value: e, child: Text(e)))
               .toList(),
           onChanged: onEdemaChange,

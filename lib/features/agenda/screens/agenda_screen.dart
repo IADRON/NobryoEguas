@@ -265,7 +265,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                       decoration: const InputDecoration(
                           labelText: "Ovário Direito",
                           prefixIcon: Icon(Icons.join_right_outlined)),
-                      validator: (v) => v == null ? "Obrigatório" : null,
                       items: ovarioOptions
                           .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                           .toList(),
@@ -293,7 +292,6 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                       decoration: const InputDecoration(
                           labelText: "Ovário Esquerdo", // Corrigido o Label
                           prefixIcon: Icon(Icons.join_left_outlined)),
-                      validator: (v) => v == null ? "Obrigatório" : null,
                       items: ovarioOptions
                           .map((o) => DropdownMenuItem(value: o, child: Text(o)))
                           .toList(),
@@ -328,7 +326,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
                     )
                   : null,
             ),
-            items: ['1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
+            items: ['0', '1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
             onChanged: onEdemaChange,

@@ -1243,6 +1243,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                   prefixIcon:
                                       Icon(Icons.calendar_today_outlined),
                                 ),
+                                onTap: () {},
                                 keyboardType: TextInputType.datetime,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
