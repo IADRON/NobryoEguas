@@ -27,6 +27,7 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   Map<String, bool> _hasPendingManejosMap = {};
+  Map<String, int> _eguasCountMap = {};
 
   final AuthService _authService = AuthService();
   late SyncService _syncService = SyncService();
@@ -53,6 +54,11 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
     setState(() => _isLoading = true);
     try {
       final propriedades = await SQLiteHelper.instance.readTopLevelPropriedades();
+
+      final Map<String, int> counts = {};
+      for (final prop in propriedades) {
+        counts[prop.id] = await SQLiteHelper.instance.countEguasByPropriedade(prop.id);
+      }
       
       final Map<String, bool> pendingMap = {};
       for (final prop in propriedades) {
@@ -64,7 +70,8 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
           _allTopLevelPropriedades = propriedades;
           _filteredTopLevelPropriedades = List.from(_allTopLevelPropriedades);
           _hasPendingManejosMap = pendingMap;
-          _isLoading = false; 
+          _isLoading = false;
+          _eguasCountMap = counts;
         });
         _filterData(); 
       }
@@ -235,18 +242,27 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
                           itemBuilder: (context, index) {
                             final prop = _filteredTopLevelPropriedades[index];
                             final hasPending = _hasPendingManejosMap[prop.id] ?? false;
-  
+                            final eguasCount = _eguasCountMap[prop.id] ?? 0;
+
                             return Card(
                               elevation: 2,
                               margin: const EdgeInsets.symmetric(vertical: 8),
                               child: ListTile(
                                 contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 16, vertical: 8),
-                                title: Text(
-                                  prop.nome,
-                                  style: const TextStyle(
-                                      color: AppTheme.darkText,
-                                      fontWeight: FontWeight.w600),
+                                title: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(prop.nome,
+                                        style: const TextStyle(
+                                            color: AppTheme.darkText,
+                                            fontWeight: FontWeight.w600)),
+                                    Text(
+                                      '$eguasCount éguas', // Adicione esta linha
+                                      style: const TextStyle(
+                                          color: Colors.grey, fontSize: 14), // Adicione esta linha
+                                    ),
+                                  ],
                                 ),
                                 subtitle: Text(prop.dono,
                                     style: TextStyle(color: Colors.grey[600])),

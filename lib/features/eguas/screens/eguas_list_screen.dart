@@ -1131,7 +1131,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
 
     String categoriaSelecionada = egua?.categoria ?? 'Matriz';
     bool teveParto = egua?.dataParto != null;
-    String? sexoPotro = egua?.sexoPotro;
+    String? sexoPotro = egua?.sexoPotro ?? 'Macho';
 
     showModalBottomSheet(
       context: context,
@@ -1204,7 +1204,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
                           }
                         },
                       ),
-                      if (categoriaSelecionada == 'Matriz')
+                      if (categoriaSelecionada != 'Receptora')
                         Padding(
                           padding: const EdgeInsets.only(top: 10.0),
                           child: TextFormField(
@@ -1240,18 +1240,31 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                 decoration: const InputDecoration(
                                   labelText: "Data do Parto",
                                   hintText: "dd/mm/aaaa",
-                                  prefixIcon:
-                                      Icon(Icons.calendar_today_outlined),
+                                  prefixIcon: Icon(Icons.calendar_today_outlined),
                                 ),
-                                onTap: () {},
+                                readOnly: true,  // Impede que o teclado apareça
+                                onTap: () async {
+                                  DateTime? pickedDate = await showDatePicker(
+                                    context: context,
+                                    initialDate: DateTime.now(),
+                                    firstDate: DateTime(2000),
+                                    lastDate: DateTime(2101),
+                                  );
+
+                                  if (pickedDate != null) {
+                                    String formattedDate = DateFormat('dd/MM/yyyy').format(pickedDate);
+                                    setState(() {
+                                      dataPartoController.text = formattedDate;
+                                    });
+                                  }
+                                },
                                 keyboardType: TextInputType.datetime,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Por favor, insira uma data.';
                                   }
                                   try {
-                                    DateFormat('dd/MM/yyyy')
-                                        .parseStrict(value);
+                                    DateFormat('dd/MM/yyyy').parseStrict(value);
                                     return null;
                                   } catch (e) {
                                     return 'Formato inválido (use dd/mm/aaaa).';
@@ -1344,7 +1357,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                     ? coberturaController.text
                                     : null,
                                 dataParto: dataPartoFinal,
-                                sexoPotro: teveParto ? sexoPotro : null,
+                                sexoPotro: teveParto ? (sexoPotro ?? 'Macho') : null,
                                 observacao: obsController.text,
                                 statusReprodutivo:
                                     egua?.statusReprodutivo ?? 'Vazia',

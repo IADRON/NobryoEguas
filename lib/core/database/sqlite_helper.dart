@@ -673,6 +673,15 @@ class SQLiteHelper {
     return count;
   }
 
+  Future<int> countEguasByPropriedade(String propriedadeId) async {
+    final db = await instance.database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) FROM eguas WHERE propriedadeId = ? AND isDeleted = 0',
+      [propriedadeId],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
   Future close() async {
     final db = await instance.database;
     _database = null;

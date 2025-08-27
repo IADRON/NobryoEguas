@@ -1,17 +1,13 @@
 faltante:
 
-calendário no input "teveParto" do eguas_list_screen
-valor inicial do sexo do potro é "macho"
 arrumar formatação das informações da éguas
 observação da égua no card
 retirar data da conclusão, e adicionar hora(manual) na data de agendamento(histórico)
 alterar id do manejo quando trocar a égua de lote
-adicionar número de éguas no lote
-adicionar número de éguas com manejo dentro do lote e dentro da propriedade
 proprietário individual para cada égua
-égua doadora também precisa de padreador
 melhoria na lógica de deslocamentos
 potro e égua com opção de morte, com campos de observação/causa e data
+refresh ao atualizar dados da égua
 
 **maldito printing**
 

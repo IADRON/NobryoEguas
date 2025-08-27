@@ -30,6 +30,7 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   Map<String, bool> _hasPendingManejosMap = {};
+  Map<String, int> _eguasCountMap = {};
 
   late SyncService _syncService = SyncService();
   final ExportService _exportService = ExportService();
@@ -112,6 +113,11 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
       final subProps = await SQLiteHelper.instance
           .readSubPropriedades(widget.propriedadePai.id);
 
+      final Map<String, int> counts = {};
+      for (final subProp in subProps) {
+        counts[subProp.id] = await SQLiteHelper.instance.countEguasByPropriedade(subProp.id);
+      }
+
       final Map<String, bool> pendingMap = {};
       for (final subProp in subProps) {
         pendingMap[subProp.id] = await SQLiteHelper.instance
@@ -129,6 +135,7 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
           _allSubPropriedades = subProps;
           _filteredSubPropriedades = List.from(_allSubPropriedades);
           _hasPendingManejosMap = pendingMap;
+          _eguasCountMap = counts;
           _isLoading = false;
         });
         _filterLotes();
@@ -187,13 +194,24 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
                             final subProp = _filteredSubPropriedades[index];
                             final hasPending =
                                 _hasPendingManejosMap[subProp.id] ?? false;
+                            final eguasCount = _eguasCountMap[subProp.id] ?? 0;
 
                             return Card(
                               child: ListTile(
-                                title: Text(subProp.nome,
-                                    style: const TextStyle(
-                                        color: AppTheme.darkText,
-                                        fontWeight: FontWeight.w600)),
+                                title: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(subProp.nome,
+                                        style: const TextStyle(
+                                            color: AppTheme.darkText,
+                                            fontWeight: FontWeight.w600)),
+                                    Text(
+                                      '$eguasCount éguas',
+                                      style: const TextStyle(
+                                          color: Colors.grey, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
                                 subtitle: Text(subProp.dono,
                                     style: TextStyle(color: Colors.grey[600])),
                                 trailing: hasPending

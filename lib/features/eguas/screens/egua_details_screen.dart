@@ -758,7 +758,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: _buildInfoItem("Pelagem:", egua.pelagem)),
-              if (egua.categoria == 'Matriz' &&
+              if (egua.categoria != 'Receptora' &&
                   egua.cobertura != null &&
                   egua.cobertura!.isNotEmpty)
                 Expanded(child: _buildInfoItem("Padreador:", egua.cobertura!))
@@ -3758,7 +3758,7 @@ class _EditEguaFormState extends State<_EditEguaForm> {
     _categoriaSelecionada = widget.egua.categoria;
     _teveParto = widget.egua.dataParto != null;
     _dataParto = widget.egua.dataParto;
-    _sexoPotro = widget.egua.sexoPotro;
+    _sexoPotro = widget.egua.sexoPotro ?? 'Macho';
     _newPhotoPath = widget.egua.photoPath;
   }
 
@@ -3793,7 +3793,7 @@ class _EditEguaFormState extends State<_EditEguaForm> {
         cobertura: _categoriaSelecionada == 'Matriz' ? _coberturaController.text : null,
         observacao: _obsController.text,
         dataParto: _teveParto ? _dataParto : null,
-        sexoPotro: _teveParto ? _sexoPotro : null,
+        sexoPotro: _teveParto ? (_sexoPotro ?? 'Macho') : null,
         statusSync: 'pending_update',
         photoPath: _newPhotoPath,
       );
@@ -3922,7 +3922,7 @@ class _EditEguaFormState extends State<_EditEguaForm> {
                     }
                   },
                 ),
-                if (_categoriaSelecionada == 'Matriz')
+                if (_categoriaSelecionada != 'Receptora')
                   Padding(
                     padding: const EdgeInsets.only(top: 10.0),
                     child: TextFormField(
