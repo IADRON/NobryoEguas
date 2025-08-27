@@ -1,13 +1,12 @@
 faltante:
 
-arrumar formatação das informações da éguas
-observação da égua no card
-retirar data da conclusão, e adicionar hora(manual) na data de agendamento(histórico)
-alterar id do manejo quando trocar a égua de lote
-proprietário individual para cada égua
-melhoria na lógica de deslocamentos
-potro e égua com opção de morte, com campos de observação/causa e data
-refresh ao atualizar dados da égua
+potro com opção de morte, com campos de observação/causa e data?
+
+arrumar formatação das informações da éguas?
+
+proprietário individual para cada égua?
+
+melhoria na lógica de deslocamentos?
 
 **maldito printing**
 

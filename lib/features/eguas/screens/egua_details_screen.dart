@@ -20,12 +20,14 @@ import 'package:uuid/uuid.dart';
 class EguaDetailsScreen extends StatefulWidget {
   final Egua egua;
   final Function(String eguaId)? onEguaDeleted;
+  final Function(Egua egua)? onEguaUpdated;
   final String propriedadeMaeId;
 
   const EguaDetailsScreen({
     super.key,
     required this.egua,
     this.onEguaDeleted,
+    this.onEguaUpdated,
     required this.propriedadeMaeId,
   });
 
@@ -85,6 +87,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
 
       if (mounted) {
         setState(() {
+          _currentEgua = refreshedEgua;
           _historicoFuture = SQLiteHelper.instance
               .readHistoricoByEgua(_currentEgua.id, startDate: _startDate, endDate: _endDate);
           _agendadosFuture =
@@ -305,6 +308,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
         backgroundColor: Colors.green,
       ));
       refreshData();
+      widget.onEguaUpdated?.call(result);
     }
   }
 
@@ -498,215 +502,221 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_currentEgua.photoPath != null &&
-                          _currentEgua.photoPath!.isNotEmpty) ...[
-                        Column(
-                          children: [
-                            Stack(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  child: Image.file(
-                                    File(_currentEgua.photoPath!),
-                                    height: 200,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 175,
-                                  right: 0,
-                                  child: GestureDetector(
-                                    onTap: () => _pickAndUpdateEguaImage(),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: const BoxDecoration(
-                                        color: AppTheme.brown,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black26,
-                                            blurRadius: 6,
-                                            offset: Offset(0, 2),
-                                          )
-                                        ],
-                                      ),
-                                      child: const Icon(Icons.edit,
-                                          color: Colors.white, size: 24),
+      body: RefreshIndicator( // ADICIONADO
+        onRefresh: () async {
+          await _autoSync();
+          refreshData();
+        },
+        child: Column(
+          children: [
+            Expanded(
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_currentEgua.photoPath != null &&
+                            _currentEgua.photoPath!.isNotEmpty) ...[
+                          Column(
+                            children: [
+                              Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    child: Image.file(
+                                      File(_currentEgua.photoPath!),
+                                      height: 200,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
                                     ),
                                   ),
-                                ),
-                                Column(
-                                  children: [
-                                    const SizedBox(height: 220),
-                                    const Text("Informações da Égua",
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppTheme.darkText)),
-                                    const SizedBox(height: 15),
-                                  ],
-                                )
-                              ],
-                            ),
-                          ]
-                        ),
-                      ] else ...[
-                        const Text("Informações da Égua",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.darkText)),
-                        const SizedBox(height: 15)
-                      ],
-                      _buildInfoCard(_currentEgua),
-                      const SizedBox(height: 24),
-                      const Text("Próximos Agendamentos",
-                          style: TextStyle(
+                                  Positioned(
+                                    top: 175,
+                                    right: 0,
+                                    child: GestureDetector(
+                                      onTap: () => _pickAndUpdateEguaImage(),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: const BoxDecoration(
+                                          color: AppTheme.brown,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black26,
+                                              blurRadius: 6,
+                                              offset: Offset(0, 2),
+                                            )
+                                          ],
+                                        ),
+                                        child: const Icon(Icons.edit,
+                                            color: Colors.white, size: 24),
+                                      ),
+                                    ),
+                                  ),
+                                  Column(
+                                    children: [
+                                      const SizedBox(height: 220),
+                                      const Text("Informações da Égua",
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppTheme.darkText)),
+                                      const SizedBox(height: 15),
+                                    ],
+                                  )
+                                ],
+                              ),
+                            ]
+                          ),
+                        ] else ...[
+                          const Text("Informações da Égua",
+                            style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: AppTheme.darkText)),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.add, size: 20),
-                          label: const Text("Agendar Novo Manejo"),
-                          onPressed: () => _showAddAgendamentoModal(context),
-                          style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 8)),
+                          const SizedBox(height: 15)
+                        ],
+                        _buildInfoCard(_currentEgua),
+                        const SizedBox(height: 24),
+                        const Text("Próximos Agendamentos",
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.darkText)),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.add, size: 20),
+                            label: const Text("Agendar Novo Manejo"),
+                            onPressed: () => _showAddAgendamentoModal(context),
+                            style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 8)),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildManejoList(_agendadosFuture, isHistorico: false),
-                      const SizedBox(height: 24),
-                          const Text("Histórico de Manejos Concluídos",
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.darkText)),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ListTile(
-                                  title: Text(
-                                    _startDate == null || _endDate == null
-                                        ? 'Selecione um período'
-                                        : '${DateFormat('dd/MM/yyyy').format(_startDate!)} - ${DateFormat('dd/MM/yyyy').format(_endDate!)}',
+                        const SizedBox(height: 16),
+                        _buildManejoList(_agendadosFuture, isHistorico: false),
+                        const SizedBox(height: 24),
+                            const Text("Histórico de Manejos Concluídos",
+                                style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.darkText)),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ListTile(
+                                    title: Text(
+                                      _startDate == null || _endDate == null
+                                          ? 'Selecione um período'
+                                          : '${DateFormat('dd/MM/yyyy').format(_startDate!)} - ${DateFormat('dd/MM/yyyy').format(_endDate!)}',
+                                    ),
+                                    trailing: Icon(Icons.calendar_today),
+                                    onTap: () async {
+                                      final picked = await showDateRangePicker(
+                                        context: context,
+                                        firstDate: DateTime(2000),
+                                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                                        initialDateRange: _startDate != null && _endDate != null
+                                            ? DateTimeRange(start: _startDate!, end: _endDate!)
+                                            : null,
+                                      );
+                                      if (picked != null) {
+                                        setState(() {
+                                          _startDate = picked.start;
+                                          _endDate = picked.end;
+                                          refreshData();
+                                        });
+                                      }
+                                    },
                                   ),
-                                  trailing: Icon(Icons.calendar_today),
-                                  onTap: () async {
-                                    final picked = await showDateRangePicker(
-                                      context: context,
-                                      firstDate: DateTime(2000),
-                                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                                      initialDateRange: _startDate != null && _endDate != null
-                                          ? DateTimeRange(start: _startDate!, end: _endDate!)
-                                          : null,
-                                    );
-                                    if (picked != null) {
+                                ),
+                                if (_startDate != null || _endDate != null)
+                                  IconButton(
+                                    icon: Icon(Icons.clear),
+                                    onPressed: () {
                                       setState(() {
-                                        _startDate = picked.start;
-                                        _endDate = picked.end;
+                                        _startDate = null;
+                                        _endDate = null;
                                         refreshData();
                                       });
-                                    }
-                                  },
-                                ),
-                              ),
-                              if (_startDate != null || _endDate != null)
-                                IconButton(
-                                  icon: Icon(Icons.clear),
-                                  onPressed: () {
-                                    setState(() {
-                                      _startDate = null;
-                                      _endDate = null;
-                                      refreshData();
-                                    });
-                                  },
-                                ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedManejoType,
-                                  hint: const Text("Tipo"),
-                                  isExpanded: true,
-                                  decoration: InputDecoration(
-                                    contentPadding:
-                                        const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                                    prefixIcon: const Icon(Icons.filter_list),
-                                    suffixIcon: _selectedManejoType != null
-                                        ? IconButton(
-                                            icon: const Icon(Icons.clear, size: 20),
-                                            onPressed: () {
-                                              setState(() {
-                                                _selectedManejoType = null;
-                                              });
-                                            },
-                                          )
-                                        : null,
+                                    },
                                   ),
-                                  items: _manejoTypes
-                                      .map((tipo) => DropdownMenuItem(
-                                            value: tipo,
-                                            child: Text(tipo),
-                                          ))
-                                      .toList(),
-                                  onChanged: (val) {
-                                    setState(() {
-                                      if (val == "Todos") {
-                                        _selectedManejoType = null;
-                                      } else {
-                                        _selectedManejoType = val;
-                                      }
-                                    });
-                                  },
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: DropdownButtonFormField<String>(
+                                    value: _selectedManejoType,
+                                    hint: const Text("Tipo"),
+                                    isExpanded: true,
+                                    decoration: InputDecoration(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                                      prefixIcon: const Icon(Icons.filter_list),
+                                      suffixIcon: _selectedManejoType != null
+                                          ? IconButton(
+                                              icon: const Icon(Icons.clear, size: 20),
+                                              onPressed: () {
+                                                setState(() {
+                                                  _selectedManejoType = null;
+                                                });
+                                              },
+                                            )
+                                          : null,
+                                    ),
+                                    items: _manejoTypes
+                                        .map((tipo) => DropdownMenuItem(
+                                              value: tipo,
+                                              child: Text(tipo),
+                                            ))
+                                        .toList(),
+                                    onChanged: (val) {
+                                      setState(() {
+                                        if (val == "Todos") {
+                                          _selectedManejoType = null;
+                                        } else {
+                                          _selectedManejoType = val;
+                                        }
+                                      });
+                                    },
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                      const SizedBox(height: 10),
-                      _buildManejoList(_historicoFuture, isHistorico: true),
-                      const SizedBox(height: 20),
-                    ],
+                              ],
+                            ),
+                        const SizedBox(height: 10),
+                        _buildManejoList(_historicoFuture, isHistorico: true),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppTheme.pageBackground,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  spreadRadius: 0,
-                  blurRadius: 10,
-                  offset: const Offset(0, -5),
-                ),
-              ],
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppTheme.pageBackground,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    spreadRadius: 0,
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.brown),
+                onPressed: () => _showAddHistoricoModal(context, isEditing: false),
+                child: const Text("Adicionar Manejo ao Histórico"),
+              ),
             ),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.brown),
-              onPressed: () => _showAddHistoricoModal(context, isEditing: false),
-              child: const Text("Adicionar Manejo ao Histórico"),
-            ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      )
     );
   }
 
@@ -935,11 +945,19 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          if (isHistorico) ...[
                           Text(
+                            DateFormat('dd/MM/yyyy HH:mm')
+                                .format(manejo.dataAgendada),
+                            style: const TextStyle(
+                                color: Colors.grey, fontSize: 12)),
+                          ] else ...[
+                            Text(
                               DateFormat('dd/MM/yyyy')
                                   .format(manejo.dataAgendada),
                               style: const TextStyle(
                                   color: Colors.grey, fontSize: 12)),
+                          ],
                           if (isHistorico)
                             PopupMenuButton<String>(
                               icon: const Icon(Icons.more_vert,
@@ -1079,12 +1097,11 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
       'pelagemPotro': 'Pelagem do Potro',
       'dataHoraParto': 'Data e Hora do Parto',
       'observacoesParto': 'Observações do Parto',
-      'dataHoraConclusao' : 'Data e Hora da Conclusão'
     };
 
     String formatValue(String key, dynamic value) {
       if (value is String) {
-        if (key == 'dataHora' || key == 'dataHoraInducao' || key == 'dataHoraParto' || key == 'dataHoraConclusao') {
+        if (key == 'dataHora' || key == 'dataHoraInducao' || key == 'dataHoraParto') {
           try {
             final dt = DateTime.parse(value);
             return DateFormat('dd/MM/yyyy HH:mm', 'pt_BR').format(dt);
@@ -2317,33 +2334,61 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
+                      readOnly: true,
+                      controller: TextEditingController(
+                        text: DateFormat('dd/MM/yyyy HH:mm').format(dataFinalManejo)
+                      ),
+                      decoration: const InputDecoration(
+                          labelText: "Data e Hora da Conclusão",
+                          prefixIcon: Icon(Icons.calendar_today_outlined),
+                          hintText: 'Toque para selecionar a data e hora'),
+                      validator: (v) => v == null ? "Obrigatório" : null,
+                      onTap: () async {
+                        final date = await showDatePicker(
+                            context: context,
+                            initialDate: dataFinalManejo,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2030));
+                        if (date == null) return;
+                        TimeOfDay? time;
+                          await showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text("Selecione a Hora"),
+                                content: TimePickerSpinner(
+                                  is24HourMode: true,
+                                  minutesInterval: 5,
+                                  onTimeChange: (dateTime) {
+                                    time = TimeOfDay.fromDateTime(dateTime);
+                                  },
+                                ),
+                                actions: <Widget>[
+                                  TextButton(
+                                    child: Text("CANCELAR"),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                  ),
+                                  TextButton(
+                                    child: Text("OK"),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        if (time != null) {
+                            setModalState(() => dataFinalManejo = DateTime(date.year, date.month, date.day, time!.hour, time!.minute));
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
                         controller: obsController,
                         decoration:
                             const InputDecoration(
                                 labelText: "Observações Finais",
                                 prefixIcon: Icon(Icons.comment_outlined)),
                         maxLines: 3),
-                    const SizedBox(height: 10),
-                    TextFormField(
-                      readOnly: true,
-                      controller: TextEditingController(
-                        text: DateFormat('dd/MM/yyyy').format(dataFinalManejo)
-                      ),
-                      decoration: const InputDecoration(
-                          labelText: "Data da Conclusão",
-                          prefixIcon: Icon(Icons.calendar_today_outlined),
-                          hintText: 'Toque para selecionar a data'),
-                      validator: (v) => v == null ? "Obrigatório" : null,
-                      onTap: () async {
-                        final pickedDate = await showDatePicker(
-                            context: context,
-                            initialDate: dataFinalManejo,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2030));
-                        if (pickedDate != null)
-                          setModalState(() => dataFinalManejo = pickedDate);
-                      },
-                    ),
                     const SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
@@ -2352,7 +2397,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                           if (formKey.currentState!.validate()) {
                             final Map<String, dynamic> detalhes = manejo.detalhes;
                             detalhes['observacao'] = obsController.text;
-                            detalhes['dataHoraConclusao'] = DateTime.now().toIso8601String();
 
                             if (_incluirControleFolicular && manejo.tipo != 'Controle Folicular') {
                                 detalhes['ovarioDireito'] = ovarioDirOp;
@@ -2905,21 +2949,49 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                     TextFormField(
                       readOnly: true,
                       controller: TextEditingController(
-                        text: DateFormat('dd/MM/yyyy').format(dataFinalManejo)
+                        text: DateFormat('dd/MM/yyyy HH:mm').format(dataFinalManejo)
                       ),
                       decoration: const InputDecoration(
-                          labelText: "Data da Conclusão",
+                          labelText: "Data e Hora da Conclusão",
                           prefixIcon: Icon(Icons.calendar_today_outlined),
-                          hintText: 'Toque para selecionar a data'),
+                          hintText: 'Toque para selecionar a data e hora'),
                       validator: (v) => v == null ? "Obrigatório" : null,
                       onTap: () async {
-                        final pickedDate = await showDatePicker(
+                        final date = await showDatePicker(
                             context: context,
                             initialDate: dataFinalManejo,
                             firstDate: DateTime(2020),
                             lastDate: DateTime(2030));
-                        if (pickedDate != null)
-                          setModalState(() => dataFinalManejo = pickedDate);
+                        if (date == null) return;
+                        TimeOfDay? time;
+                          await showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text("Selecione a Hora"),
+                                content: TimePickerSpinner(
+                                  is24HourMode: true,
+                                  minutesInterval: 5,
+                                  onTimeChange: (dateTime) {
+                                    time = TimeOfDay.fromDateTime(dateTime);
+                                  },
+                                ),
+                                actions: <Widget>[
+                                  TextButton(
+                                    child: Text("CANCELAR"),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                  ),
+                                  TextButton(
+                                    child: Text("OK"),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        if (time != null) {
+                            setModalState(() => dataFinalManejo = DateTime(date.year, date.month, date.day, time!.hour, time!.minute));
+                        }
                       },
                     ),
                     const SizedBox(height: 20),
@@ -2930,7 +3002,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                           if (formKey.currentState!.validate()) {
                             final Map<String, dynamic> detalhes = {
                               'observacao': obsController.text,
-                              'dataHoraConclusao': DateTime.now().toIso8601String(),
                             };
 
                             if (_incluirControleFolicular && tipoManejoSelecionado != 'Controle Folicular') {
@@ -4092,25 +4163,32 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
 
   void _handleSelection(Propriedade prop) {
     if (_step == 0) {
-      setState(() {
-        _step = 1;
-        _selectedPropriedadeMae = prop;
-        _searchController.clear();
-      });
-      _loadSubProps(prop.id);
+      if (prop.hasLotes) {
+        // Se a propriedade tem lotes, avança para a seleção do lote
+        setState(() {
+          _step = 1;
+          _selectedPropriedadeMae = prop;
+          _searchController.clear();
+        });
+        _loadSubProps(prop.id);
+      } else {
+        // Se não tem lotes, move diretamente para a propriedade
+        _confirmAndMove(prop);
+      }
     } else {
+      // No passo 1, sempre confirma a movimentação para o lote selecionado
       _confirmAndMove(prop);
     }
   }
 
-  void _confirmAndMove(Propriedade destLote) async {
+  void _confirmAndMove(Propriedade destPropriedade) async {
     Navigator.of(context).pop();
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
         title: const Text("Confirmar Movimentação"),
         content: Text(
-            "Deseja mover ${widget.selectedEguas.length} égua(s) para o lote \"${destLote.nome}\"?"),
+            "Deseja mover ${widget.selectedEguas.length} égua(s) para \"${destPropriedade.nome}\"?"),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(dialogCtx).pop(false),
@@ -4126,9 +4204,9 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
       for (String eguaId in widget.selectedEguas) {
         final eguaToMove = await SQLiteHelper.instance.getEguaById(eguaId);
         final manejosToMove = await SQLiteHelper.instance.readAgendadosByEgua(eguaId);
-        if (eguaToMove != null) { 
+        if (eguaToMove != null) {
           final updatedEgua = eguaToMove.copyWith(
-            propriedadeId: destLote.id,
+            propriedadeId: destPropriedade.id,
             statusSync: 'pending_update',
           );
           await SQLiteHelper.instance.updateEgua(updatedEgua);
@@ -4136,7 +4214,7 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
         if (manejosToMove.isNotEmpty) {
           for (final manejo in manejosToMove) {
           final updatedManejos = manejo.copyWith(
-            propriedadeId: destLote.id,
+            propriedadeId: destPropriedade.id,
             statusSync: 'pending_update',
           );
           await SQLiteHelper.instance.updateManejo(updatedManejos);
@@ -4144,8 +4222,9 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
         }
       }
       widget.onMoveConfirmed();
-    } 
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {

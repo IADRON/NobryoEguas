@@ -48,6 +48,17 @@ class _EguaDetailsPageViewState extends State<EguaDetailsPageView> {
     }
   }
 
+
+  void _onEguaUpdated(Egua updatedEgua) {
+    if (!mounted) return;
+    final index = _currentEguasList.indexWhere((egua) => egua.id == updatedEgua.id);
+    if (index != -1) {
+      setState(() {
+        _currentEguasList[index] = updatedEgua;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_currentEguasList.isEmpty) {
@@ -65,7 +76,8 @@ class _EguaDetailsPageViewState extends State<EguaDetailsPageView> {
         return EguaDetailsScreen(
           egua: _currentEguasList[index],
           onEguaDeleted: (deletedEguaId) => _onEguaDeleted(deletedEguaId),
-          propriedadeMaeId: widget.propriedadeMaeId, 
+          onEguaUpdated: _onEguaUpdated,
+          propriedadeMaeId: widget.propriedadeMaeId,
         );
       },
     );

@@ -1002,6 +1002,18 @@ class _EguasListScreenState extends State<EguasListScreen> {
                       Text("Pelagem: ${egua.pelagem}",
                           style: TextStyle(fontSize: 14, color: Colors.grey[600])),
                       ],
+                      if (egua.observacao != null && egua.observacao!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          "Obs: ${egua.observacao!}",
+                          style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[800],
+                              fontStyle: FontStyle.italic),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ],
                     if (proximoManejo != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8.0),
@@ -1026,7 +1038,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                     fontSize: 12,
                                   ),
                                 ),
-                              ]),
+                              ]
+                            ),
                         ),
                       ),
                     const SizedBox(height: 8),
@@ -1242,7 +1255,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                   hintText: "dd/mm/aaaa",
                                   prefixIcon: Icon(Icons.calendar_today_outlined),
                                 ),
-                                readOnly: true,  // Impede que o teclado apareça
+                                readOnly: true,
                                 onTap: () async {
                                   DateTime? pickedDate = await showDatePicker(
                                     context: context,
@@ -1258,7 +1271,6 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                     });
                                   }
                                 },
-                                keyboardType: TextInputType.datetime,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Por favor, insira uma data.';
@@ -1640,12 +1652,16 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
 
   void _handleSelection(Propriedade prop) {
     if (_step == 0) {
-      setState(() {
-        _step = 1;
-        _selectedPropriedadeMae = prop;
-        _searchController.clear();
-      });
-      _loadSubProps(prop.id);
+      if (prop.hasLotes) {
+        setState(() {
+          _step = 1;
+          _selectedPropriedadeMae = prop;
+          _searchController.clear();
+        });
+        _loadSubProps(prop.id);
+      } else {
+        _confirmAndMove(prop);
+      }
     } else {
       _confirmAndMove(prop);
     }
@@ -1658,7 +1674,7 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
       builder: (dialogCtx) => AlertDialog(
         title: const Text("Confirmar Movimentação"),
         content: Text(
-            "Deseja mover ${widget.selectedEguas.length} égua(s) para o lote \"${destLote.nome}\"?"),
+            "Deseja mover ${widget.selectedEguas.length} égua(s) para \"${destLote.nome}\"?"),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(dialogCtx).pop(false),
@@ -1673,15 +1689,35 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
     );
 
     if (confirmed == true) {
+      // Busca todas as éguas do lote atual para otimizar a busca.
       final eguasToMove = await SQLiteHelper.instance
           .readEguasByPropriedade(widget.currentPropriedadeId);
+
       for (String eguaId in widget.selectedEguas) {
+        // Encontra a égua a ser movida na lista já carregada.
         final egua = eguasToMove.firstWhere((e) => e.id == eguaId);
+
+        // Atualiza a propriedade da égua.
         final updatedEgua = egua.copyWith(
           propriedadeId: destLote.id,
           statusSync: 'pending_update',
         );
         await SQLiteHelper.instance.updateEgua(updatedEgua);
+
+        // --- LÓGICA ADICIONADA ---
+        // Busca os manejos agendados para a égua.
+        final manejosToMove = await SQLiteHelper.instance.readAgendadosByEgua(eguaId);
+        if (manejosToMove.isNotEmpty) {
+          // Itera sobre os manejos e atualiza a propriedade de cada um.
+          for (final manejo in manejosToMove) {
+            final updatedManejos = manejo.copyWith(
+              propriedadeId: destLote.id,
+              statusSync: 'pending_update',
+            );
+            await SQLiteHelper.instance.updateManejo(updatedManejos);
+          }
+        }
+        // --- FIM DA LÓGICA ADICIONADA ---
       }
       widget.onMoveConfirmed();
     }

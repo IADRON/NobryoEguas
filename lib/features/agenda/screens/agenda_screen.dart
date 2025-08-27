@@ -2275,30 +2275,55 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                           v == null ? "Selecione um responsável" : null,
                     ),
                     const SizedBox(height: 15),
-
                       TextFormField(
                         readOnly: true,
                         controller: TextEditingController(
-                          text: DateFormat('dd/MM/yyyy').format(dataFinalManejo)
+                          text: DateFormat('dd/MM/yyyy HH:mm').format(dataFinalManejo)
                         ),
                         decoration: const InputDecoration(
-                            labelText: "Data da Conclusão",
-                            prefixIcon: Icon(Icons.event_available_outlined),
-                            hintText: 'Toque para selecionar a data'),
+                            labelText: "Data e Hora da Conclusão",
+                            prefixIcon: Icon(Icons.calendar_today_outlined),
+                            hintText: 'Toque para selecionar a data e hora'),
                         validator: (v) => v == null ? "Obrigatório" : null,
                         onTap: () async {
-                          final pickedDate = await showDatePicker(
+                          final date = await showDatePicker(
                               context: context,
                               initialDate: dataFinalManejo,
                               firstDate: DateTime(2020),
                               lastDate: DateTime(2030));
-                          if (pickedDate != null) {
-                            setModalState(() => dataFinalManejo = pickedDate);
+                          if (date == null) return;
+                          TimeOfDay? time;
+                            await showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: Text("Selecione a Hora"),
+                                  content: TimePickerSpinner(
+                                    is24HourMode: true,
+                                    minutesInterval: 5,
+                                    onTimeChange: (dateTime) {
+                                      time = TimeOfDay.fromDateTime(dateTime);
+                                    },
+                                  ),
+                                  actions: <Widget>[
+                                    TextButton(
+                                      child: Text("CANCELAR"),
+                                      onPressed: () => Navigator.of(context).pop(),
+                                    ),
+                                    TextButton(
+                                      child: Text("OK"),
+                                      onPressed: () => Navigator.of(context).pop(),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          if (time != null) {
+                              setModalState(() => dataFinalManejo = DateTime(date.year, date.month, date.day, time!.hour, time!.minute));
                           }
                         },
                       ),
                     const SizedBox(height: 15),
-
                     TextFormField(
                         controller: obsController,
                         decoration: const InputDecoration(
@@ -2320,7 +2345,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                           if (formKey.currentState!.validate()) {
                             final Map<String, dynamic> detalhes = manejo.detalhes;
                             detalhes['observacao'] = obsController.text;
-                            detalhes['dataHoraConclusao'] = DateTime.now().toIso8601String();
 
                             if (_incluirControleFolicular && manejo.tipo != 'Controle Folicular') {
                                 detalhes['ovarioDireito'] = ovarioDirOp;
