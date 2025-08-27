@@ -1,9 +1,9 @@
-import 'dart:io';
+// import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+// import 'package:image_picker/image_picker.dart';
 import 'package:nobryo_final/core/models/user_model.dart';
 import 'package:nobryo_final/core/services/auth_service.dart';
-import 'package:nobryo_final/shared/theme/theme.dart';
+// import 'package:nobryo_final/shared/theme/theme.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final AppUser user;
@@ -43,7 +43,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
+/*  Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image =
         await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
@@ -54,7 +54,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       });
     }
   }
-
+*/
   Future<void> _saveChanges() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
@@ -94,7 +94,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String? imagePath = _newPhotoPath ?? widget.user.photoUrl;
+/*    final String? imagePath = _newPhotoPath ?? widget.user.photoUrl;
 
     ImageProvider? backgroundImage;
     if (imagePath != null && imagePath.isNotEmpty) {
@@ -104,7 +104,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         backgroundImage = FileImage(File(imagePath));
       }
     }
-
+*/
     return Scaffold(
       appBar: AppBar(
         title: const Text("Editar Perfil"),

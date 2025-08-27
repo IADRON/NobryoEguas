@@ -8,8 +8,6 @@ proprietário individual para cada égua?
 
 melhoria na lógica de deslocamentos?
 
-**maldito printing**
-
 após fechamento:
 
 

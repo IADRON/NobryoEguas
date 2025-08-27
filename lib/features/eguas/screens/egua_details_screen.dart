@@ -124,7 +124,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
       _autoSync();
     }
   }
-
+/*
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
@@ -144,7 +144,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
       _autoSync();
     }
   }
-
+*/
   Future<void> _loadAuxiliaryData() async {
     final usersFuture = SQLiteHelper.instance.getAllUsers();
     final peoesFuture =
@@ -3842,7 +3842,7 @@ class _EditEguaFormState extends State<_EditEguaForm> {
     _obsController.dispose();
     super.dispose();
   }
-
+/*
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
@@ -3853,7 +3853,7 @@ class _EditEguaFormState extends State<_EditEguaForm> {
       });
     }
   }
-
+*/
   Future<void> _saveChanges() async {
     if (_formKey.currentState!.validate()) {
       final updatedEgua = widget.egua.copyWith(

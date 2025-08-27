@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:nobryo_final/core/models/egua_model.dart';
 import 'package:nobryo_final/core/models/manejo_model.dart';
@@ -9,7 +10,6 @@ import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 
 class ExportService {
 
@@ -20,8 +20,10 @@ class ExportService {
   ) async {
     try {
       final pdf = pw.Document();
-      final font = await PdfGoogleFonts.robotoRegular();
-      final fontBold = await PdfGoogleFonts.robotoBold();
+      final fontData = await rootBundle.load("assets/fonts/Roboto-Regular.ttf");
+      final fontBoldData = await rootBundle.load("assets/fonts/Roboto-Bold.ttf");
+      final font = pw.Font.ttf(fontData);
+      final fontBold = pw.Font.ttf(fontBoldData);
 
       pdf.addPage(
         pw.MultiPage(
@@ -145,8 +147,10 @@ class ExportService {
   Future<void> exportarParaPdf(Egua egua, List<Manejo> historico, BuildContext context) async {
     try {
       final pdf = pw.Document();
-      final font = await PdfGoogleFonts.robotoRegular();
-      final fontBold = await PdfGoogleFonts.robotoBold();
+      final fontData = await rootBundle.load("assets/fonts/Roboto-Regular.ttf");
+      final fontBoldData = await rootBundle.load("assets/fonts/Roboto-Bold.ttf");
+      final font = pw.Font.ttf(fontData);
+      final fontBold = pw.Font.ttf(fontBoldData);
 
       pdf.addPage(
         pw.MultiPage(
