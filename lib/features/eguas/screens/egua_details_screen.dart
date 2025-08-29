@@ -768,12 +768,11 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: _buildInfoItem("Pelagem:", egua.pelagem)),
+              Expanded(child: _buildCategoriaChip(egua.categoria)),
               if (egua.categoria != 'Receptora' &&
                   egua.cobertura != null &&
                   egua.cobertura!.isNotEmpty)
-                Expanded(child: _buildInfoItem("Padreador:", egua.cobertura!))
-              else if (egua.categoria != 'Matriz')
-                Expanded(child: _buildInfoItem("Categoria:", egua.categoria)),
+                Expanded(child: _buildInfoItem("Padreador:", egua.cobertura!)),
             ],
           ),
           if (egua.dataParto != null) ...[
@@ -863,6 +862,43 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                 color: AppTheme.darkText,
                 fontWeight: FontWeight.bold,
                 fontSize: 16)),
+      ],
+    );
+  }
+
+  Widget _buildCategoriaChip(String categoria) {
+    Color chipColor;
+    switch (categoria) {
+      case 'Doadora':
+        chipColor = AppTheme.statusDoadora;
+        break;
+      case 'Receptora':
+        chipColor = AppTheme.statusReceptora;
+        break;
+      default:
+        chipColor = Colors.grey;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Categoria:", style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: chipColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            categoria.toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1363,7 +1399,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             cabanhaItems.add(
               const DropdownMenuItem<dynamic>(
                 enabled: false,
-                child: Text("Dono",
+                child: Text("Proprietário",
                     style: TextStyle(
                         fontWeight: FontWeight.bold, color: AppTheme.brown)),
               ),
@@ -2028,7 +2064,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             cabanhaItems.add(
               const DropdownMenuItem<dynamic>(
                 enabled: false,
-                child: Text("Dono",
+                child: Text("Proprietário",
                     style: TextStyle(
                         fontWeight: FontWeight.bold, color: AppTheme.brown)),
               ),
@@ -2646,7 +2682,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
               cabanhaItems.add(
                 const DropdownMenuItem<dynamic>(
                   enabled: false,
-                  child: Text("Dono",
+                  child: Text("Proprietário",
                       style: TextStyle(
                           fontWeight: FontWeight.bold, color: AppTheme.brown)),
                 ),
@@ -3861,7 +3897,7 @@ class _EditEguaFormState extends State<_EditEguaForm> {
         rp: _rpController.text,
         pelagem: _pelagemController.text,
         categoria: _categoriaSelecionada,
-        cobertura: _categoriaSelecionada == 'Matriz' ? _coberturaController.text : null,
+        cobertura: _categoriaSelecionada != 'Receptora' ? _coberturaController.text : null,
         observacao: _obsController.text,
         dataParto: _teveParto ? _dataParto : null,
         sexoPotro: _teveParto ? (_sexoPotro ?? 'Macho') : null,

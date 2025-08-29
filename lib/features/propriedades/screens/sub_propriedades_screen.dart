@@ -543,7 +543,7 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
                       TextFormField(
                         controller: donoController,
                         decoration: const InputDecoration(
-                            labelText: "Dono",
+                            labelText: "Proprietário",
                             prefixIcon: Icon(Icons.person_outline)),
                         validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                       ),
@@ -755,6 +755,7 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
                           nome: nomeController.text,
                           dono: donoController.text,
                           parentId: widget.propriedadePai.id,
+                          hasLotes: false,
                           statusSync: 'pending_create',
                         );
                         await SQLiteHelper.instance

@@ -633,7 +633,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
                       TextFormField(
                         controller: donoController,
                         decoration: const InputDecoration(
-                            labelText: "Dono",
+                            labelText: "Proprietário",
                             prefixIcon: Icon(Icons.person_outline)),
                         validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                       ),
@@ -926,6 +926,36 @@ class _EguasListScreenState extends State<EguasListScreen> {
     );
   }
 
+  Widget _buildCategoriaChip(String categoria) {
+    Color chipColor;
+    switch (categoria) {
+      case 'Doadora':
+        chipColor = AppTheme.statusDoadora;
+        break;
+      case 'Receptora':
+        chipColor = AppTheme.statusReceptora;
+        break;
+      default:
+        chipColor = Colors.grey;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: chipColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        categoria.toUpperCase(),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
   Widget _buildEguaCard(Egua egua, int index) {
     final statusColor = egua.statusReprodutivo.toLowerCase() == 'prenhe'
         ? AppTheme.statusPrenhe
@@ -990,11 +1020,26 @@ class _EguasListScreenState extends State<EguasListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(egua.nome,
-                        style: const TextStyle(
+                    egua.categoria == 'Matriz'
+                      ? Text(
+                          egua.nome,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: AppTheme.darkText)),
+                            color: AppTheme.darkText)
+                        )
+                      : Row(
+                          children: [
+                            Text(
+                              egua.nome,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildCategoriaChip(egua.categoria),
+                          ],
+                        ),
                       if (egua.rp.isNotEmpty) ...[
                       Text("RP: ${egua.rp}",
                           style: TextStyle(fontSize: 14, color: Colors.grey[600])),

@@ -10,6 +10,8 @@ class AppTheme {
   static const Color statusPrenhe = Color(0xFF2196F3);
   static const Color statusVazia = Color(0xFFF44336);
   static const Color statusDiagnostico = Color(0xFF4CAF50);
+  static const Color statusDoadora = Color(0xFFC48F50);
+  static const Color statusReceptora = Color(0xFF7AA5E3);
 
   static ThemeData get theme {
     return ThemeData(

@@ -367,7 +367,7 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
                       TextFormField(
                         controller: donoController,
                         decoration: const InputDecoration(
-                          labelText: "Dono",
+                          labelText: "Proprietário",
                           prefixIcon: Icon(Icons.person_outline)),
                         validator: (value) => value!.isEmpty
                             ? "Este campo não pode ser vazio"
