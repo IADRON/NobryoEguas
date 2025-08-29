@@ -560,7 +560,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
     if (_currentPropriedade == null) return;
 
     Propriedade? propToEdit;
-    String modalTitle = "Editar Lote";
+    String modalTitle = "Editar Propriedade";
 
     if (_currentPropriedade!.hasLotes) {
       propToEdit =

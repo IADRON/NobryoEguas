@@ -26,6 +26,7 @@ class Manejo {
   String? medicamentoId;
   String? inducao;
   DateTime? dataHoraInducao;
+  int? quantidadePalhetas; // Novo campo
 
 
   Manejo({
@@ -48,6 +49,7 @@ class Manejo {
     this.medicamentoId,
     this.inducao,
     this.dataHoraInducao,
+    this.quantidadePalhetas, // Adicionado
   });
 
   // Método para o banco de dados local (SQLite)
@@ -72,6 +74,7 @@ class Manejo {
       'medicamentoId': medicamentoId,
       'inducao': inducao,
       'dataHoraInducao': dataHoraInducao?.toIso8601String(),
+      'quantidadePalhetas': quantidadePalhetas, // Adicionado
     };
   }
 
@@ -97,6 +100,7 @@ class Manejo {
       medicamentoId: map['medicamentoId'],
       inducao: map['inducao'],
       dataHoraInducao: map['dataHoraInducao'] != null ? DateTime.parse(map['dataHoraInducao']) : null,
+      quantidadePalhetas: map['quantidadePalhetas'], // Adicionado
     );
   }
 
@@ -114,6 +118,7 @@ class Manejo {
       'concluidoPorId': concluidoPorId,
       'responsavelPeaoId': responsavelPeaoId,
       'concluidoPorPeaoId': concluidoPorPeaoId,
+      'quantidadePalhetas': quantidadePalhetas, // Adicionado
     };
 
     if (medicamentoId != null) firebaseMap['medicamentoId'] = medicamentoId;
@@ -143,6 +148,7 @@ class Manejo {
       medicamentoId: map['medicamentoId'],
       inducao: map['inducao'],
       dataHoraInducao: (map['dataHoraInducao'] as Timestamp?)?.toDate(),
+      quantidadePalhetas: map['quantidadePalhetas'], // Adicionado
     );
   }
 
@@ -165,6 +171,7 @@ class Manejo {
     String? medicamentoId,
     String? inducao,
     DateTime? dataHoraInducao,
+    int? quantidadePalhetas, // Adicionado
   }) {
     return Manejo(
       id: id ?? this.id,
@@ -185,6 +192,7 @@ class Manejo {
       medicamentoId: medicamentoId ?? this.medicamentoId,
       inducao: inducao ?? this.inducao,
       dataHoraInducao: dataHoraInducao ?? this.dataHoraInducao,
+      quantidadePalhetas: quantidadePalhetas ?? this.quantidadePalhetas, // Adicionado
     );
   }
 }

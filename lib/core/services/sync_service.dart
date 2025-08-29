@@ -130,7 +130,7 @@ class SyncService with ChangeNotifier {
       final WriteBatch batch = _firestore.batch();
       for (var prop in unsyncedLocal) {
         DocumentReference docRef = _firestore.collection('propriedades').doc(prop.firebaseId ?? prop.id);
-        batch.set(docRef, {'nome': prop.nome, 'dono': prop.dono, 'idLocal': prop.id}, SetOptions(merge: true));
+        batch.set(docRef, {'nome': prop.nome, 'dono': prop.dono, 'idLocal': prop.id, 'hasLotes': prop.hasLotes}, SetOptions(merge: true));
         prop.firebaseId = docRef.id;
         prop.statusSync = 'synced';
         await _dbHelper.updatePropriedade(prop);
@@ -165,6 +165,7 @@ class SyncService with ChangeNotifier {
         'firebaseId': doc.id,
         'nome': remoteData['nome'] ?? '',
         'dono': remoteData['dono'] ?? '',
+        'hasLotes': remoteData['hasLotes'] ?? true, // Adicionado
         'statusSync': 'synced',
         'isDeleted': 0
       });

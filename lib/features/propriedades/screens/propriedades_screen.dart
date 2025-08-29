@@ -57,7 +57,7 @@ class _PropriedadeScreenState extends State<PropriedadesScreen> {
 
       final Map<String, int> counts = {};
       for (final prop in propriedades) {
-        counts[prop.id] = await SQLiteHelper.instance.countEguasByPropriedade(prop.id);
+        counts[prop.id] = await SQLiteHelper.instance.countEguasRecursive(prop.id);
       }
       
       final Map<String, bool> pendingMap = {};

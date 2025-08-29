@@ -1114,6 +1114,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
       'diasPrenhe': 'Dias de Prenhez',
       'garanhao': 'Garanhão',
       'tipoSemem': 'Tipo de Sêmen',
+      'quantidadePalhetas': 'Quantidade de Palhetas',
       'dataHora': 'Data/Hora da Inseminação',
       'litros': 'Litros',
       'medicamento': 'Medicamento',
@@ -1999,6 +2000,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
 
     final garanhaoController = TextEditingController(text: _currentEgua.cobertura);
     String? tipoSememSelecionado;
+    int? quantidadePalhetas;
     final litrosController = TextEditingController();
     
     final todosMedicamentos = await SQLiteHelper.instance.readAllMedicamentos();
@@ -2181,6 +2183,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       filteredMedicamentos: _filteredMedicamentos,
                       tipoSememSelecionado: tipoSememSelecionado,
                       onTipoSememChange: (val) => setModalState(() => tipoSememSelecionado = val),
+                      quantidadePalhetas: quantidadePalhetas, // Adicione esta linha
+                      onQuantidadePalhetasChange: (val) => setModalState(() => quantidadePalhetas = val), // Adicione esta linha
                       partoComSucesso: partoComSucesso,
                       onPartoComSucessoChange: (val) => setModalState(() => partoComSucesso = val),
                     ),
@@ -2500,6 +2504,10 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                             } else if (manejo.tipo == 'Inseminação') {
                               detalhes['garanhao'] = garanhaoController.text;
                               detalhes['tipoSemem'] = tipoSememSelecionado;
+                              if (tipoSememSelecionado == 'Congelado') {
+                                detalhes['quantidadePalhetas'] = quantidadePalhetas.toString();
+                                manejo.quantidadePalhetas = quantidadePalhetas; // <-- ADICIONE ESTA LINHA
+                              }
                               detalhes['dataHora'] = dataHoraInseminacao?.toIso8601String();
                             } else if (manejo.tipo == 'Lavado') {
                               detalhes['litros'] = litrosController.text;
@@ -2595,6 +2603,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     
     final garanhaoController = TextEditingController(text: manejo?.detalhes['garanhao'] ?? _currentEgua.cobertura);
     String? tipoSememSelecionado = manejo?.detalhes['tipoSemem'];
+    int? quantidadePalhetas = manejo?.detalhes['quantidadePalhetas'];
     final litrosController = TextEditingController(text: manejo?.detalhes['litros']?.toString());
     
     String? ovarioDirOp = manejo?.detalhes['ovarioDireito'];
@@ -2783,6 +2792,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                         filteredMedicamentos: _filteredMedicamentos,
                         tipoSememSelecionado: tipoSememSelecionado,
                         onTipoSememChange: (val) => setModalState(() => tipoSememSelecionado = val),
+                        quantidadePalhetas: quantidadePalhetas, // Adicione esta linha
+                        onQuantidadePalhetasChange: (val) => setModalState(() => quantidadePalhetas = val), // Adicione esta linha
                         sexoPotro: sexoPotro,
                         onSexoPotroChange: (val) => setModalState(() => sexoPotro = val),
                         pelagemController: pelagemController,
@@ -3097,6 +3108,9 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                               detalhes['garanhao'] = garanhaoController.text;
                               detalhes['tipoSemem'] = tipoSememSelecionado;
                               detalhes['dataHora'] = dataHoraInseminacao?.toIso8601String();
+                              if (tipoSememSelecionado == 'Congelado') {
+                                detalhes['quantidadePalhetas'] = quantidadePalhetas.toString();
+                              }
                             } else if (tipoManejoSelecionado == 'Lavado') {
                               detalhes['litros'] = litrosController.text;
                               detalhes['medicamento'] = medicamentoSelecionado?.nome;
@@ -3128,6 +3142,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                                   medicamentoId: tipoManejoSelecionado == 'Controle Folicular' ? medicamentoSelecionado?.id : null,
                                   inducao: tipoManejoSelecionado == 'Controle Folicular' ? inducaoSelecionada : null,
                                   dataHoraInducao: tipoManejoSelecionado == 'Controle Folicular' ? dataHoraInducao : null,
+                                  quantidadePalhetas: (tipoManejoSelecionado == 'Inseminação' && tipoSememSelecionado == 'Congelado') ? quantidadePalhetas : null,
                               );
                               await SQLiteHelper.instance.updateManejo(updatedManejo);
                             } else {
@@ -3141,6 +3156,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                                 responsavelId: currentUser.uid,
                                 concluidoPorId: concluidoPorSelecionado is AppUser ? concluidoPorSelecionado.uid : null,
                                 concluidoPorPeaoId: concluidoPorSelecionado is Peao ? concluidoPorSelecionado.id : null,
+                                quantidadePalhetas: (tipoManejoSelecionado == 'Inseminação' && tipoSememSelecionado == 'Congelado') ? quantidadePalhetas : null,
                                 status: 'Concluído',
                                 statusSync: 'pending_create',
                                 medicamentoId: tipoManejoSelecionado == 'Controle Folicular' ? medicamentoSelecionado?.id : null,
@@ -3192,6 +3208,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     required TextEditingController garanhaoController,
     String? tipoSememSelecionado,
     required Function(String?) onTipoSememChange,
+    int? quantidadePalhetas,
+    required Function(int?) onQuantidadePalhetasChange,
     required DateTime? dataHoraInseminacao,
     required Function(DateTime?) onDataHoraInseminacaoChange,
     required TextEditingController litrosController,
@@ -3421,6 +3439,22 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             onChanged: (val) => setModalState(() => onTipoSememChange(val)),
             validator: (v) => v == null ? "Obrigatório" : null,
           ),
+          if (tipoSememSelecionado == 'Congelado') ...[
+            const SizedBox(height: 10),
+            DropdownButtonFormField<int>(
+              value: quantidadePalhetas,
+              decoration: const InputDecoration(
+                labelText: "Quantidade de Palhetas",
+                prefixIcon: Icon(Icons.unfold_more_outlined),
+              ),
+              hint: const Text("Selecione a quantidade"),
+              items: List.generate(15, (index) => index + 1)
+                  .map((qnt) => DropdownMenuItem(value: qnt, child: Text(qnt.toString())))
+                  .toList(),
+              onChanged: (val) => setModalState(() => onQuantidadePalhetasChange(val)),
+              validator: (v) => v == null ? "Obrigatório" : null,
+            ),
+          ],
           const SizedBox(height: 10),
           TextFormField(
             readOnly: true,

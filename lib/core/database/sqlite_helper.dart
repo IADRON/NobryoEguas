@@ -25,7 +25,7 @@ class SQLiteHelper {
 
     return await openDatabase(
       path,
-      version: 24,
+      version: 25,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -118,6 +118,9 @@ class SQLiteHelper {
     }
     if (oldVersion < 24) {
       await db.execute('ALTER TABLE eguas ADD COLUMN photoPath TEXT');
+    }
+    if (oldVersion < 25) {
+      await db.execute('ALTER TABLE manejos ADD COLUMN quantidadePalhetas INTEGER');
     }
   }
 
@@ -220,6 +223,7 @@ class SQLiteHelper {
           inducao TEXT,
           dataHoraInducao TEXT,
           isAtrasado INTEGER DEFAULT 0 NOT NULL,
+          quantidadePalhetas INTEGER,
           FOREIGN KEY (eguaId) REFERENCES eguas (id) ON DELETE CASCADE,
           FOREIGN KEY (responsavelId) REFERENCES users (uid),
           FOREIGN KEY (concluidoPorId) REFERENCES users (uid)
@@ -678,6 +682,20 @@ class SQLiteHelper {
     final result = await db.rawQuery(
       'SELECT COUNT(*) FROM eguas WHERE propriedadeId = ? AND isDeleted = 0',
       [propriedadeId],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  Future<int> countEguasRecursive(String propriedadeId) async {
+    final db = await instance.database;
+    final subPropriedades = await readSubPropriedades(propriedadeId);
+    final allPropriedadeIds = [propriedadeId, ...subPropriedades.map((p) => p.id)];
+
+    final placeholders = allPropriedadeIds.map((_) => '?').join(',');
+
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) FROM eguas WHERE propriedadeId IN ($placeholders) AND isDeleted = 0',
+      allPropriedadeIds,
     );
     return Sqflite.firstIntValue(result) ?? 0;
   }
