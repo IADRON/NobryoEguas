@@ -765,6 +765,15 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: _buildInfoItem("Nome:", egua.nome)),
+              if (egua.proprietario != null && egua.proprietario!.isNotEmpty)
+                Expanded(child: _buildInfoItem("Proprietário:", egua.proprietario!)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _buildInfoItem("Pelagem:", egua.pelagem)),
               if (egua.rp.isNotEmpty)
                 Expanded(child: _buildInfoItem("RP:", egua.rp)),
             ],
@@ -773,7 +782,6 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _buildInfoItem("Pelagem:", egua.pelagem)),
               Expanded(child: _buildCategoriaChip(egua.categoria)),
               if (egua.categoria != 'Receptora' &&
                   egua.cobertura != null &&
@@ -1141,6 +1149,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
     'pelagemPotro': 'Pelagem do Potro',
     'dataHoraParto': 'Data e Hora do Parto',
     'observacoesParto': 'Observações do Parto',
+    'tratamento': 'Tratamento',
   };
 
     String formatValue(String key, dynamic value) {
@@ -2220,8 +2229,8 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                       filteredMedicamentos: _filteredMedicamentos,
                       tipoSememSelecionado: tipoSememSelecionado,
                       onTipoSememChange: (val) => setModalState(() => tipoSememSelecionado = val),
-                      quantidadePalhetas: quantidadePalhetas, // Adicione esta linha
-                      onQuantidadePalhetasChange: (val) => setModalState(() => quantidadePalhetas = val), // Adicione esta linha
+                      quantidadePalhetas: quantidadePalhetas,
+                      onQuantidadePalhetasChange: (val) => setModalState(() => quantidadePalhetas = val),
                       partoComSucesso: partoComSucesso,
                       onPartoComSucessoChange: (val) => setModalState(() => partoComSucesso = val),
                     ),
@@ -2257,12 +2266,13 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                       if (manejo.tipo == 'Controle Folicular') ...[
                         const Divider(height: 20, thickness: 1),
                         Text("Tratamento", style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 15),
                         TextFormField(
-                          controller: tratamentoController,
-                          decoration: InputDecoration(
-                            labelText: "Descrição do Tratamento",
-                            border: OutlineInputBorder(),
-                          ),
+                        controller: tratamentoController,
+                        decoration:
+                            InputDecoration(
+                              labelText: "Descrição do tratamento",
+                              prefixIcon: Icon(Icons.healing_outlined))
                         ),
                         const Divider(height: 20, thickness: 1),
                         Text("Indução", style: Theme.of(context).textTheme.titleMedium),
@@ -2494,6 +2504,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                             }
 
                             if (manejo.tipo == 'Controle Folicular') {
+                                detalhes['tratamento'] = tratamentoController.text;
                                 manejo.medicamentoId = medicamentoSelecionado?.id;
                                 manejo.inducao = inducaoSelecionada;
                                 manejo.dataHoraInducao = dataHoraInducao;
@@ -2840,8 +2851,8 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                         filteredMedicamentos: _filteredMedicamentos,
                         tipoSememSelecionado: tipoSememSelecionado,
                         onTipoSememChange: (val) => setModalState(() => tipoSememSelecionado = val),
-                        quantidadePalhetas: quantidadePalhetas, // Adicione esta linha
-                        onQuantidadePalhetasChange: (val) => setModalState(() => quantidadePalhetas = val), // Adicione esta linha
+                        quantidadePalhetas: quantidadePalhetas,
+                        onQuantidadePalhetasChange: (val) => setModalState(() => quantidadePalhetas = val),
                         sexoPotro: sexoPotro,
                         onSexoPotroChange: (val) => setModalState(() => sexoPotro = val),
                         pelagemController: pelagemController,
@@ -2882,12 +2893,13 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                     if (tipoManejoSelecionado == 'Controle Folicular') ...[
                       const Divider(height: 20, thickness: 1),
                       Text("Tratamento", style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 15),
                       TextFormField(
                         controller: tratamentoController,
-                        decoration: InputDecoration(
-                          labelText: "Descrição do Tratamento",
-                          border: OutlineInputBorder(),
-                        ),
+                        decoration:
+                            InputDecoration(
+                              labelText: "Descrição do tratamento",
+                              prefixIcon: Icon(Icons.healing_outlined))
                       ),
                       const Divider(height: 20, thickness: 1),
                       Text("Indução", style: Theme.of(context).textTheme.titleMedium),
@@ -3172,6 +3184,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                               detalhes['litros'] = litrosController.text;
                               detalhes['medicamento'] = medicamentoSelecionado?.nome;
                             } else if (tipoManejoSelecionado == 'Controle Folicular') {
+                              detalhes['tratamento'] = tratamentoController.text;          
                               detalhes['ovarioDireito'] = ovarioDirOp;
                               detalhes['ovarioDireitoTamanho'] = ovarioDirTamanhoController.text;
                               detalhes['ovarioEsquerdo'] = ovarioEsqOp;
@@ -3932,6 +3945,7 @@ class _EditEguaForm extends StatefulWidget {
 class _EditEguaFormState extends State<_EditEguaForm> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nomeController;
+  late final TextEditingController _proprietarioController;
   late final TextEditingController _rpController;
   late final TextEditingController _pelagemController;
   late final TextEditingController _coberturaController;
@@ -3948,11 +3962,12 @@ class _EditEguaFormState extends State<_EditEguaForm> {
   void initState() {
     super.initState();
     _nomeController = TextEditingController(text: widget.egua.nome);
+    _proprietarioController = TextEditingController(text: widget.egua.proprietario);
     _rpController = TextEditingController(text: widget.egua.rp);
     _pelagemController = TextEditingController(text: widget.egua.pelagem);
     _coberturaController = TextEditingController(text: widget.egua.cobertura);
     _obsController = TextEditingController(text: widget.egua.observacao);
-    
+
     _categoriaSelecionada = widget.egua.categoria;
     _teveParto = widget.egua.dataParto != null;
     _dataParto = widget.egua.dataParto;
@@ -3963,32 +3978,25 @@ class _EditEguaFormState extends State<_EditEguaForm> {
   @override
   void dispose() {
     _nomeController.dispose();
+    _proprietarioController.dispose();
     _rpController.dispose();
     _pelagemController.dispose();
     _coberturaController.dispose();
     _obsController.dispose();
     super.dispose();
   }
-/*
-  Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
 
-    if (image != null && mounted) {
-      setState(() {
-        _newPhotoPath = image.path;
-      });
-    }
-  }
-*/
   Future<void> _saveChanges() async {
     if (_formKey.currentState!.validate()) {
       final updatedEgua = widget.egua.copyWith(
         nome: _nomeController.text,
+        proprietario: _proprietarioController.text,
         rp: _rpController.text,
         pelagem: _pelagemController.text,
         categoria: _categoriaSelecionada,
-        cobertura: _categoriaSelecionada != 'Receptora' ? _coberturaController.text : null,
+        cobertura: _categoriaSelecionada != 'Receptora'
+            ? _coberturaController.text
+            : null,
         observacao: _obsController.text,
         dataParto: _teveParto ? _dataParto : null,
         sexoPotro: _teveParto ? (_sexoPotro ?? 'Macho') : null,
@@ -4012,208 +4020,202 @@ class _EditEguaFormState extends State<_EditEguaForm> {
           top: 20,
           left: 20,
           right: 20),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Align(
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Align(
                   alignment: Alignment.centerRight,
-                  child: (
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: Icon(Icons.close),
-                    )
-                  )
-                ),
-
-                /*
-
-                Center(
-                  child: GestureDetector(
-                    onTap: _pickImage,
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 60,
-                          backgroundColor: AppTheme.lightGrey,
-                          backgroundImage: (_newPhotoPath != null && _newPhotoPath!.isNotEmpty)
-                              ? FileImage(File(_newPhotoPath!))
-                              : null,
-                          child: (_newPhotoPath == null || _newPhotoPath!.isEmpty)
-                              ? const Icon(Icons.camera_alt, size: 60, color: AppTheme.darkGreen)
-                              : null,
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                              color: AppTheme.brown,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.edit, color: Colors.white, size: 20),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                ),
-
-                const SizedBox(height: 10),
-                
-                */
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Editar Égua",
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.delete_outlined, color: Colors.red[700]),
-                      onPressed: () => Navigator.of(context).pop('wants_to_delete')
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 10),
-                TextFormField(controller: _nomeController,
-                decoration: const InputDecoration(
-                  labelText: "Nome da Égua",
-                  prefixIcon: Icon(Icons.female_outlined)),
-                validator: (v) => v!.isEmpty ? "Obrigatório" : null),
-                const SizedBox(height: 10),
-                TextFormField(controller: _rpController,
-                decoration: const InputDecoration(
-                  labelText: "RP",
-                  prefixIcon: Icon(Icons.numbers_outlined)
-                  )),
-                const SizedBox(height: 10),
-                TextFormField(controller: _pelagemController,
-                decoration: const InputDecoration(
-                  labelText: "Pelagem",
-                  prefixIcon: Icon(Icons.pets)
-                  ), 
-                validator: (v) => v!.isEmpty ? "Obrigatório" : null),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  value: _categoriaSelecionada,
-                  decoration: InputDecoration(
-                    labelText: "Categoria",
-                    prefixIcon: Icon(Icons.category_outlined),
-                    ),
-                  items: ['Matriz', 'Doadora', 'Receptora']
-                      .map((label) => DropdownMenuItem(
-                            child: Text(label),
-                            value: label,
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _categoriaSelecionada = value;
-                      });
-                    }
-                  },
-                ),
-                if (_categoriaSelecionada != 'Receptora')
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10.0),
-                    child: TextFormField(
-                      controller: _coberturaController,
-                      decoration: const InputDecoration(
-                        labelText: "Padreador",
-                        prefixIcon: Icon(Icons.male),
-                      ),
-                    ),
+                  child: (IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close),
+                  ))),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Editar Égua",
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
-                const SizedBox(height: 15),
-                SwitchListTile(
-                  title: const Text("Teve Parto?"),
-                  value: _teveParto,
-                  onChanged: (bool value) {
-                    setState(() {
-                      _teveParto = value;
-                    });
-                  },
-                  activeColor: AppTheme.darkGreen,
-                ),
-                if (_teveParto)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: AppTheme.lightGrey.withOpacity(0.5), borderRadius: BorderRadius.circular(8)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TextFormField(
-                          readOnly: true,
-                          controller: TextEditingController(
-                            text: _dataParto == null ? '' : DateFormat('dd/MM/yyyy').format(_dataParto!),
-                          ),
-                          decoration: const InputDecoration(
-                            labelText: "Data do Parto",
-                            prefixIcon: Icon(Icons.calendar_today_outlined),
-                            hintText: 'Selecione a data',
-                          ),
-                          onTap: () async {
-                            final pickedDate = await showDatePicker(context: context, initialDate: _dataParto ?? DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime.now());
-                            if (pickedDate != null) {
-                              setState(() => _dataParto = pickedDate);
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        const Text("Sexo do Potro"),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                              Text("Macho", style: TextStyle(fontWeight: _sexoPotro == "Macho" ? FontWeight.bold : FontWeight.normal, color: _sexoPotro == "Macho" ? AppTheme.darkGreen: Colors.grey[600])),
-                              Switch(
-                                value: _sexoPotro == "Fêmea",
-                                onChanged: (value) {
-                                  setState(() {
-                                    _sexoPotro = value ? "Fêmea" : "Macho";
-                                  });
-                                },
-                                activeColor: Colors.pink[200],
-                                inactiveThumbColor: AppTheme.darkGreen,
-                                inactiveTrackColor: AppTheme.darkGreen.withOpacity(0.5),
-                                  thumbColor: MaterialStateProperty.resolveWith((states) {
-                                    if (states.contains(MaterialState.selected)) {
-                                      return Colors.pink[200];
-                                    }
-                                    return AppTheme.darkGreen;
-                                  }),
-                              ),
-                              Text("Fêmea", style: TextStyle(fontWeight: _sexoPotro == "Fêmea" ? FontWeight.bold : FontWeight.normal, color: _sexoPotro == "Fêmea" ? Colors.pink[300]: Colors.grey[600])),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _obsController, 
+                  IconButton(
+                      icon:
+                          Icon(Icons.delete_outlined, color: Colors.red[700]),
+                      onPressed: () =>
+                          Navigator.of(context).pop('wants_to_delete')),
+                ],
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                  controller: _nomeController,
                   decoration: const InputDecoration(
-                    labelText: "Observação",
-                    prefixIcon: Icon(Icons.comment_outlined)), maxLines: 3),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _saveChanges,
-                    child: const Text("Salvar Alterações"),
+                      labelText: "Nome da Égua",
+                      prefixIcon: Icon(Icons.female_outlined)),
+                  validator: (v) => v!.isEmpty ? "Obrigatório" : null),
+              const SizedBox(height: 10),
+              TextFormField(
+                  controller: _proprietarioController,
+                  decoration: const InputDecoration(
+                      labelText: "Proprietário",
+                      prefixIcon: Icon(Icons.person_outline)),
+                  validator: (v) => v!.isEmpty ? "Obrigatório" : null),
+              const SizedBox(height: 10),
+              TextFormField(
+                  controller: _rpController,
+                  decoration: const InputDecoration(
+                      labelText: "RP",
+                      prefixIcon: Icon(Icons.numbers_outlined))),
+              const SizedBox(height: 10),
+              TextFormField(
+                  controller: _pelagemController,
+                  decoration: const InputDecoration(
+                      labelText: "Pelagem", prefixIcon: Icon(Icons.pets)),
+                  validator: (v) => v!.isEmpty ? "Obrigatório" : null),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                value: _categoriaSelecionada,
+                decoration: InputDecoration(
+                  labelText: "Categoria",
+                  prefixIcon: Icon(Icons.category_outlined),
+                ),
+                items: ['Matriz', 'Doadora', 'Receptora']
+                    .map((label) => DropdownMenuItem(
+                          child: Text(label),
+                          value: label,
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _categoriaSelecionada = value;
+                    });
+                  }
+                },
+              ),
+              if (_categoriaSelecionada != 'Receptora')
+                Padding(
+                  padding: const EdgeInsets.only(top: 10.0),
+                  child: TextFormField(
+                    controller: _coberturaController,
+                    decoration: const InputDecoration(
+                      labelText: "Padreador",
+                      prefixIcon: Icon(Icons.male),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 20),
-              ],
-            ),
+              const SizedBox(height: 15),
+              SwitchListTile(
+                title: const Text("Teve Parto?"),
+                value: _teveParto,
+                onChanged: (bool value) {
+                  setState(() {
+                    _teveParto = value;
+                  });
+                },
+                activeColor: AppTheme.darkGreen,
+              ),
+              if (_teveParto)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                      color: AppTheme.lightGrey.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(8)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        readOnly: true,
+                        controller: TextEditingController(
+                          text: _dataParto == null
+                              ? ''
+                              : DateFormat('dd/MM/yyyy').format(_dataParto!),
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: "Data do Parto",
+                          prefixIcon: Icon(Icons.calendar_today_outlined),
+                          hintText: 'Selecione a data',
+                        ),
+                        onTap: () async {
+                          final pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: _dataParto ?? DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime.now());
+                          if (pickedDate != null) {
+                            setState(() => _dataParto = pickedDate);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      const Text("Sexo do Potro"),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Text("Macho",
+                              style: TextStyle(
+                                  fontWeight: _sexoPotro == "Macho"
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: _sexoPotro == "Macho"
+                                      ? AppTheme.darkGreen
+                                      : Colors.grey[600])),
+                          Switch(
+                            value: _sexoPotro == "Fêmea",
+                            onChanged: (value) {
+                              setState(() {
+                                _sexoPotro = value ? "Fêmea" : "Macho";
+                              });
+                            },
+                            activeColor: Colors.pink[200],
+                            inactiveThumbColor: AppTheme.darkGreen,
+                            inactiveTrackColor:
+                                AppTheme.darkGreen.withOpacity(0.5),
+                            thumbColor:
+                                MaterialStateProperty.resolveWith((states) {
+                              if (states.contains(MaterialState.selected)) {
+                                return Colors.pink[200];
+                              }
+                              return AppTheme.darkGreen;
+                            }),
+                          ),
+                          Text("Fêmea",
+                              style: TextStyle(
+                                  fontWeight: _sexoPotro == "Fêmea"
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: _sexoPotro == "Fêmea"
+                                      ? Colors.pink[300]
+                                      : Colors.grey[600])),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 10),
+              TextFormField(
+                  controller: _obsController,
+                  decoration: const InputDecoration(
+                      labelText: "Observação",
+                      prefixIcon: Icon(Icons.comment_outlined)),
+                  maxLines: 3),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _saveChanges,
+                  child: const Text("Salvar Alterações"),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
           ),
         ),
+      ),
     );
   }
 }
@@ -4291,7 +4293,6 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
   void _handleSelection(Propriedade prop) {
     if (_step == 0) {
       if (prop.hasLotes) {
-        // Se a propriedade tem lotes, avança para a seleção do lote
         setState(() {
           _step = 1;
           _selectedPropriedadeMae = prop;
@@ -4299,11 +4300,9 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
         });
         _loadSubProps(prop.id);
       } else {
-        // Se não tem lotes, move diretamente para a propriedade
         _confirmAndMove(prop);
       }
     } else {
-      // No passo 1, sempre confirma a movimentação para o lote selecionado
       _confirmAndMove(prop);
     }
   }
@@ -4351,7 +4350,6 @@ class _MoveEguasWidgetState extends State<MoveEguasWidget> {
       widget.onMoveConfirmed();
     }
   }
-
 
   @override
   Widget build(BuildContext context) {

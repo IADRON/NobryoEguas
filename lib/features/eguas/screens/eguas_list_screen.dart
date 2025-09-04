@@ -1001,13 +1001,13 @@ class _EguasListScreenState extends State<EguasListScreen> {
           child: Row(
             children: [
               if (egua.photoPath != null && egua.photoPath!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: CircleAvatar(
-                  radius: 25,
-                  backgroundImage: FileImage(File(egua.photoPath!)),
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: CircleAvatar(
+                    radius: 25,
+                    backgroundImage: FileImage(File(egua.photoPath!)),
+                  ),
                 ),
-              ),
               if (_isSelectionMode)
                 Padding(
                   padding: const EdgeInsets.only(right: 12.0),
@@ -1024,44 +1024,51 @@ class _EguasListScreenState extends State<EguasListScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     egua.categoria == 'Matriz'
-                      ? Text(
-                          egua.nome,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.darkText)
-                        )
-                      : Row(
-                          children: [
-                            Text(
-                              egua.nome,
-                              style: const TextStyle(
+                        ? Text(
+                            egua.nome,
+                            style: const TextStyle(
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
+                                color: AppTheme.darkText),
+                          )
+                        : Row(
+                            children: [
+                              Text(
+                                egua.nome,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildCategoriaChip(egua.categoria),
-                          ],
-                        ),
-                      if (egua.rp.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              _buildCategoriaChip(egua.categoria),
+                            ],
+                          ),
+                    if (egua.proprietario != null &&
+                        egua.proprietario!.isNotEmpty) ...[
+                      Text("Proprietário: ${egua.proprietario}",
+                          style:
+                              TextStyle(fontSize: 14, color: Colors.grey[600])),
+                    ] else if (egua.rp.isNotEmpty) ...[
                       Text("RP: ${egua.rp}",
-                          style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-                          ] else ...[
+                          style:
+                              TextStyle(fontSize: 14, color: Colors.grey[600])),
+                    ] else ...[
                       Text("Pelagem: ${egua.pelagem}",
-                          style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-                      ],
-                      if (egua.observacao != null && egua.observacao!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          "Obs: ${egua.observacao!}",
-                          style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[800],
-                              fontStyle: FontStyle.italic),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ],
+                          style:
+                              TextStyle(fontSize: 14, color: Colors.grey[600])),
+                    ],
+                    if (egua.observacao != null && egua.observacao!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        "Obs: ${egua.observacao!}",
+                        style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[800],
+                            fontStyle: FontStyle.italic),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ],
                     if (proximoManejo != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8.0),
@@ -1086,8 +1093,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                     fontSize: 12,
                                   ),
                                 ),
-                              ]
-                            ),
+                              ]),
                         ),
                       ),
                     const SizedBox(height: 8),
@@ -1179,7 +1185,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
     final isEditing = egua != null;
     final formKey = GlobalKey<FormState>();
     final nomeController = TextEditingController(text: egua?.nome ?? '');
-    final proprietarioController = TextEditingController(text: egua?.proprietario ?? '');
+    final proprietarioController = TextEditingController(text: egua?.proprietario ?? _currentPropriedade?.dono ?? '');
     final rpController = TextEditingController(text: egua?.rp ?? '');
     final pelagemController =
         TextEditingController(text: egua?.pelagem ?? '');
@@ -1325,7 +1331,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                   );
 
                                   if (pickedDate != null) {
-                                    String formattedDate = DateFormat('dd/MM/yyyy').format(pickedDate);
+                                    String formattedDate =
+                                        DateFormat('dd/MM/yyyy').format(pickedDate);
                                     setState(() {
                                       dataPartoController.text = formattedDate;
                                     });
@@ -1336,7 +1343,8 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                     return 'Por favor, insira uma data.';
                                   }
                                   try {
-                                    DateFormat('dd/MM/yyyy').parseStrict(value);
+                                    DateFormat('dd/MM/yyyy')
+                                        .parseStrict(value);
                                     return null;
                                   } catch (e) {
                                     return 'Formato inválido (use dd/mm/aaaa).';

@@ -1,9 +1,5 @@
 faltante:
 
-proprietário no menu de edição, apresentar nas informações da egua
-
-correção campo tratamento
-
 melhoria na lógica de deslocamentos?
 
 após fechamento:
