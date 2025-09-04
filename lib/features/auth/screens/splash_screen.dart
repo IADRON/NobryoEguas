@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:nobryo_final/core/database/sqlite_helper.dart';
-import 'package:nobryo_final/core/services/sync_service.dart';
-import 'package:nobryo_final/core/services/realtime_sync_service.dart';
-import 'package:nobryo_final/features/auth/widgets/auth_wrapper.dart';
-import 'package:nobryo_final/core/services/auth_service.dart';
-import 'package:nobryo_final/shared/theme/theme.dart';
+import 'package:nobryo_eguas/core/database/sqlite_helper.dart';
+import 'package:nobryo_eguas/core/services/sync_service.dart';
+import 'package:nobryo_eguas/core/services/realtime_sync_service.dart';
+import 'package:nobryo_eguas/features/auth/widgets/auth_wrapper.dart';
+import 'package:nobryo_eguas/core/services/auth_service.dart';
+import 'package:nobryo_eguas/shared/theme/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {

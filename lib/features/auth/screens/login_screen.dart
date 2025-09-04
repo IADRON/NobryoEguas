@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:nobryo_final/core/services/auth_service.dart';
-import 'package:nobryo_final/features/auth/widgets/auth_background.dart';
-import 'package:nobryo_final/features/auth/widgets/glass_container.dart';
-import 'package:nobryo_final/core/services/sync_service.dart';
+import 'package:nobryo_eguas/core/services/auth_service.dart';
+import 'package:nobryo_eguas/features/auth/widgets/auth_background.dart';
+import 'package:nobryo_eguas/features/auth/widgets/glass_container.dart';
+import 'package:nobryo_eguas/core/services/sync_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

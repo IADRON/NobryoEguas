@@ -4,17 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:nobryo_final/core/database/sqlite_helper.dart';
-import 'package:nobryo_final/core/models/egua_model.dart';
-import 'package:nobryo_final/core/models/manejo_model.dart';
-import 'package:nobryo_final/core/models/medicamento_model.dart';
-import 'package:nobryo_final/core/models/peao_model.dart';
-import 'package:nobryo_final/core/models/propriedade_model.dart';
-import 'package:nobryo_final/core/models/user_model.dart';
-import 'package:nobryo_final/core/services/auth_service.dart';
-import 'package:nobryo_final/core/services/export_service.dart';
-import 'package:nobryo_final/core/services/sync_service.dart';
-import 'package:nobryo_final/shared/theme/theme.dart';
+import 'package:nobryo_eguas/core/database/sqlite_helper.dart';
+import 'package:nobryo_eguas/core/models/egua_model.dart';
+import 'package:nobryo_eguas/core/models/manejo_model.dart';
+import 'package:nobryo_eguas/core/models/medicamento_model.dart';
+import 'package:nobryo_eguas/core/models/peao_model.dart';
+import 'package:nobryo_eguas/core/models/propriedade_model.dart';
+import 'package:nobryo_eguas/core/models/user_model.dart';
+import 'package:nobryo_eguas/core/services/auth_service.dart';
+import 'package:nobryo_eguas/core/services/export_service.dart';
+import 'package:nobryo_eguas/core/services/sync_service.dart';
+import 'package:nobryo_eguas/shared/theme/theme.dart';
 import 'package:uuid/uuid.dart';
 
 class EguaDetailsScreen extends StatefulWidget {
@@ -47,6 +47,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
   Map<String, Peao> _allPeoes = {};
   Map<String, Egua> _allEguas = {};
   Map<String, Propriedade> _allPropriedades = {};
+  Map<String, Medicamento> _allMedicamentos = {}; 
   final SyncService _syncService = SyncService();
   final AuthService _authService = AuthService();
 
@@ -151,19 +152,22 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
         SQLiteHelper.instance.readPeoesByPropriedade(widget.propriedadeMaeId);
     final eguasFuture = SQLiteHelper.instance.getAllEguas();
     final propriedadesFuture = SQLiteHelper.instance.readAllPropriedades();
+    final medicamentosFuture = SQLiteHelper.instance.readAllMedicamentos();
 
-    final results = await Future.wait([usersFuture, peoesFuture, eguasFuture, propriedadesFuture]);
+    final results = await Future.wait([usersFuture, peoesFuture, eguasFuture, propriedadesFuture, medicamentosFuture]);
 
     if (mounted) {
       final users = results[0] as List<AppUser>;
       final peoes = results[1] as List<Peao>;
       final eguas = results[2] as List<Egua>;
       final propriedades = results[3] as List<Propriedade>;
+      final medicamentos = results[4] as List<Medicamento>;
       setState(() {
         _allUsers = {for (var u in users) u.uid: u};
         _allPeoes = {for (var p in peoes) p.id: p};
         _allEguas = {for (var e in eguas) e.id: e};
         _allPropriedades = {for (var p in propriedades) p.id: p};
+        _allMedicamentos = {for (var m in medicamentos) m.id: m};
       });
     }
     _calcularDiasPrenhe();
@@ -295,6 +299,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     final result = await showModalBottomSheet(
       context: screenContext,
       isScrollControlled: true,
+      isDismissible: false,
       builder: (modalCtx) {
         return _EditEguaForm(egua: _currentEgua);
       },
@@ -724,6 +729,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       builder: (ctx) {
         return MoveEguasWidget(
           currentPropriedadeId: _currentEgua.propriedadeId,
@@ -1065,7 +1071,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                                 fontStyle: FontStyle.italic)),
                       if (isHistorico && manejo.detalhes.isNotEmpty) ...[
                         const Divider(height: 20, thickness: 0.5),
-                        _buildDetalhesManejo(manejo.detalhes),
+                        _buildDetalhesManejo(manejo),
                       ]
                     ],
                   ),
@@ -1107,34 +1113,35 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     }
   }
 
-  Widget _buildDetalhesManejo(Map<String, dynamic> detalhes) {
-    const labelMap = {
-      'resultado': 'Resultado',
-      'resultadoParto': 'Resultado do Parto',
-      'diasPrenhe': 'Dias de Prenhez',
-      'garanhao': 'Garanhão',
-      'tipoSemem': 'Tipo de Sêmen',
-      'quantidadePalhetas': 'Quantidade de Palhetas',
-      'dataHora': 'Data/Hora da Inseminação',
-      'litros': 'Litros',
-      'medicamento': 'Medicamento',
-      'ovarioDireito': 'Ovário Direito',
-      'ovarioDireitoTamanho': 'Tamanho Fl. Direito',
-      'ovarioEsquerdo': 'Ovário Esquerdo',
-      'ovarioEsquerdoTamanho': 'Tamanho Fl. Esquerdo',
-      'edema': 'Edema',
-      'utero': 'Útero',
-      'idadeEmbriao': 'Idade do Embrião',
-      'doadora': 'Doadora',
-      'avaliacaoUterina': 'Avaliação Uterina',
-      'observacao': 'Observação',
-      'inducao': 'Indução',
-      'dataHoraInducao': 'Data/Hora da Indução',
-      'sexoPotro': 'Sexo do Potro',
-      'pelagemPotro': 'Pelagem do Potro',
-      'dataHoraParto': 'Data e Hora do Parto',
-      'observacoesParto': 'Observações do Parto',
-    };
+Widget _buildDetalhesManejo(Manejo manejo) {
+  final detalhes = manejo.detalhes;
+  const labelMap = {
+    'resultado': 'Resultado',
+    'resultadoParto': 'Resultado do Parto',
+    'diasPrenhe': 'Dias de Prenhez',
+    'garanhao': 'Garanhão',
+    'tipoSemem': 'Tipo de Sêmen',
+    'quantidadePalhetas': 'Quantidade de Palhetas',
+    'dataHora': 'Data/Hora da Inseminação',
+    'litros': 'Litros',
+    'medicamento': 'Medicamento',
+    'ovarioDireito': 'Ovário Direito',
+    'ovarioDireitoTamanho': 'Tamanho Fl. Direito',
+    'ovarioEsquerdo': 'Ovário Esquerdo',
+    'ovarioEsquerdoTamanho': 'Tamanho Fl. Esquerdo',
+    'edema': 'Edema',
+    'utero': 'Útero',
+    'idadeEmbriao': 'Idade do Embrião',
+    'doadora': 'Doadora',
+    'avaliacaoUterina': 'Avaliação Uterina',
+    'observacao': 'Observação',
+    'inducao': 'Indução',
+    'dataHoraInducao': 'Data/Hora da Indução',
+    'sexoPotro': 'Sexo do Potro',
+    'pelagemPotro': 'Pelagem do Potro',
+    'dataHoraParto': 'Data e Hora do Parto',
+    'observacoesParto': 'Observações do Parto',
+  };
 
     String formatValue(String key, dynamic value) {
       if (value is String) {
@@ -1151,6 +1158,30 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     }
 
     final List<Widget> children = [];
+
+     if (manejo.tipo == 'Controle Folicular' && manejo.medicamentoId != null) {
+    final medicamento = _allMedicamentos[manejo.medicamentoId];
+    if (medicamento != null) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4.0),
+          child: RichText(
+            text: TextSpan(
+              style: TextStyle(fontSize: 14, color: Colors.grey[800]),
+              children: [
+                const TextSpan(
+                  text: "Medicamento (Indução): ",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextSpan(text: medicamento.nome),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+  }
+  
     final detailEntries = detalhes.entries
         .where((entry) =>
             entry.value != null &&
@@ -1380,6 +1411,8 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+
       builder: (ctx) => StatefulBuilder(
         builder: (BuildContext context, StateSetter setModalState) {
           List<DropdownMenuItem<dynamic>> veterinarioItems = [
@@ -1594,6 +1627,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       builder: (ctx) {
         
         void reagendarLocal() async {
@@ -1795,6 +1829,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -2024,8 +2059,9 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     bool partoComSucesso = true;
 
     DateTime? dataHoraInseminacao;
-    DateTime dataFinalManejo = manejo.dataAgendada;
+    DateTime dataFinalManejo = DateTime.now();
 
+    final tratamentoController = TextEditingController(text: manejo.detalhes['tratamento']);
     Medicamento? medicamentoSelecionado;
     String? inducaoSelecionada;
     DateTime? dataHoraInducao;
@@ -2041,6 +2077,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       builder: (ctx) { 
         return StatefulBuilder(
         builder: (modalContext, setModalState) {
@@ -2218,6 +2255,15 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                       ],
 
                       if (manejo.tipo == 'Controle Folicular') ...[
+                        const Divider(height: 20, thickness: 1),
+                        Text("Tratamento", style: Theme.of(context).textTheme.titleMedium),
+                        TextFormField(
+                          controller: tratamentoController,
+                          decoration: InputDecoration(
+                            labelText: "Descrição do Tratamento",
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
                         const Divider(height: 20, thickness: 1),
                         Text("Indução", style: Theme.of(context).textTheme.titleMedium),
                         const SizedBox(height: 15),
@@ -2506,7 +2552,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                               detalhes['tipoSemem'] = tipoSememSelecionado;
                               if (tipoSememSelecionado == 'Congelado') {
                                 detalhes['quantidadePalhetas'] = quantidadePalhetas.toString();
-                                manejo.quantidadePalhetas = quantidadePalhetas; // <-- ADICIONE ESTA LINHA
+                                manejo.quantidadePalhetas = quantidadePalhetas; 
                               }
                               detalhes['dataHora'] = dataHoraInseminacao?.toIso8601String();
                             } else if (manejo.tipo == 'Lavado') {
@@ -2644,6 +2690,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     List<Medicamento> _filteredMedicamentos = todosMedicamentos;
     bool _showMedicamentoList = false;
 
+    final tratamentoController = TextEditingController(text: manejo?.detalhes['tratamento']);
     Egua? doadoraSelecionada;
     if (manejo?.detalhes['doadora'] != null) {
         final allEguas = await SQLiteHelper.instance.getAllEguas();
@@ -2667,6 +2714,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       builder: (ctx) { 
         return StatefulBuilder(
           builder: (modalContext, setModalState) {
@@ -2832,6 +2880,15 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
                     ],
 
                     if (tipoManejoSelecionado == 'Controle Folicular') ...[
+                      const Divider(height: 20, thickness: 1),
+                      Text("Tratamento", style: Theme.of(context).textTheme.titleMedium),
+                      TextFormField(
+                        controller: tratamentoController,
+                        decoration: InputDecoration(
+                          labelText: "Descrição do Tratamento",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
                       const Divider(height: 20, thickness: 1),
                       Text("Indução", style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 15),
@@ -3247,7 +3304,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
     required bool partoComSucesso,
     required Function(bool) onPartoComSucessoChange,
   }) {
-    final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
+    final ovarioOptions = ["CL", "OV", "PEQ", "FL", "FH"];
     final idadeEmbriaoOptions = ['D6', 'D7', 'D8', 'D9', 'D10', 'D11'];
     final tiposSemem = ['Refrigerado', 'Congelado', 'A Fresco', 'Monta Natural'];
     switch (tipo) {
@@ -3748,7 +3805,7 @@ class _EguaDetailsScreenState extends State<EguaDetailsScreen>
   }
 
   _buildControleFolicularInputs({required void Function(void Function()) setModalState, required String? ovarioDirOp, required void Function(String? val) onOvarioDirChange, required TextEditingController ovarioDirTamanhoController, required String? ovarioEsqOp, required void Function(String? val) onOvarioEsqChange, required TextEditingController ovarioEsqTamanhoController, required String? edemaSelecionado, required void Function(String? val) onEdemaChange, required TextEditingController uteroController}) {
-    final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
+    final ovarioOptions = ["CL", "OV", "PEQ", "FL", "FH"];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

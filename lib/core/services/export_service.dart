@@ -3,9 +3,9 @@ import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:nobryo_final/core/models/egua_model.dart';
-import 'package:nobryo_final/core/models/manejo_model.dart';
-import 'package:nobryo_final/core/models/propriedade_model.dart';
+import 'package:nobryo_eguas/core/models/egua_model.dart';
+import 'package:nobryo_eguas/core/models/manejo_model.dart';
+import 'package:nobryo_eguas/core/models/propriedade_model.dart';
 import 'package:open_file/open_file.dart'; 
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -119,11 +119,12 @@ class ExportService {
         for (final manejo in manejos) {
           final detalhesString = _getFormattedDetalhesExcel(manejo.detalhes);
           sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = egua.nome;
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = egua.rp;
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = DateFormat('dd/MM/yyyy').format(manejo.dataAgendada);
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = manejo.tipo;
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = detalhesString;
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = manejo.detalhes['observacao'] ?? '';
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = egua.proprietario;
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = egua.rp;
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = DateFormat('dd/MM/yyyy').format(manejo.dataAgendada);
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = manejo.tipo;
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex)).value = detalhesString;
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: rowIndex)).value = manejo.detalhes['observacao'] ?? '';
           rowIndex++;
         }
       });
@@ -284,12 +285,14 @@ class ExportService {
     final cellTitle = sheet.cell(CellIndex.indexByString("A1"));
     cellTitle.value = "Histórico de Manejos - ${egua.nome}";
     cellTitle.cellStyle = CellStyle(bold: true, fontSize: 16, verticalAlign: VerticalAlign.Center);
-    sheet.cell(CellIndex.indexByString("A3")).value = "RP:";
-    sheet.cell(CellIndex.indexByString("B3")).value = egua.rp;
-    sheet.cell(CellIndex.indexByString("A4")).value = "Pelagem:";
-    sheet.cell(CellIndex.indexByString("B4")).value = egua.pelagem;
-    sheet.cell(CellIndex.indexByString("A5")).value = "Status Atual:";
-    sheet.cell(CellIndex.indexByString("B5")).value = egua.statusReprodutivo;
+    sheet.cell(CellIndex.indexByString("A3")).value = "Proprietário:";
+    sheet.cell(CellIndex.indexByString("B3")).value = egua.proprietario;
+    sheet.cell(CellIndex.indexByString("A4")).value = "RP:";
+    sheet.cell(CellIndex.indexByString("B4")).value = egua.rp;
+    sheet.cell(CellIndex.indexByString("A5")).value = "Pelagem:";
+    sheet.cell(CellIndex.indexByString("B5")).value = egua.pelagem;
+    sheet.cell(CellIndex.indexByString("A6")).value = "Status Atual:";
+    sheet.cell(CellIndex.indexByString("B6")).value = egua.statusReprodutivo;
     final headers = ["Data", "Tipo de Manejo", "Detalhes", "Observações"];
     for (var i = 0; i < headers.length; i++) {
       final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 7));

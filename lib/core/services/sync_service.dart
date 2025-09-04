@@ -4,12 +4,12 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:nobryo_final/core/database/sqlite_helper.dart';
-import 'package:nobryo_final/core/models/egua_model.dart';
-import 'package:nobryo_final/core/models/manejo_model.dart';
-import 'package:nobryo_final/core/models/medicamento_model.dart';
-import 'package:nobryo_final/core/models/propriedade_model.dart';
-import 'package:nobryo_final/core/models/user_model.dart';
+import 'package:nobryo_eguas/core/database/sqlite_helper.dart';
+import 'package:nobryo_eguas/core/models/egua_model.dart';
+import 'package:nobryo_eguas/core/models/manejo_model.dart';
+import 'package:nobryo_eguas/core/models/medicamento_model.dart';
+import 'package:nobryo_eguas/core/models/propriedade_model.dart';
+import 'package:nobryo_eguas/core/models/user_model.dart';
 import 'package:collection/collection.dart';
 
 class SyncService with ChangeNotifier {
@@ -106,88 +106,111 @@ class SyncService with ChangeNotifier {
 
   Future<void> _syncPropriedades({required bool isManual}) async {
     if (isManual) print("[Propriedades] Sincronizando...");
-    
-    // Upload de exclusões para o Firebase
+
     final deletedProps = await _dbHelper.getDeletedPropriedades();
-    if(deletedProps.isNotEmpty) {
-      if (isManual) print("[Propriedades] Deletando ${deletedProps.length} registros no Firebase...");
-      WriteBatch deleteBatch = _firestore.batch();
-      for (var prop in deletedProps) {
-        if (prop.firebaseId != null) {
-          deleteBatch.delete(_firestore.collection('propriedades').doc(prop.firebaseId!));
+    if (deletedProps.isNotEmpty) {
+        if (isManual) print("[Propriedades] Deletando ${deletedProps.length} registros no Firebase...");
+        WriteBatch deleteBatch = _firestore.batch();
+        for (var prop in deletedProps) {
+            if (prop.firebaseId != null) {
+                deleteBatch.delete(_firestore.collection('propriedades').doc(prop.firebaseId!));
+            }
         }
-      }
-      await deleteBatch.commit();
-      for (var prop in deletedProps) {
-        await _dbHelper.permanentlyDeletePropriedade(prop.id);
-      }
+        await deleteBatch.commit();
+        for (var prop in deletedProps) {
+            await _dbHelper.permanentlyDeletePropriedade(prop.id);
+        }
     }
 
-    // Upload de criações/atualizações para o Firebase
     final unsyncedLocal = await _dbHelper.getUnsyncedPropriedades();
     if (unsyncedLocal.isNotEmpty) {
-      if (isManual) print("[Propriedades] Enviando ${unsyncedLocal.length} registros...");
-      final WriteBatch batch = _firestore.batch();
-      for (var prop in unsyncedLocal) {
-        DocumentReference docRef = _firestore.collection('propriedades').doc(prop.firebaseId ?? prop.id);
-        batch.set(docRef, {'nome': prop.nome, 'dono': prop.dono, 'idLocal': prop.id, 'hasLotes': prop.hasLotes}, SetOptions(merge: true));
-        prop.firebaseId = docRef.id;
-        prop.statusSync = 'synced';
-        await _dbHelper.updatePropriedade(prop);
-      }
-      await batch.commit();
+        if (isManual) print("[Propriedades] Enviando ${unsyncedLocal.length} registros...");
+        final WriteBatch batch = _firestore.batch();
+        for (var prop in unsyncedLocal) {
+            String? parentFirebaseId;
+            if (prop.parentId != null) {
+                final parentProp = await _dbHelper.readPropriedade(prop.parentId!);
+                parentFirebaseId = parentProp?.firebaseId;
+            }
+            DocumentReference docRef = _firestore.collection('propriedades').doc(prop.firebaseId ?? prop.id);
+            var dataToSet = prop.toMapForFirebase();
+            if (parentFirebaseId != null) {
+              dataToSet['parentFirebaseId'] = parentFirebaseId;
+            }
+            batch.set(docRef, dataToSet, SetOptions(merge: true));
+            prop.firebaseId = docRef.id;
+            prop.statusSync = 'synced';
+            await _dbHelper.updatePropriedade(prop);
+        }
+        await batch.commit();
     }
 
-    // Download de dados e tratamento de exclusões remotas
     final remoteSnapshot = await _firestore.collection('propriedades').get();
-    final localProps = await _dbHelper.readAllPropriedades();
     
+    final localPropsForDeleteCheck = await _dbHelper.readAllPropriedades();
     final remoteFirebaseIds = remoteSnapshot.docs.map((doc) => doc.id).toSet();
-    for (final localProp in localProps) {
-        if (localProp.firebaseId != null && 
-            !remoteFirebaseIds.contains(localProp.firebaseId) && 
-            localProp.statusSync != 'pending_delete') {
+    for (final localProp in localPropsForDeleteCheck) {
+        if (localProp.firebaseId != null && !remoteFirebaseIds.contains(localProp.firebaseId) && localProp.statusSync != 'pending_delete') {
             if (isManual) print("[Propriedades] Removendo propriedade '${localProp.nome}' deletada remotamente.");
             await _dbHelper.permanentlyDeletePropriedade(localProp.id);
         }
     }
-
-    final updatedLocalProps = await _dbHelper.readAllPropriedades();
-    final Map<String, Propriedade> localPropsMap = {
-      for (var p in updatedLocalProps) if (p.firebaseId != null) p.firebaseId!: p
-    };
+    
+    final parentDocs = remoteSnapshot.docs.where((doc) => doc.data()['parentFirebaseId'] == null).toList();
+    final childDocs = remoteSnapshot.docs.where((doc) => doc.data()['parentFirebaseId'] != null).toList();
+    final orderedDocs = [...parentDocs, ...childDocs];
+    
     int newRecords = 0;
     int updatedRecords = 0;
-    for (final doc in remoteSnapshot.docs) {
-      final remoteData = doc.data();
-      final remoteProp = Propriedade.fromMap({
-        'id': remoteData['idLocal'] ?? doc.id,
-        'firebaseId': doc.id,
-        'nome': remoteData['nome'] ?? '',
-        'dono': remoteData['dono'] ?? '',
-        'hasLotes': remoteData['hasLotes'] ?? true, // Adicionado
-        'statusSync': 'synced',
-        'isDeleted': 0
-      });
-      final localProp = localPropsMap[doc.id];
-      if (localProp == null) {
-        await _dbHelper.createPropriedade(remoteProp);
-        newRecords++;
-      } else {
-        if (localProp.nome != remoteProp.nome || localProp.dono != remoteProp.dono) {
-          await _dbHelper.updatePropriedade(remoteProp.copyWith(id: localProp.id));
-          updatedRecords++;
+
+    for (final doc in orderedDocs) {
+        final currentLocalProps = await _dbHelper.readAllPropriedades();
+        final Map<String, Propriedade> localPropsMap = { for (var p in currentLocalProps) if (p.firebaseId != null) p.firebaseId!: p };
+
+        final remoteData = doc.data();
+        String? parentId;
+        if (remoteData['parentFirebaseId'] != null) {
+          parentId = await _dbHelper.findPropriedadeIdByFirebaseId(remoteData['parentFirebaseId']);
         }
-      }
+
+        final bool hasLotesFromRemote = remoteData['hasLotes'] ?? false;
+
+        final remoteProp = Propriedade.fromMap({
+            'id': remoteData['idLocal'] ?? doc.id,
+            'firebaseId': doc.id,
+            'nome': remoteData['nome'] ?? '',
+            'dono': remoteData['dono'] ?? '',
+            'parentId': parentId,
+            'deslocamentos': remoteData['deslocamentos'] ?? 0,
+            'hasLotes': hasLotesFromRemote ? 1 : 0,
+            'statusSync': 'synced',
+            'isDeleted': 0
+        });
+
+        final localProp = localPropsMap[doc.id];
+        if (localProp == null) {
+            await _dbHelper.createPropriedade(remoteProp);
+            newRecords++;
+        } else {
+            if (localProp.nome != remoteProp.nome || 
+                localProp.dono != remoteProp.dono || 
+                localProp.parentId != remoteProp.parentId || 
+                localProp.deslocamentos != remoteProp.deslocamentos || 
+                localProp.hasLotes != remoteProp.hasLotes) {
+                await _dbHelper.updatePropriedade(remoteProp.copyWith(id: localProp.id));
+                updatedRecords++;
+            }
+        }
     }
+    
     if (isManual && newRecords > 0) print("[Propriedades] $newRecords novos registros baixados.");
     if (isManual && updatedRecords > 0) print("[Propriedades] $updatedRecords registros atualizados.");
-  }
+}
+
 
   Future<void> _syncEguas({required bool isManual}) async {
     if (isManual) print("[Éguas] Sincronizando...");
 
-    // Upload de exclusões para o Firebase
     final deletedEguas = await _dbHelper.getDeletedEguas();
     if (deletedEguas.isNotEmpty) {
       if (isManual) print("[Éguas] Deletando ${deletedEguas.length} registros no Firebase...");
@@ -203,7 +226,6 @@ class SyncService with ChangeNotifier {
       }
     }
 
-    // Upload de criações/atualizações para o Firebase
     final unsyncedEguas = await _dbHelper.getUnsyncedEguas();
     if (unsyncedEguas.isNotEmpty) {
        if (isManual) print("[Éguas] Enviando ${unsyncedEguas.length} registros...");
@@ -220,7 +242,6 @@ class SyncService with ChangeNotifier {
       await batch.commit();
     }
 
-    // Download de dados e tratamento de exclusões remotas
     final remoteSnapshot = await _firestore.collection('eguas').get();
     final localEguas = await _dbHelper.getAllEguas();
 
@@ -252,6 +273,7 @@ class SyncService with ChangeNotifier {
             newRecords++;
         } else {
             if (localEgua.nome != remoteEgua.nome ||
+                localEgua.proprietario != remoteEgua.proprietario ||
                 localEgua.rp != remoteEgua.rp ||
                 localEgua.pelagem != remoteEgua.pelagem ||
                 localEgua.cobertura != remoteEgua.cobertura ||
@@ -273,7 +295,6 @@ class SyncService with ChangeNotifier {
   Future<void> _syncMedicamentos({required bool isManual}) async {
     if (isManual) print("[Medicamentos] Sincronizando...");
 
-    // Upload de exclusões para o Firebase
     final deletedMeds = await _dbHelper.getDeletedMedicamentos();
     if (deletedMeds.isNotEmpty) {
       if (isManual) print("[Medicamentos] Deletando ${deletedMeds.length} registros no Firebase...");
@@ -287,7 +308,6 @@ class SyncService with ChangeNotifier {
       }
     }
 
-    // Upload de criações/atualizações para o Firebase
     final unsyncedMedicamentos = await _dbHelper.getUnsyncedMedicamentos();
     if (unsyncedMedicamentos.isNotEmpty) {
       if (isManual) print("[Medicamentos] Enviando ${unsyncedMedicamentos.length} registros...");
@@ -302,7 +322,6 @@ class SyncService with ChangeNotifier {
       await createUpdateBatch.commit();
     }
 
-    // Download de dados e tratamento de exclusões remotas
     final remoteSnapshot = await _firestore.collection('medicamentos').get();
     final localMeds = await _dbHelper.readAllMedicamentos();
 
@@ -349,7 +368,6 @@ class SyncService with ChangeNotifier {
   Future<void> _syncManejos({required bool isManual}) async {
     if (isManual) print("[Manejos] Sincronizando...");
 
-    // Upload de exclusões para o Firebase
     final deletedManejos = await _dbHelper.getDeletedManejos();
     if(deletedManejos.isNotEmpty) {
       if (isManual) print("[Manejos] Deletando ${deletedManejos.length} registros no Firebase...");
@@ -363,7 +381,6 @@ class SyncService with ChangeNotifier {
       }
     }
 
-    // Upload de criações/atualizações para o Firebase
     final unsyncedManejos = await _dbHelper.getUnsyncedManejos();
     if (unsyncedManejos.isNotEmpty) {
        if (isManual) print("[Manejos] Enviando ${unsyncedManejos.length} registros...");
@@ -380,7 +397,6 @@ class SyncService with ChangeNotifier {
       await batch.commit();
     }
     
-    // Download de dados e tratamento de exclusões remotas
     final remoteSnapshot = await _firestore.collection('manejos').get();
     final localManejos = await _dbHelper.getAllEguasManejos();
 

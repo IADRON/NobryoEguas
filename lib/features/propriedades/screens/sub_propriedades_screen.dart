@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:nobryo_final/core/database/sqlite_helper.dart';
-import 'package:nobryo_final/core/models/egua_model.dart';
-import 'package:nobryo_final/core/models/manejo_model.dart';
-import 'package:nobryo_final/core/models/propriedade_model.dart';
-import 'package:nobryo_final/core/services/export_service.dart';
-import 'package:nobryo_final/core/services/sync_service.dart';
-import 'package:nobryo_final/features/eguas/screens/eguas_list_screen.dart';
-import 'package:nobryo_final/features/propriedades/widgets/peoes_management_widget.dart';
-import 'package:nobryo_final/shared/theme/theme.dart';
+import 'package:nobryo_eguas/core/database/sqlite_helper.dart';
+import 'package:nobryo_eguas/core/models/egua_model.dart';
+import 'package:nobryo_eguas/core/models/manejo_model.dart';
+import 'package:nobryo_eguas/core/models/propriedade_model.dart';
+import 'package:nobryo_eguas/core/services/export_service.dart';
+import 'package:nobryo_eguas/core/services/sync_service.dart';
+import 'package:nobryo_eguas/features/eguas/screens/eguas_list_screen.dart';
+import 'package:nobryo_eguas/features/propriedades/widgets/peoes_management_widget.dart';
+import 'package:nobryo_eguas/shared/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -460,6 +460,7 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return DraggableScrollableSheet(
@@ -497,6 +498,7 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
@@ -690,6 +692,7 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom,
@@ -755,7 +758,6 @@ class _SubPropriedadesScreenState extends State<SubPropriedadesScreen> {
                           nome: nomeController.text,
                           dono: donoController.text,
                           parentId: widget.propriedadePai.id,
-                          hasLotes: false,
                           statusSync: 'pending_create',
                         );
                         await SQLiteHelper.instance

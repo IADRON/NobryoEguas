@@ -6,22 +6,22 @@ import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:nobryo_final/core/database/sqlite_helper.dart';
-import 'package:nobryo_final/core/models/egua_model.dart';
-import 'package:nobryo_final/core/models/manejo_model.dart';
-import 'package:nobryo_final/core/models/propriedade_model.dart';
-import 'package:nobryo_final/core/models/medicamento_model.dart';
-import 'package:nobryo_final/core/models/peao_model.dart';
-import 'package:nobryo_final/core/models/user_model.dart';
-import 'package:nobryo_final/core/services/notification_service.dart';
-import 'package:nobryo_final/core/services/sync_service.dart';
+import 'package:nobryo_eguas/core/database/sqlite_helper.dart';
+import 'package:nobryo_eguas/core/models/egua_model.dart';
+import 'package:nobryo_eguas/core/models/manejo_model.dart';
+import 'package:nobryo_eguas/core/models/propriedade_model.dart';
+import 'package:nobryo_eguas/core/models/medicamento_model.dart';
+import 'package:nobryo_eguas/core/models/peao_model.dart';
+import 'package:nobryo_eguas/core/models/user_model.dart';
+import 'package:nobryo_eguas/core/services/notification_service.dart';
+import 'package:nobryo_eguas/core/services/sync_service.dart';
 import 'package:provider/provider.dart';
-import 'package:nobryo_final/features/auth/screens/manage_users_screen.dart';
-import 'package:nobryo_final/core/services/auth_service.dart';
-import 'package:nobryo_final/features/auth/widgets/user_profile_modal.dart';
-import 'package:nobryo_final/features/eguas/screens/egua_details_screen.dart';
-import 'package:nobryo_final/shared/theme/theme.dart';
-import 'package:nobryo_final/shared/widgets/loading_screen.dart';
+import 'package:nobryo_eguas/features/auth/screens/manage_users_screen.dart';
+import 'package:nobryo_eguas/core/services/auth_service.dart';
+import 'package:nobryo_eguas/features/auth/widgets/user_profile_modal.dart';
+import 'package:nobryo_eguas/features/eguas/screens/egua_details_screen.dart';
+import 'package:nobryo_eguas/shared/theme/theme.dart';
+import 'package:nobryo_eguas/shared/widgets/loading_screen.dart';
 import 'package:uuid/uuid.dart';
 
 class AgendaScreen extends StatefulWidget {
@@ -246,7 +246,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
       required Function(String?) onEdemaChange,
       required TextEditingController uteroController,
     }) {
-      final ovarioOptions = ["CL", "OV", "PEQ", "FL"];
+      final ovarioOptions = ["CL", "OV", "PEQ", "FL", "FH"];
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -961,6 +961,7 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1387,6 +1388,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    isDismissible: false,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -1477,7 +1479,6 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                       },
                     ),
 
-                  // ALTERADO: Busca de Éguas Condicional na Edição
                   if (propriedadeMae != null)
                     FutureBuilder<List<Egua>>(
                       future: () async {
@@ -1658,6 +1659,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1891,6 +1893,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     final avaliacaoUterinaController = TextEditingController();
     String? resultadoDiagnostico;
     final diasPrenheController = TextEditingController();
+    final tratamentoController = TextEditingController();
     Medicamento? medicamentoSelecionado;
     String? inducaoSelecionada;
     DateTime? dataHoraInducao;
@@ -1898,7 +1901,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     final todosMedicamentos = await SQLiteHelper.instance.readAllMedicamentos();
     List<Medicamento> _filteredMedicamentos = todosMedicamentos;
     bool _showMedicamentoList = false;
-    DateTime dataFinalManejo = manejo.dataAgendada;
+    DateTime dataFinalManejo = DateTime.now();
     
     dynamic concluidoPorSelecionado = allUsersList.firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
     bool _incluirControleFolicular = false;
@@ -1918,6 +1921,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -2112,6 +2116,15 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                     
                     if (manejo.tipo == 'Controle Folicular') ...[
                       const Divider(height: 20, thickness: 1),
+                      Text("Tratamento", style: Theme.of(context).textTheme.titleMedium),
+                      TextFormField(
+                        controller: tratamentoController,
+                        decoration: InputDecoration(
+                          labelText: "Descrição do Tratamento",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const Divider(height: 20, thickness: 1),
                       Text("Indução", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 15),
                       TextFormField(
@@ -2274,50 +2287,50 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                       validator: (v) =>
                           v == null ? "Selecione um responsável" : null,
                     ),
-                    const SizedBox(height: 15),
-                      TextFormField(
-                        readOnly: true,
-                        controller: TextEditingController(
-                          text: DateFormat('dd/MM/yyyy HH:mm').format(dataFinalManejo)
-                        ),
-                        decoration: const InputDecoration(
-                            labelText: "Data e Hora da Conclusão",
-                            prefixIcon: Icon(Icons.calendar_today_outlined),
-                            hintText: 'Toque para selecionar a data e hora'),
-                        validator: (v) => v == null ? "Obrigatório" : null,
-                        onTap: () async {
-                          final date = await showDatePicker(
-                              context: context,
-                              initialDate: dataFinalManejo,
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2030));
-                          if (date == null) return;
-                          TimeOfDay? time;
-                            await showDialog(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return AlertDialog(
-                                  title: Text("Selecione a Hora"),
-                                  content: TimePickerSpinner(
-                                    is24HourMode: true,
-                                    minutesInterval: 5,
-                                    onTimeChange: (dateTime) {
-                                      time = TimeOfDay.fromDateTime(dateTime);
-                                    },
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      readOnly: true,
+                      controller: TextEditingController(
+                        text: DateFormat('dd/MM/yyyy HH:mm').format(dataFinalManejo)
+                      ),
+                      decoration: const InputDecoration(
+                          labelText: "Data e Hora da Conclusão",
+                          prefixIcon: Icon(Icons.calendar_today_outlined),
+                          hintText: 'Toque para selecionar a data e hora'),
+                      validator: (v) => v == null ? "Obrigatório" : null,
+                      onTap: () async {
+                        final date = await showDatePicker(
+                            context: context,
+                            initialDate: dataFinalManejo,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2030));
+                        if (date == null) return;
+                        TimeOfDay? time;
+                          await showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text("Selecione a Hora"),
+                                content: TimePickerSpinner(
+                                  is24HourMode: true,
+                                  minutesInterval: 5,
+                                  onTimeChange: (dateTime) {
+                                    time = TimeOfDay.fromDateTime(dateTime);
+                                  },
+                                ),
+                                actions: <Widget>[
+                                  TextButton(
+                                    child: Text("CANCELAR"),
+                                    onPressed: () => Navigator.of(context).pop(),
                                   ),
-                                  actions: <Widget>[
-                                    TextButton(
-                                      child: Text("CANCELAR"),
-                                      onPressed: () => Navigator.of(context).pop(),
-                                    ),
-                                    TextButton(
-                                      child: Text("OK"),
-                                      onPressed: () => Navigator.of(context).pop(),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
+                                  TextButton(
+                                    child: Text("OK"),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
                           if (time != null) {
                               setModalState(() => dataFinalManejo = DateTime(date.year, date.month, date.day, time!.hour, time!.minute));
                           }

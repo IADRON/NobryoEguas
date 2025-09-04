@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:nobryo_final/core/models/egua_model.dart';
-import 'package:nobryo_final/features/eguas/screens/egua_details_screen.dart';
+import 'package:nobryo_eguas/core/models/egua_model.dart';
+import 'package:nobryo_eguas/features/eguas/screens/egua_details_screen.dart';
 
 class EguaDetailsPageView extends StatefulWidget {
   final List<Egua> eguas;

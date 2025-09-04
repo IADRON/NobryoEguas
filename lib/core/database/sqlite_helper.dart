@@ -1,9 +1,9 @@
-import 'package:nobryo_final/core/models/egua_model.dart';
-import 'package:nobryo_final/core/models/manejo_model.dart';
-import 'package:nobryo_final/core/models/medicamento_model.dart';
-import 'package:nobryo_final/core/models/peao_model.dart';
-import 'package:nobryo_final/core/models/propriedade_model.dart';
-import 'package:nobryo_final/core/models/user_model.dart';
+import 'package:nobryo_eguas/core/models/egua_model.dart';
+import 'package:nobryo_eguas/core/models/manejo_model.dart';
+import 'package:nobryo_eguas/core/models/medicamento_model.dart';
+import 'package:nobryo_eguas/core/models/peao_model.dart';
+import 'package:nobryo_eguas/core/models/propriedade_model.dart';
+import 'package:nobryo_eguas/core/models/user_model.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -25,7 +25,7 @@ class SQLiteHelper {
 
     return await openDatabase(
       path,
-      version: 25,
+      version: 27,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -122,6 +122,12 @@ class SQLiteHelper {
     if (oldVersion < 25) {
       await db.execute('ALTER TABLE manejos ADD COLUMN quantidadePalhetas INTEGER');
     }
+    if (oldVersion < 26) {
+      await db.execute('ALTER TABLE eguas ADD COLUMN proprietario TEXT NOT NULL');
+    }
+    if (oldVersion < 27){
+      await db.execute('ALTER TABLE manejos ADD COLUMN tratamento TEXT');
+    }
   }
 
   Future<bool> _columnExists(Database db, String tableName, String columnName) async {
@@ -191,7 +197,7 @@ class SQLiteHelper {
       CREATE TABLE IF NOT EXISTS eguas (
         id TEXT PRIMARY KEY, firebaseId TEXT, nome TEXT NOT NULL, rp TEXT NOT NULL, pelagem TEXT NOT NULL, cobertura TEXT,
         dataParto TEXT, sexoPotro TEXT, statusReprodutivo TEXT NOT NULL, diasPrenhe INTEGER,
-        observacao TEXT, propriedadeId TEXT NOT NULL, statusSync TEXT NOT NULL,
+        observacao TEXT, proprietario TEXT NOT NULL, propriedadeId TEXT NOT NULL, statusSync TEXT NOT NULL,
         isDeleted INTEGER DEFAULT 0 NOT NULL,
         categoria TEXT NOT NULL DEFAULT 'Matriz',
         orderIndex INTEGER NOT NULL DEFAULT 0,
@@ -220,6 +226,7 @@ class SQLiteHelper {
           statusSync TEXT NOT NULL,
           isDeleted INTEGER DEFAULT 0 NOT NULL,
           medicamentoId TEXT,
+          tratamento TEXT,
           inducao TEXT,
           dataHoraInducao TEXT,
           isAtrasado INTEGER DEFAULT 0 NOT NULL,

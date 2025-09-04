@@ -1,15 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:nobryo_final/core/database/sqlite_helper.dart';
-import 'package:nobryo_final/core/models/egua_model.dart';
-import 'package:nobryo_final/core/models/manejo_model.dart';
-import 'package:nobryo_final/core/models/propriedade_model.dart';
-import 'package:nobryo_final/core/services/export_service.dart';
-import 'package:nobryo_final/core/services/sync_service.dart';
-import 'package:nobryo_final/features/eguas/screens/egua_details_page_view.dart';
-import 'package:nobryo_final/features/propriedades/widgets/peoes_management_widget.dart';
-import 'package:nobryo_final/shared/theme/theme.dart';
+import 'package:nobryo_eguas/core/database/sqlite_helper.dart';
+import 'package:nobryo_eguas/core/models/egua_model.dart';
+import 'package:nobryo_eguas/core/models/manejo_model.dart';
+import 'package:nobryo_eguas/core/models/propriedade_model.dart';
+import 'package:nobryo_eguas/core/services/export_service.dart';
+import 'package:nobryo_eguas/core/services/sync_service.dart';
+import 'package:nobryo_eguas/features/eguas/screens/egua_details_page_view.dart';
+import 'package:nobryo_eguas/features/propriedades/widgets/peoes_management_widget.dart';
+import 'package:nobryo_eguas/shared/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -370,6 +370,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return DraggableScrollableSheet(
@@ -429,6 +430,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return DraggableScrollableSheet(
@@ -586,6 +588,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
@@ -1157,6 +1160,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       builder: (ctx) {
         return MoveEguasWidget(
           currentPropriedadeId: widget.propriedadeId,
@@ -1175,6 +1179,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
     final isEditing = egua != null;
     final formKey = GlobalKey<FormState>();
     final nomeController = TextEditingController(text: egua?.nome ?? '');
+    final proprietarioController = TextEditingController(text: egua?.proprietario ?? '');
     final rpController = TextEditingController(text: egua?.rp ?? '');
     final pelagemController =
         TextEditingController(text: egua?.pelagem ?? '');
@@ -1194,6 +1199,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
@@ -1226,6 +1232,15 @@ class _EguasListScreenState extends State<EguasListScreen> {
                               prefixIcon: Icon(Icons.female_outlined)),
                           validator: (v) =>
                               v!.isEmpty ? "Obrigatório" : null),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: proprietarioController,
+                        decoration: const InputDecoration(
+                            labelText: "Proprietário",
+                            prefixIcon: Icon(Icons.person_outline)),
+                        validator: (v) =>
+                            v!.isEmpty ? "Obrigatório" : null,
+                      ),
                       const SizedBox(height: 10),
                       TextFormField(
                         controller: rpController,
@@ -1407,6 +1422,7 @@ class _EguasListScreenState extends State<EguasListScreen> {
                                 id: isEditing ? egua.id : const Uuid().v4(),
                                 firebaseId: egua?.firebaseId,
                                 nome: nomeController.text,
+                                proprietario: proprietarioController.text,
                                 rp: rpController.text,
                                 pelagem: pelagemController.text,
                                 categoria: categoriaSelecionada,

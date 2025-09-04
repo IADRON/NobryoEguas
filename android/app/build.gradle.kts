@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.nobryo_final"
+    namespace = "com.example.nobryo_eguas"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -24,7 +24,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.nobryo_final"
+        applicationId = "com.example.nobryo_eguas"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

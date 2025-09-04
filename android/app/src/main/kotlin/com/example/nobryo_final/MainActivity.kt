@@ -1,4 +1,4 @@
-package com.example.nobryo_final
+package com.example.nobryo_eguas
 
 import io.flutter.embedding.android.FlutterActivity
 

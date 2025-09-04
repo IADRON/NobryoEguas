@@ -1,10 +1,8 @@
 faltante:
 
-potro com opção de morte, com campos de observação/causa e data?
+proprietário no menu de edição, apresentar nas informações da egua
 
-arrumar formatação das informações da éguas?
-
-proprietário individual para cada égua?
+correção campo tratamento
 
 melhoria na lógica de deslocamentos?
 

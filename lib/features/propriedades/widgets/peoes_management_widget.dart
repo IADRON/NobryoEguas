@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:nobryo_final/core/database/sqlite_helper.dart';
-import 'package:nobryo_final/core/models/peao_model.dart';
-import 'package:nobryo_final/shared/theme/theme.dart';
+import 'package:nobryo_eguas/core/database/sqlite_helper.dart';
+import 'package:nobryo_eguas/core/models/peao_model.dart';
+import 'package:nobryo_eguas/shared/theme/theme.dart';
 import 'package:uuid/uuid.dart';
 
 class PeoesManagementWidget extends StatefulWidget {
@@ -151,6 +151,7 @@ class _PeoesManagementWidgetState extends State<PeoesManagementWidget> {
     showModalBottomSheet(
         context: context,
         isScrollControlled: true,
+        isDismissible: false,
         builder: (ctx) => Padding(
               padding: EdgeInsets.only(
                   bottom: MediaQuery.of(ctx).viewInsets.bottom,

@@ -1,11 +1,11 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:nobryo_final/features/auth/screens/splash_screen.dart';
-import 'package:nobryo_final/core/services/notification_service.dart';
-import 'package:nobryo_final/core/services/realtime_sync_service.dart';
-import 'package:nobryo_final/core/services/sync_service.dart';
-import 'package:nobryo_final/shared/theme/theme.dart';
+import 'package:nobryo_eguas/features/auth/screens/splash_screen.dart';
+import 'package:nobryo_eguas/core/services/notification_service.dart';
+import 'package:nobryo_eguas/core/services/realtime_sync_service.dart';
+import 'package:nobryo_eguas/core/services/sync_service.dart';
+import 'package:nobryo_eguas/shared/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'core/api/firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';

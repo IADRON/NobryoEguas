@@ -1,9 +1,9 @@
 // import 'dart:io';
 import 'package:flutter/material.dart';
 // import 'package:image_picker/image_picker.dart';
-import 'package:nobryo_final/core/models/user_model.dart';
-import 'package:nobryo_final/core/services/auth_service.dart';
-// import 'package:nobryo_final/shared/theme/theme.dart';
+import 'package:nobryo_eguas/core/models/user_model.dart';
+import 'package:nobryo_eguas/core/services/auth_service.dart';
+// import 'package:nobryo_eguas/shared/theme/theme.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final AppUser user;

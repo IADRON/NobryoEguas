@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:nobryo_final/features/agenda/screens/agenda_screen.dart';
-import 'package:nobryo_final/features/medicamentos/screens/medicamentos_screen.dart';
-import 'package:nobryo_final/features/propriedades/screens/propriedades_screen.dart';
-import 'package:nobryo_final/shared/widgets/custom_nav_bar.dart';
+import 'package:nobryo_eguas/features/agenda/screens/agenda_screen.dart';
+import 'package:nobryo_eguas/features/medicamentos/screens/medicamentos_screen.dart';
+import 'package:nobryo_eguas/features/propriedades/screens/propriedades_screen.dart';
+import 'package:nobryo_eguas/shared/widgets/custom_nav_bar.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});

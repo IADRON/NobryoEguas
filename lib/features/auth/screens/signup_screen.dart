@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:nobryo_final/core/services/auth_service.dart';
-import 'package:nobryo_final/features/auth/widgets/glass_container.dart';
+import 'package:nobryo_eguas/core/services/auth_service.dart';
+import 'package:nobryo_eguas/features/auth/widgets/glass_container.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});

@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:nobryo_final/core/database/sqlite_helper.dart';
-import 'package:nobryo_final/core/models/user_model.dart';
-import 'package:nobryo_final/core/services/sync_service.dart';
-import 'package:nobryo_final/features/auth/screens/signup_screen.dart';
-import 'package:nobryo_final/core/services/auth_service.dart';
+import 'package:nobryo_eguas/core/database/sqlite_helper.dart';
+import 'package:nobryo_eguas/core/models/user_model.dart';
+import 'package:nobryo_eguas/core/services/sync_service.dart';
+import 'package:nobryo_eguas/features/auth/screens/signup_screen.dart';
+import 'package:nobryo_eguas/core/services/auth_service.dart';
 
 class ManageUsersScreen extends StatefulWidget {
   const ManageUsersScreen({super.key});

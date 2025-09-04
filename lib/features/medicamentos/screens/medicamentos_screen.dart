@@ -1,13 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:nobryo_final/core/database/sqlite_helper.dart';
-import 'package:nobryo_final/core/models/medicamento_model.dart';
-import 'package:nobryo_final/core/services/sync_service.dart';
-import 'package:nobryo_final/features/auth/screens/manage_users_screen.dart';
-import 'package:nobryo_final/core/services/auth_service.dart';
-import 'package:nobryo_final/features/auth/widgets/user_profile_modal.dart';
-import 'package:nobryo_final/shared/theme/theme.dart';
-import 'package:nobryo_final/shared/widgets/loading_screen.dart';
+import 'package:nobryo_eguas/core/database/sqlite_helper.dart';
+import 'package:nobryo_eguas/core/models/medicamento_model.dart';
+import 'package:nobryo_eguas/core/services/sync_service.dart';
+import 'package:nobryo_eguas/features/auth/screens/manage_users_screen.dart';
+import 'package:nobryo_eguas/core/services/auth_service.dart';
+import 'package:nobryo_eguas/features/auth/widgets/user_profile_modal.dart';
+import 'package:nobryo_eguas/shared/theme/theme.dart';
+import 'package:nobryo_eguas/shared/widgets/loading_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -271,6 +271,7 @@ class _MedicamentosScreenState extends State<MedicamentosScreen> {
     showModalBottomSheet(
         context: context,
         isScrollControlled: true,
+        isDismissible: false,
         builder: (ctx) => Padding(
               padding: EdgeInsets.only(
                   bottom: MediaQuery.of(ctx).viewInsets.bottom,

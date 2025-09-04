@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:nobryo_final/shared/theme/theme.dart';
-import 'package:nobryo_final/shared/widgets/nav_bar_clipper.dart';
+import 'package:nobryo_eguas/shared/theme/theme.dart';
+import 'package:nobryo_eguas/shared/widgets/nav_bar_clipper.dart';
 
 class CustomNavBar extends StatelessWidget {
   final int currentIndex;

@@ -4,6 +4,7 @@ class Egua {
   String id;
   String? firebaseId;
   String nome;
+  String? proprietario;
   String rp;
   String pelagem;
   String? cobertura;
@@ -23,6 +24,7 @@ class Egua {
     required this.id,
     this.firebaseId,
     required this.nome,
+    required this.proprietario,
     required this.rp,
     required this.pelagem,
     this.cobertura,
@@ -52,6 +54,7 @@ class Egua {
       'id': id,
       'firebaseId': firebaseId,
       'nome': nome,
+      'proprietario': proprietario,
       'rp': rp,
       'pelagem': pelagem,
       'cobertura': cobertura,
@@ -74,6 +77,7 @@ class Egua {
       id: map['id'],
       firebaseId: map['firebaseId'],
       nome: map['nome'],
+      proprietario: map['proprietario'],
       rp: map['rp'],
       pelagem: map['pelagem'],
       cobertura: map['cobertura'],
@@ -96,6 +100,7 @@ class Egua {
     return {
       'idLocal': id,
       'nome': nome,
+      'proprietario': proprietario,
       'rp': rp,
       'pelagem': pelagem,
       'cobertura': cobertura,
@@ -119,6 +124,7 @@ class Egua {
       firebaseId: firebaseId,
       propriedadeId: propId,
       nome: map['nome'] ?? '',
+      proprietario: map['proprietario'] ?? '',
       rp: map['rp'] ?? '',
       pelagem: map['pelagem'] ?? '',
       cobertura: map['cobertura'],
@@ -139,6 +145,7 @@ class Egua {
     String? id,
     String? firebaseId,
     String? nome,
+    String? proprietario,
     String? rp,
     String? pelagem,
     String? cobertura,
@@ -158,6 +165,7 @@ class Egua {
       id: id ?? this.id,
       firebaseId: firebaseId ?? this.firebaseId,
       nome: nome ?? this.nome,
+      proprietario: proprietario ?? this.proprietario,
       rp: rp ?? this.rp,
       pelagem: pelagem ?? this.pelagem,
       cobertura: cobertura ?? this.cobertura,

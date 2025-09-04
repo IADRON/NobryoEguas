@@ -3,14 +3,14 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:nobryo_final/core/database/sqlite_helper.dart';
-import 'package:nobryo_final/core/models/user_model.dart';
+import 'package:nobryo_eguas/core/database/sqlite_helper.dart';
+import 'package:nobryo_eguas/core/models/user_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:nobryo_final/core/services/sync_service.dart';
+import 'package:nobryo_eguas/core/services/sync_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
-import 'package:nobryo_final/core/services/realtime_sync_service.dart';
-import 'package:nobryo_final/core/services/storage_service.dart';
+import 'package:nobryo_eguas/core/services/realtime_sync_service.dart';
+import 'package:nobryo_eguas/core/services/storage_service.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();

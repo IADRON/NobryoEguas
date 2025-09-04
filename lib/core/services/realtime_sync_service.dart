@@ -2,7 +2,7 @@
 
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:nobryo_final/core/services/sync_service.dart';
+import 'package:nobryo_eguas/core/services/sync_service.dart';
 
 class RealtimeSyncService {
   final SyncService _syncService;

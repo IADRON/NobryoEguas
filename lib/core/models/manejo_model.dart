@@ -24,9 +24,10 @@ class Manejo {
   bool isAtrasado;
 
   String? medicamentoId;
+  String? tratamento;
   String? inducao;
   DateTime? dataHoraInducao;
-  int? quantidadePalhetas; // Novo campo
+  int? quantidadePalhetas;
 
 
   Manejo({
@@ -47,6 +48,7 @@ class Manejo {
     this.isDeleted = false,
     this.isAtrasado = false,
     this.medicamentoId,
+    this.tratamento,
     this.inducao,
     this.dataHoraInducao,
     this.quantidadePalhetas, // Adicionado
@@ -72,6 +74,7 @@ class Manejo {
       'isDeleted': isDeleted ? 1 : 0,
       'isAtrasado': isAtrasado ? 1 : 0,
       'medicamentoId': medicamentoId,
+      'tratamento': tratamento,
       'inducao': inducao,
       'dataHoraInducao': dataHoraInducao?.toIso8601String(),
       'quantidadePalhetas': quantidadePalhetas, // Adicionado
@@ -98,6 +101,7 @@ class Manejo {
       isDeleted: map['isDeleted'] == 1,
       isAtrasado: map['isAtrasado'] == 1,
       medicamentoId: map['medicamentoId'],
+      tratamento: map['tratamento'],
       inducao: map['inducao'],
       dataHoraInducao: map['dataHoraInducao'] != null ? DateTime.parse(map['dataHoraInducao']) : null,
       quantidadePalhetas: map['quantidadePalhetas'], // Adicionado
@@ -118,10 +122,11 @@ class Manejo {
       'concluidoPorId': concluidoPorId,
       'responsavelPeaoId': responsavelPeaoId,
       'concluidoPorPeaoId': concluidoPorPeaoId,
-      'quantidadePalhetas': quantidadePalhetas, // Adicionado
+      'quantidadePalhetas': quantidadePalhetas,
     };
 
     if (medicamentoId != null) firebaseMap['medicamentoId'] = medicamentoId;
+    if (tratamento != null) firebaseMap['tratamento'] = tratamento;
     if (inducao != null) firebaseMap['inducao'] = inducao;
     if (dataHoraInducao != null) firebaseMap['dataHoraInducao'] = dataHoraInducao;
 
@@ -146,9 +151,10 @@ class Manejo {
       concluidoPorPeaoId: map['concluidoPorPeaoId'],
       statusSync: 'synced',
       medicamentoId: map['medicamentoId'],
+      tratamento: map['tratamento'],
       inducao: map['inducao'],
       dataHoraInducao: (map['dataHoraInducao'] as Timestamp?)?.toDate(),
-      quantidadePalhetas: map['quantidadePalhetas'], // Adicionado
+      quantidadePalhetas: map['quantidadePalhetas'],
     );
   }
 
@@ -169,9 +175,10 @@ class Manejo {
     bool? isDeleted,
     bool? isAtrasado,
     String? medicamentoId,
+    String? tratamento,
     String? inducao,
     DateTime? dataHoraInducao,
-    int? quantidadePalhetas, // Adicionado
+    int? quantidadePalhetas,
   }) {
     return Manejo(
       id: id ?? this.id,
@@ -190,9 +197,10 @@ class Manejo {
       isDeleted: isDeleted ?? this.isDeleted,
       isAtrasado: isAtrasado ?? this.isAtrasado,
       medicamentoId: medicamentoId ?? this.medicamentoId,
+      tratamento: tratamento ?? this.tratamento,
       inducao: inducao ?? this.inducao,
       dataHoraInducao: dataHoraInducao ?? this.dataHoraInducao,
-      quantidadePalhetas: quantidadePalhetas ?? this.quantidadePalhetas, // Adicionado
+      quantidadePalhetas: quantidadePalhetas ?? this.quantidadePalhetas,
     );
   }
 }
