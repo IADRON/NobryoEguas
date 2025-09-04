@@ -2046,7 +2046,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
     String? tipoSememSelecionado;
     int? quantidadePalhetas;
     final litrosController = TextEditingController();
-    
+
     final todosMedicamentos = await SQLiteHelper.instance.readAllMedicamentos();
     String? ovarioDirOp;
     String? ovarioEsqOp;
@@ -2080,14 +2080,14 @@ Widget _buildDetalhesManejo(Manejo manejo) {
 
     dynamic concluidoPorSelecionado = allUsersList.firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
     bool isVeterinario = true;
-    
+
     bool _incluirControleFolicular = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       isDismissible: false,
-      builder: (ctx) { 
+      builder: (ctx) {
         return StatefulBuilder(
         builder: (modalContext, setModalState) {
           void filterMedicamentos(String query) {
@@ -2187,7 +2187,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[600])),
                     if (manejo.tipo != 'Outros Manejos')
                       const Divider(height: 30, thickness: 1),
-                    
+
                     ..._buildSpecificForm(
                       context: context,
                       tipo: manejo.tipo,
@@ -2260,6 +2260,18 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                           edemaSelecionado: edemaSelecionado,
                           onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
                           uteroController: uteroController,
+                          tipoManejo: manejo.tipo,
+                          medicamentoSearchController: medicamentoSearchController,
+                          medicamentoSelecionado: medicamentoSelecionado,
+                          onMedicamentoChange: (val) => setModalState(() => medicamentoSelecionado = val),
+                          filterMedicamentos: filterMedicamentos,
+                          filteredMedicamentos: _filteredMedicamentos,
+                          showMedicamentoList: _showMedicamentoList,
+                          onShowMedicamentoListChange: (show) => setModalState(() => _showMedicamentoList = show),
+                          inducaoSelecionada: inducaoSelecionada,
+                          onInducaoChange: (val) => setModalState(() => inducaoSelecionada = val),
+                          dataHoraInducao: dataHoraInducao,
+                          onDataHoraInducaoChange: (val) => setModalState(() => dataHoraInducao = val),
                         ),
                       ],
 
@@ -2324,7 +2336,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                         DropdownButtonFormField<String>(
                           value: inducaoSelecionada,
                           decoration: InputDecoration(
-                            labelText: "Tipo de Indução", 
+                            labelText: "Tipo de Indução",
                             prefixIcon: Icon(Icons.healing_outlined),
                             suffixIcon: inducaoSelecionada != null
                                 ? IconButton(
@@ -2344,7 +2356,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                           onChanged: (value) => setModalState(() => inducaoSelecionada = value),
                         ),
                         const SizedBox(height: 15),
-                        
+
                         TextFormField(
                           readOnly: true,
                           controller: TextEditingController(
@@ -2392,10 +2404,10 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                               return "Obrigatório se indução foi selecionada";
                             }
                             return null;
-                          },  
+                          },
                         ),
                       ],
-                    
+
                     const Divider(height: 20, thickness: 1),
                     Text("Detalhes da Conclusão", style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 15),
@@ -2494,7 +2506,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                             final Map<String, dynamic> detalhes = manejo.detalhes;
                             detalhes['observacao'] = obsController.text;
 
-                            if (_incluirControleFolicular && manejo.tipo != 'Controle Folicular') {
+                            if ((_incluirControleFolicular && manejo.tipo != 'Controle Folicular') || manejo.tipo == 'Controle Folicular') {
                                 detalhes['ovarioDireito'] = ovarioDirOp;
                                 detalhes['ovarioDireitoTamanho'] = ovarioDirTamanhoController.text;
                                 detalhes['ovarioEsquerdo'] = ovarioEsqOp;
@@ -2503,17 +2515,18 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                                 detalhes['utero'] = uteroController.text;
                             }
 
+                             if (manejo.tipo == 'Inseminação' && _incluirControleFolicular) {
+                                manejo.medicamentoId = medicamentoSelecionado?.id;
+                                manejo.inducao = inducaoSelecionada;
+                                manejo.dataHoraInducao = dataHoraInducao;
+                            }
+
+
                             if (manejo.tipo == 'Controle Folicular') {
                                 detalhes['tratamento'] = tratamentoController.text;
                                 manejo.medicamentoId = medicamentoSelecionado?.id;
                                 manejo.inducao = inducaoSelecionada;
                                 manejo.dataHoraInducao = dataHoraInducao;
-                                detalhes['ovarioDireito'] = ovarioDirOp;
-                                detalhes['ovarioDireitoTamanho'] = ovarioDirTamanhoController.text;
-                                detalhes['ovarioEsquerdo'] = ovarioEsqOp;
-                                detalhes['ovarioEsquerdoTamanho'] = ovarioEsqTamanhoController.text;
-                                detalhes['edema'] = edemaSelecionado;
-                                detalhes['utero'] = uteroController.text;
                             } else if (manejo.tipo == 'Diagnóstico') {
                               detalhes['resultado'] = resultadoDiagnostico;
                               if (resultadoDiagnostico == 'Prenhe') {
@@ -2563,7 +2576,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                               detalhes['tipoSemem'] = tipoSememSelecionado;
                               if (tipoSememSelecionado == 'Congelado') {
                                 detalhes['quantidadePalhetas'] = quantidadePalhetas.toString();
-                                manejo.quantidadePalhetas = quantidadePalhetas; 
+                                manejo.quantidadePalhetas = quantidadePalhetas;
                               }
                               detalhes['dataHora'] = dataHoraInseminacao?.toIso8601String();
                             } else if (manejo.tipo == 'Lavado') {
@@ -2581,7 +2594,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                             manejo.statusSync = 'pending_update';
                             manejo.detalhes = detalhes;
                             manejo.dataAgendada = dataFinalManejo;
-                            
+
                             if (concluidoPorSelecionado is AppUser) {
                               manejo.concluidoPorId = concluidoPorSelecionado.uid;
                               manejo.concluidoPorPeaoId = null;
@@ -2598,13 +2611,13 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                             refreshData();
                             _autoSync();
 
-                            if (manejo.tipo == 'Controle Folicular' && dataHoraInducao != null) {
-                              final Propriedade? prop = _allPropriedades[widget.propriedadeMaeId]; 
+                            if ((manejo.tipo == 'Controle Folicular' || (manejo.tipo == 'Inseminação' && _incluirControleFolicular)) && dataHoraInducao != null) {
+                              final Propriedade? prop = _allPropriedades[widget.propriedadeMaeId];
                               if (prop != null) {
                                 await _promptForInseminationScheduleOnInduction(
-                                  context, 
+                                  context,
                                   _currentEgua,
-                                  prop, 
+                                  prop,
                                   dataHoraInducao!
                                 );
                               }
@@ -2657,12 +2670,12 @@ Widget _buildDetalhesManejo(Manejo manejo) {
     String? tipoManejoSelecionado = manejo?.tipo;
     DateTime dataFinalManejo = manejo?.dataAgendada ?? DateTime.now();
     final obsController = TextEditingController(text: manejo?.detalhes['observacao'] ?? '');
-    
+
     final garanhaoController = TextEditingController(text: manejo?.detalhes['garanhao'] ?? _currentEgua.cobertura);
     String? tipoSememSelecionado = manejo?.detalhes['tipoSemem'];
     int? quantidadePalhetas = manejo?.detalhes['quantidadePalhetas'];
     final litrosController = TextEditingController(text: manejo?.detalhes['litros']?.toString());
-    
+
     String? ovarioDirOp = manejo?.detalhes['ovarioDireito'];
     String? ovarioEsqOp = manejo?.detalhes['ovarioEsquerdo'];
     String? edemaSelecionado = manejo?.detalhes['edema'];
@@ -2676,7 +2689,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
         : null;
     final observacoesPartoController = TextEditingController(text: manejo?.detalhes['observacoesParto']);
     bool partoComSucesso = (manejo?.detalhes['resultadoParto'] as String? ?? 'Criou') == 'Criou';
-  
+
     final ovarioDirTamanhoController = TextEditingController(text: manejo?.detalhes['ovarioDireitoTamanho']?.toString());
     final ovarioEsqTamanhoController = TextEditingController(text: manejo?.detalhes['ovarioEsquerdoTamanho']?.toString());
     final uteroController = TextEditingController(text: manejo?.detalhes['utero']?.toString());
@@ -2685,7 +2698,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
 
     DateTime? dataHoraInseminacao = manejo?.detalhes['dataHora'] != null ? DateTime.tryParse(manejo!.detalhes['dataHora']) : null;
     DateTime? dataHoraInducao = manejo?.dataHoraInducao;
-    
+
     final todosMedicamentos = await SQLiteHelper.instance.readAllMedicamentos();
     Medicamento? medicamentoSelecionado;
       if (manejo?.medicamentoId != null) {
@@ -2695,7 +2708,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
         // ignore: null_check_always_fails
         medicamentoSelecionado = todosMedicamentos.firstWhere((med) => med.nome == manejo!.detalhes['medicamento'], orElse: () => todosMedicamentos.isNotEmpty ? todosMedicamentos.first : null!);
       }
-    
+
     String? inducaoSelecionada = manejo?.inducao;
     final medicamentoSearchController = TextEditingController(text: medicamentoSelecionado?.nome);
     List<Medicamento> _filteredMedicamentos = todosMedicamentos;
@@ -2719,14 +2732,14 @@ Widget _buildDetalhesManejo(Manejo manejo) {
     } else {
       concluidoPorSelecionado = currentUserDefault;
     }
-    
+
     bool _incluirControleFolicular = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       isDismissible: false,
-      builder: (ctx) { 
+      builder: (ctx) {
         return StatefulBuilder(
           builder: (modalContext, setModalState) {
           void filterMedicamentos(String query) {
@@ -2813,7 +2826,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                       },
                       validator: (v) => v == null ? "Obrigatório" : null,
                     ),
-                    
+
                     if (tipoManejoSelecionado != null) ...[
                       const SizedBox(height: 10),
                       ..._buildSpecificForm(
@@ -2875,18 +2888,31 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                           activeColor: AppTheme.darkGreen,
                         ),
                         if (_incluirControleFolicular)
-                        _buildControleFolicularInputs(
-                          setModalState: setModalState,
-                          ovarioDirOp: ovarioDirOp,
-                          onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
-                          ovarioDirTamanhoController: ovarioDirTamanhoController,
-                          ovarioEsqOp: ovarioEsqOp,
-                          onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
-                          ovarioEsqTamanhoController: ovarioEsqTamanhoController,
-                          edemaSelecionado: edemaSelecionado,
-                          onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
-                          uteroController: uteroController,
-                        ),
+                          _buildControleFolicularInputs(
+                            setModalState: setModalState,
+                            ovarioDirOp: ovarioDirOp,
+                            onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
+                            ovarioDirTamanhoController: ovarioDirTamanhoController,
+                            ovarioEsqOp: ovarioEsqOp,
+                            onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
+                            ovarioEsqTamanhoController: ovarioEsqTamanhoController,
+                            edemaSelecionado: edemaSelecionado,
+                            onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
+                            uteroController: uteroController,
+                            // Campos de Indução
+                            tipoManejo: tipoManejoSelecionado!,
+                            medicamentoSearchController: medicamentoSearchController,
+                            medicamentoSelecionado: medicamentoSelecionado,
+                            onMedicamentoChange: (val) => setModalState(() => medicamentoSelecionado = val),
+                            filterMedicamentos: filterMedicamentos,
+                            filteredMedicamentos: _filteredMedicamentos,
+                            showMedicamentoList: _showMedicamentoList,
+                            onShowMedicamentoListChange: (show) => setModalState(() => _showMedicamentoList = show),
+                            inducaoSelecionada: inducaoSelecionada,
+                            onInducaoChange: (val) => setModalState(() => inducaoSelecionada = val),
+                            dataHoraInducao: dataHoraInducao,
+                            onDataHoraInducaoChange: (val) => setModalState(() => dataHoraInducao = val),
+                          ),
                       ],
                     ],
 
@@ -2951,7 +2977,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                       DropdownButtonFormField<String>(
                         value: inducaoSelecionada,
                         decoration: InputDecoration(
-                          labelText: "Tipo de Indução", 
+                          labelText: "Tipo de Indução",
                           prefixIcon: Icon(Icons.healing_outlined),
                           suffixIcon: inducaoSelecionada != null
                               ? IconButton(
@@ -3018,10 +3044,10 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                             return "Obrigatório se indução foi selecionada";
                           }
                           return null;
-                        },  
+                        },
                       ),
                     ],
-                    
+
                     const Divider(height: 20, thickness: 1),
                     Text("Detalhes da Conclusão", style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 15),
@@ -3184,7 +3210,7 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                               detalhes['litros'] = litrosController.text;
                               detalhes['medicamento'] = medicamentoSelecionado?.nome;
                             } else if (tipoManejoSelecionado == 'Controle Folicular') {
-                              detalhes['tratamento'] = tratamentoController.text;          
+                              detalhes['tratamento'] = tratamentoController.text;
                               detalhes['ovarioDireito'] = ovarioDirOp;
                               detalhes['ovarioDireitoTamanho'] = ovarioDirTamanhoController.text;
                               detalhes['ovarioEsquerdo'] = ovarioEsqOp;
@@ -3209,9 +3235,9 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                                   concluidoPorId: concluidoPorSelecionado is AppUser ? concluidoPorSelecionado.uid : null,
                                   concluidoPorPeaoId: concluidoPorSelecionado is Peao ? concluidoPorSelecionado.id : null,
                                   statusSync: 'pending_update',
-                                  medicamentoId: tipoManejoSelecionado == 'Controle Folicular' ? medicamentoSelecionado?.id : null,
-                                  inducao: tipoManejoSelecionado == 'Controle Folicular' ? inducaoSelecionada : null,
-                                  dataHoraInducao: tipoManejoSelecionado == 'Controle Folicular' ? dataHoraInducao : null,
+                                  medicamentoId: (tipoManejoSelecionado == 'Controle Folicular' || (tipoManejoSelecionado == 'Inseminação' && _incluirControleFolicular)) ? medicamentoSelecionado?.id : null,
+                                  inducao: (tipoManejoSelecionado == 'Controle Folicular' || (tipoManejoSelecionado == 'Inseminação' && _incluirControleFolicular)) ? inducaoSelecionada : null,
+                                  dataHoraInducao: (tipoManejoSelecionado == 'Controle Folicular' || (tipoManejoSelecionado == 'Inseminação' && _incluirControleFolicular)) ? dataHoraInducao : null,
                                   quantidadePalhetas: (tipoManejoSelecionado == 'Inseminação' && tipoSememSelecionado == 'Congelado') ? quantidadePalhetas : null,
                               );
                               await SQLiteHelper.instance.updateManejo(updatedManejo);
@@ -3229,19 +3255,31 @@ Widget _buildDetalhesManejo(Manejo manejo) {
                                 quantidadePalhetas: (tipoManejoSelecionado == 'Inseminação' && tipoSememSelecionado == 'Congelado') ? quantidadePalhetas : null,
                                 status: 'Concluído',
                                 statusSync: 'pending_create',
-                                medicamentoId: tipoManejoSelecionado == 'Controle Folicular' ? medicamentoSelecionado?.id : null,
-                                inducao: tipoManejoSelecionado == 'Controle Folicular' ? inducaoSelecionada : null,
-                                dataHoraInducao: tipoManejoSelecionado == 'Controle Folicular' ? dataHoraInducao : null,
+                                medicamentoId: (tipoManejoSelecionado == 'Controle Folicular' || (tipoManejoSelecionado == 'Inseminação' && _incluirControleFolicular)) ? medicamentoSelecionado?.id : null,
+                                inducao: (tipoManejoSelecionado == 'Controle Folicular' || (tipoManejoSelecionado == 'Inseminação' && _incluirControleFolicular)) ? inducaoSelecionada : null,
+                                dataHoraInducao: (tipoManejoSelecionado == 'Controle Folicular' || (tipoManejoSelecionado == 'Inseminação' && _incluirControleFolicular)) ? dataHoraInducao : null,
                               );
                               await SQLiteHelper.instance.createManejo(novoManejo);
                             }
-                            
+
                             refreshData();
                             if (mounted) {
                               Navigator.of(ctx).pop();
                               _autoSync();
                             }
-                            
+
+                            if ((tipoManejoSelecionado == 'Controle Folicular' || (tipoManejoSelecionado == 'Inseminação' && _incluirControleFolicular)) && dataHoraInducao != null) {
+                              final Propriedade? prop = _allPropriedades[widget.propriedadeMaeId];
+                              if (prop != null) {
+                                await _promptForInseminationScheduleOnInduction(
+                                  context,
+                                  _currentEgua,
+                                  prop,
+                                  dataHoraInducao!
+                                );
+                              }
+                            }
+
                             final isFollicularControl = tipoManejoSelecionado == 'Controle Folicular' || _incluirControleFolicular;
                             if (isFollicularControl) {
                               await _promptForFollicularControlSchedule(
@@ -3817,7 +3855,31 @@ Widget _buildDetalhesManejo(Manejo manejo) {
     );
   }
 
-  _buildControleFolicularInputs({required void Function(void Function()) setModalState, required String? ovarioDirOp, required void Function(String? val) onOvarioDirChange, required TextEditingController ovarioDirTamanhoController, required String? ovarioEsqOp, required void Function(String? val) onOvarioEsqChange, required TextEditingController ovarioEsqTamanhoController, required String? edemaSelecionado, required void Function(String? val) onEdemaChange, required TextEditingController uteroController}) {
+  _buildControleFolicularInputs({
+  required void Function(void Function()) setModalState,
+  required String? ovarioDirOp,
+  required void Function(String? val) onOvarioDirChange,
+  required TextEditingController ovarioDirTamanhoController,
+  required String? ovarioEsqOp,
+  required void Function(String? val) onOvarioEsqChange,
+  required TextEditingController ovarioEsqTamanhoController,
+  required String? edemaSelecionado,
+  required void Function(String? val) onEdemaChange,
+  required TextEditingController uteroController,
+  // Novos parâmetros para Indução
+  required String tipoManejo,
+  required TextEditingController medicamentoSearchController,
+  required Medicamento? medicamentoSelecionado,
+  required Function(Medicamento?) onMedicamentoChange,
+  required void Function(String) filterMedicamentos,
+  required List<Medicamento> filteredMedicamentos,
+  required bool showMedicamentoList,
+  required Function(bool) onShowMedicamentoListChange,
+  required String? inducaoSelecionada,
+  required Function(String?) onInducaoChange,
+  required DateTime? dataHoraInducao,
+  required Function(DateTime?) onDataHoraInducaoChange,
+}) {
     final ovarioOptions = ["CL", "OV", "PEQ", "FL", "FH"];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3928,6 +3990,129 @@ Widget _buildDetalhesManejo(Manejo manejo) {
             decoration: const InputDecoration(
                 labelText: "Útero",
                 prefixIcon: Icon(Icons.notes_outlined))),
+
+        // Seção de Indução adicionada aqui
+        if (tipoManejo == 'Inseminação') ...[
+            const Divider(height: 20, thickness: 1),
+            Text("Indução", style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 15),
+            TextFormField(
+              controller: medicamentoSearchController,
+              decoration: InputDecoration(
+                labelText: "Buscar Medicamento",
+                prefixIcon: Icon(Icons.medication_outlined),
+                suffixIcon: medicamentoSelecionado != null
+                    ? IconButton(
+                        icon: Icon(Icons.close),
+                        onPressed: () {
+                          setModalState(() {
+                            onMedicamentoChange(null);
+                            medicamentoSearchController.clear();
+                            onShowMedicamentoListChange(true);
+                            FocusScope.of(context).unfocus();
+                          });
+                        },
+                      )
+                    : const Icon(Icons.search_outlined),
+              ),
+              onChanged: filterMedicamentos,
+              onTap: () => onShowMedicamentoListChange(true),
+            ),
+            if (showMedicamentoList)
+              SizedBox(
+                height: 150,
+                child: ListView.builder(
+                  itemCount: filteredMedicamentos.length,
+                  itemBuilder: (context, index) {
+                    final med = filteredMedicamentos[index];
+                    return ListTile(
+                      title: Text(med.nome),
+                      onTap: () {
+                        setModalState(() {
+                          onMedicamentoChange(med);
+                          medicamentoSearchController.text = med.nome;
+                          onShowMedicamentoListChange(false);
+                          FocusScope.of(context).unfocus();
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              value: inducaoSelecionada,
+              decoration: InputDecoration(
+                labelText: "Tipo de Indução",
+                prefixIcon: Icon(Icons.healing_outlined),
+                suffixIcon: inducaoSelecionada != null
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          setModalState(() {
+                            onInducaoChange(null);
+                            onDataHoraInducaoChange(null);
+                          });
+                        },
+                      )
+                    : null,
+              ),
+              items: ["HCG", "DESLO", "HCG+DESLO"]
+                  .map((label) => DropdownMenuItem(child: Text(label), value: label))
+                  .toList(),
+              onChanged: (value) => onInducaoChange(value),
+            ),
+            const SizedBox(height: 15),
+            TextFormField(
+              readOnly: true,
+              controller: TextEditingController(
+                text: dataHoraInducao == null ? '' : DateFormat('dd/MM/yyyy HH:mm').format(dataHoraInducao),
+              ),
+              decoration: const InputDecoration(
+                  labelText: "Data e Hora da Indução",
+                  hintText: 'Selecione',
+              ),
+              onTap: () async {
+                  final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+                  if (date == null) return;
+                  TimeOfDay? time;
+                    await showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: Text("Selecione a Hora"),
+                          content: TimePickerSpinner(
+                            is24HourMode: true,
+                            minutesInterval: 5,
+                            onTimeChange: (dateTime) {
+                              time = TimeOfDay.fromDateTime(dateTime);
+                            },
+                          ),
+                          actions: <Widget>[
+                            TextButton(
+                              child: Text("CANCELAR"),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                            TextButton(
+                              child: Text("OK"),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  if (time != null) {
+                     setModalState(() => onDataHoraInducaoChange(DateTime(date.year, date.month, date.day, time!.hour, time!.minute)));
+                  }
+              },
+              validator: (v) {
+                if (inducaoSelecionada != null && dataHoraInducao == null) {
+                  return "Obrigatório se indução foi selecionada";
+                }
+                return null;
+              },
+            ),
+          ],
       ],
     );
   }

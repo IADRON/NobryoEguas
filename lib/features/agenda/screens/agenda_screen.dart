@@ -230,117 +230,244 @@ class _AgendaScreenState extends State<AgendaScreen> with TickerProviderStateMix
     return Colors.grey;
   }
 
-    Widget _buildControleFolicularInputs({
-      required StateSetter setModalState,
-      // MODIFICADO: De List<String> para String?
-      required String? ovarioDirOp,
-      // MODIFICADO: Nome e tipo da função
-      required Function(String?) onOvarioDirChange,
-      required TextEditingController ovarioDirTamanhoController,
-      // MODIFICADO: De List<String> para String?
-      required String? ovarioEsqOp,
-      // MODIFICADO: Nome e tipo da função
-      required Function(String?) onOvarioEsqChange,
-      required TextEditingController ovarioEsqTamanhoController,
-      required String? edemaSelecionado,
-      required Function(String?) onEdemaChange,
-      required TextEditingController uteroController,
-    }) {
-      final ovarioOptions = ["CL", "OV", "PEQ", "FL", "FH"];
+  Widget _buildControleFolicularInputs({
+  required StateSetter setModalState,
+  required String? ovarioDirOp,
+  required Function(String?) onOvarioDirChange,
+  required TextEditingController ovarioDirTamanhoController,
+  required String? ovarioEsqOp,
+  required Function(String?) onOvarioEsqChange,
+  required TextEditingController ovarioEsqTamanhoController,
+  required String? edemaSelecionado,
+  required Function(String?) onEdemaChange,
+  required TextEditingController uteroController,
+  // Novos parâmetros para Indução
+  String? tipoManejo,
+  TextEditingController? medicamentoSearchController,
+  Medicamento? medicamentoSelecionado,
+  Function(Medicamento?)? onMedicamentoChange,
+  void Function(String)? filterMedicamentos,
+  List<Medicamento>? filteredMedicamentos,
+  bool? showMedicamentoList,
+  Function(bool)? onShowMedicamentoListChange,
+  String? inducaoSelecionada,
+  Function(String?)? onInducaoChange,
+  DateTime? dataHoraInducao,
+  Function(DateTime?)? onDataHoraInducaoChange,
+}) {
+    final ovarioOptions = ["CL", "OV", "PEQ", "FL", "FH"];
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 10),
-          Text("Dados do Controle Folicular",
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 15),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                  child: DropdownButtonFormField<String>(
-                      // A propriedade 'value' agora recebe o tipo correto (String?)
-                      value: ovarioDirOp,
-                      decoration: const InputDecoration(
-                          labelText: "Ovário Direito",
-                          prefixIcon: Icon(Icons.join_right_outlined)),
-                      items: ovarioOptions
-                          .map((o) => DropdownMenuItem(value: o, child: Text(o)))
-                          .toList(),
-                      // MODIFICADO: Chama a função correta passada por parâmetro
-                      onChanged: (val) => setModalState(() => onOvarioDirChange(val)))),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 120,
-                child: TextFormField(
-                  controller: ovarioDirTamanhoController,
-                  decoration:
-                      const InputDecoration(labelText: "Tamanho (mm)"),
-                ),
-              )
-            ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+        Text("Dados do Controle Folicular",
+            style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 15),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+                child: DropdownButtonFormField<String>(
+                    value: ovarioDirOp,
+                    decoration: const InputDecoration(
+                        labelText: "Ovário Direito",
+                        prefixIcon: Icon(Icons.join_right_outlined)),
+                    items: ovarioOptions
+                        .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+                        .toList(),
+                    onChanged: (val) => setModalState(() => onOvarioDirChange(val)))),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 120,
+              child: TextFormField(
+                controller: ovarioDirTamanhoController,
+                decoration:
+                    const InputDecoration(labelText: "Tamanho (mm)"),
+              ),
+            )
+          ],
+        ),
+        const SizedBox(height: 15),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+                child: DropdownButtonFormField<String>(
+                    value: ovarioEsqOp,
+                    decoration: const InputDecoration(
+                        labelText: "Ovário Esquerdo",
+                        prefixIcon: Icon(Icons.join_left_outlined)),
+                    items: ovarioOptions
+                        .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+                        .toList(),
+                    onChanged: (val) => setModalState(() => onOvarioEsqChange(val)))),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 120,
+              child: TextFormField(
+                controller: ovarioEsqTamanhoController,
+                decoration:
+                    const InputDecoration(labelText: "Tamanho (mm)"),
+              ),
+            )
+          ],
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          value: edemaSelecionado,
+          decoration: InputDecoration(
+            labelText: "Edema",
+            prefixIcon: Icon(Icons.numbers_outlined),
+            suffixIcon: edemaSelecionado != null
+                ? IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      setModalState(() {
+                        onEdemaChange(null);
+                      });
+                    },
+                  )
+                : null,
           ),
+          items: ['0', '1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: onEdemaChange,
+        ),
+        const SizedBox(height: 10),
+        TextFormField(
+          controller: uteroController,
+          decoration: const InputDecoration(
+              labelText: "Útero", prefixIcon: Icon(Icons.notes_outlined)),
+        ),
+
+        // Seção de Indução adicionada aqui
+        if (tipoManejo == 'Inseminação' && onMedicamentoChange != null) ...[
+          const Divider(height: 20, thickness: 1),
+          Text("Indução", style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 15),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                  child: DropdownButtonFormField<String>(
-                      // A propriedade 'value' agora recebe o tipo correto (String?)
-                      value: ovarioEsqOp,
-                      decoration: const InputDecoration(
-                          labelText: "Ovário Esquerdo", // Corrigido o Label
-                          prefixIcon: Icon(Icons.join_left_outlined)),
-                      items: ovarioOptions
-                          .map((o) => DropdownMenuItem(value: o, child: Text(o)))
-                          .toList(),
-                      // MODIFICADO: Chama a função correta passada por parâmetro
-                      onChanged: (val) => setModalState(() => onOvarioEsqChange(val)))),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 120,
-                child: TextFormField(
-                  controller: ovarioEsqTamanhoController,
-                  decoration:
-                      const InputDecoration(labelText: "Tamanho (mm)"),
-                ),
-              )
-            ],
-          ),
-          const SizedBox(height: 10),
-          DropdownButtonFormField<String>(
-            value: edemaSelecionado,
+          TextFormField(
+            controller: medicamentoSearchController,
             decoration: InputDecoration(
-              labelText: "Edema",
-              prefixIcon: Icon(Icons.numbers_outlined),
-              suffixIcon: edemaSelecionado != null
+              labelText: "Buscar Medicamento",
+              prefixIcon: Icon(Icons.medication_outlined),
+              suffixIcon: medicamentoSelecionado != null
                   ? IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: Icon(Icons.close),
                       onPressed: () {
                         setModalState(() {
-                          // Correção aqui também: não se atribui a um parâmetro
-                          onEdemaChange(null);
+                          onMedicamentoChange(null);
+                          medicamentoSearchController?.clear();
+                          onShowMedicamentoListChange!(true);
+                          FocusScope.of(context).unfocus();
+                        });
+                      },
+                    )
+                  : const Icon(Icons.search_outlined),
+            ),
+            onChanged: filterMedicamentos,
+            onTap: () => onShowMedicamentoListChange!(true),
+          ),
+          if (showMedicamentoList == true)
+            SizedBox(
+              height: 150,
+              child: ListView.builder(
+                itemCount: filteredMedicamentos?.length ?? 0,
+                itemBuilder: (context, index) {
+                  final med = filteredMedicamentos![index];
+                  return ListTile(
+                    title: Text(med.nome),
+                    onTap: () {
+                      setModalState(() {
+                        onMedicamentoChange(med);
+                        medicamentoSearchController?.text = med.nome;
+                        onShowMedicamentoListChange!(false);
+                        FocusScope.of(context).unfocus();
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: inducaoSelecionada,
+            decoration: InputDecoration(
+              labelText: "Tipo de Indução",
+              prefixIcon: Icon(Icons.healing_outlined),
+              suffixIcon: inducaoSelecionada != null
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 20),
+                      onPressed: () {
+                        setModalState(() {
+                          onInducaoChange!(null);
+                          onDataHoraInducaoChange!(null);
                         });
                       },
                     )
                   : null,
             ),
-            items: ['0', '1', '1-2', '2', '2-3', '3', '3-4', '4', '4-5', '5']
-                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+            items: ["HCG", "DESLO", "HCG+DESLO"]
+                .map((label) => DropdownMenuItem(child: Text(label), value: label))
                 .toList(),
-            onChanged: onEdemaChange,
+            onChanged: (value) => onInducaoChange!(value),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 15),
           TextFormField(
-            controller: uteroController,
+            readOnly: true,
+            controller: TextEditingController(
+              text: dataHoraInducao == null ? '' : DateFormat('dd/MM/yyyy HH:mm').format(dataHoraInducao),
+            ),
             decoration: const InputDecoration(
-                labelText: "Útero", prefixIcon: Icon(Icons.notes_outlined)),
+                labelText: "Data e Hora da Indução",
+                hintText: 'Selecione',
+            ),
+            onTap: () async {
+                final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+                if (date == null) return;
+                TimeOfDay? time;
+                  await showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text("Selecione a Hora"),
+                        content: TimePickerSpinner(
+                          is24HourMode: true,
+                          minutesInterval: 5,
+                          onTimeChange: (dateTime) {
+                            time = TimeOfDay.fromDateTime(dateTime);
+                          },
+                        ),
+                        actions: <Widget>[
+                          TextButton(
+                            child: Text("CANCELAR"),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                          TextButton(
+                            child: Text("OK"),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                if (time != null) {
+                   setModalState(() => onDataHoraInducaoChange!(DateTime(date.year, date.month, date.day, time!.hour, time!.minute)));
+                }
+            },
+            validator: (v) {
+              if (inducaoSelecionada != null && dataHoraInducao == null) {
+                return "Obrigatório se indução foi selecionada";
+              }
+              return null;
+            },
           ),
         ],
-      );
-    }
-    
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final username = _authService.currentUserNotifier.value?.username;
@@ -1867,7 +1994,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
 
     final Propriedade? lote = _allPropriedades[egua.propriedadeId];
     final String propriedadeMaeId = lote?.parentId ?? egua.propriedadeId;
-    final Propriedade? propriedadeMaeSelecionada = _allPropriedades[propriedadeMaeId]; 
+    final Propriedade? propriedadeMaeSelecionada = _allPropriedades[propriedadeMaeId];
 
     bool isVeterinario = true;
 
@@ -1888,7 +2015,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     String? edemaSelecionado;
     final uteroController = TextEditingController();
     String? idadeEmbriaoSelecionada;
-    
+
     Egua? doadoraSelecionada;
     final avaliacaoUterinaController = TextEditingController();
     String? resultadoDiagnostico;
@@ -1902,7 +2029,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     List<Medicamento> _filteredMedicamentos = todosMedicamentos;
     bool _showMedicamentoList = false;
     DateTime dataFinalManejo = DateTime.now();
-    
+
     dynamic concluidoPorSelecionado = allUsersList.firstWhere((u) => u.uid == currentUser.uid, orElse: () => allUsersList.first);
     bool _incluirControleFolicular = false;
 
@@ -1917,6 +2044,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
     DateTime? dataHoraParto;
     final observacoesPartoController = TextEditingController();
     bool partoComSucesso = true;
+    int? quantidadePalhetas;
 
     showModalBottomSheet(
       context: context,
@@ -1928,7 +2056,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
       builder: (ctx) {
         return StatefulBuilder(
         builder: (modalContext, setModalState) {
-          
+
           void filterMedicamentos(String query) {
             setModalState(() {
               _filteredMedicamentos = query.isEmpty
@@ -2043,15 +2171,16 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                       onDataHoraInseminacaoChange: (val) => setModalState(() => dataHoraInseminacao = val),
                       onMedicamentoChange: (val) => setModalState(() => medicamentoSelecionado = val),
                       onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
-                      // MODIFICADO: A função agora simplesmente atribui o novo valor (String?)
                       onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
                       onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
                       onIdadeEmbriaoChange: (val) => setModalState(() => idadeEmbriaoSelecionada = val),
                       onDoadoraChange: (val) => setModalState(() => doadoraSelecionada = val),
                       onResultadoChange: (val) => setModalState(() => resultadoDiagnostico = val),
                       onTipoSememChange: (val) => setModalState(() => tipoSememSelecionado = val),
+                      onQuantidadePalhetasChange: (val) => setModalState(() => quantidadePalhetas = val),
                       garanhaoController: garanhaoController,
                       tipoSememSelecionado: tipoSememSelecionado,
+                      quantidadePalhetas: quantidadePalhetas,
                       dataHoraInseminacao: dataHoraInseminacao,
                       litrosController: litrosController,
                       medicamentoSelecionado: medicamentoSelecionado,
@@ -2101,19 +2230,30 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                         _buildControleFolicularInputs(
                           setModalState: setModalState,
                           ovarioDirOp: ovarioDirOp,
-                          // MODIFICADO: Lógica de atualização para item único
                           onOvarioDirChange: (val) => setModalState(() => ovarioDirOp = val),
                           ovarioDirTamanhoController: ovarioDirTamanhoController,
                           ovarioEsqOp: ovarioEsqOp,
-                          // MODIFICADO: Lógica de atualização para item único
                           onOvarioEsqChange: (val) => setModalState(() => ovarioEsqOp = val),
                           ovarioEsqTamanhoController: ovarioEsqTamanhoController,
                           edemaSelecionado: edemaSelecionado,
                           onEdemaChange: (val) => setModalState(() => edemaSelecionado = val),
                           uteroController: uteroController,
+                          // Campos de Indução
+                          tipoManejo: manejo.tipo,
+                          medicamentoSearchController: medicamentoSearchController,
+                          medicamentoSelecionado: medicamentoSelecionado,
+                          onMedicamentoChange: (val) => setModalState(() => medicamentoSelecionado = val),
+                          filterMedicamentos: filterMedicamentos,
+                          filteredMedicamentos: _filteredMedicamentos,
+                          showMedicamentoList: _showMedicamentoList,
+                          onShowMedicamentoListChange: (show) => setModalState(() => _showMedicamentoList = show),
+                          inducaoSelecionada: inducaoSelecionada,
+                          onInducaoChange: (val) => setModalState(() => inducaoSelecionada = val),
+                          dataHoraInducao: dataHoraInducao,
+                          onDataHoraInducaoChange: (val) => setModalState(() => dataHoraInducao = val),
                         ),
                     ],
-                    
+
                     if (manejo.tipo == 'Controle Folicular') ...[
                       const Divider(height: 20, thickness: 1),
                       Text("Tratamento", style: Theme.of(context).textTheme.titleMedium),
@@ -2178,7 +2318,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                       DropdownButtonFormField<String>(
                         value: inducaoSelecionada,
                         decoration: InputDecoration(
-                          labelText: "Tipo de Indução", 
+                          labelText: "Tipo de Indução",
                           prefixIcon: Icon(Icons.healing_outlined),
                           suffixIcon: inducaoSelecionada != null
                               ? IconButton(
@@ -2252,7 +2392,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                         },
                       ),
                     ],
-                    
+
                     if (manejo.tipo != 'Outros Manejos')
                       const Divider(height: 30, thickness: 1),
 
@@ -2342,7 +2482,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                         decoration: const InputDecoration(
                             labelText: "Observações Finais", prefixIcon: Icon(Icons.comment_outlined)),
                         maxLines: 3),
-                    
+
                     const SizedBox(height: 30),
                     SizedBox(
                       width: double.infinity,
@@ -2359,7 +2499,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                             final Map<String, dynamic> detalhes = manejo.detalhes;
                             detalhes['observacao'] = obsController.text;
 
-                            if (_incluirControleFolicular && manejo.tipo != 'Controle Folicular') {
+                           if ((_incluirControleFolicular && manejo.tipo != 'Controle Folicular') || manejo.tipo == 'Controle Folicular') {
                                 detalhes['ovarioDireito'] = ovarioDirOp;
                                 detalhes['ovarioDireitoTamanho'] = ovarioDirTamanhoController.text;
                                 detalhes['ovarioEsquerdo'] = ovarioEsqOp;
@@ -2368,12 +2508,18 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                                 detalhes['utero'] = uteroController.text;
                             }
 
+                             if (manejo.tipo == 'Inseminação' && _incluirControleFolicular) {
+                                manejo.medicamentoId = medicamentoSelecionado?.id;
+                                manejo.inducao = inducaoSelecionada;
+                                manejo.dataHoraInducao = dataHoraInducao;
+                            }
+
                             if (manejo.tipo == 'Controle Folicular') {
                                 manejo.medicamentoId = medicamentoSelecionado?.id;
                                 manejo.inducao = inducaoSelecionada;
                                 manejo.dataHoraInducao = dataHoraInducao;
                             }
-                            
+
                             if (manejo.tipo == 'Diagnóstico') {
                               detalhes['resultado'] = resultadoDiagnostico;
                             if (resultadoDiagnostico == 'Prenhe') {
@@ -2410,16 +2556,11 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                               detalhes['garanhao'] = garanhaoController.text;
                               detalhes['tipoSemem'] = tipoSememSelecionado;
                               detalhes['dataHora'] = dataHoraInseminacao?.toIso8601String();
+                              detalhes['quantidadePalhetas'] = quantidadePalhetas.toString();
+                              manejo.quantidadePalhetas = quantidadePalhetas;
                             } else if (manejo.tipo == 'Lavado') {
                               detalhes['litros'] = litrosController.text;
                               detalhes['medicamento'] = medicamentoSelecionado?.nome;
-                            } else if (manejo.tipo == 'Controle Folicular') {
-                              detalhes['ovarioDireito'] = ovarioDirOp;
-                              detalhes['ovarioDireitoTamanho'] = ovarioDirTamanhoController.text;
-                              detalhes['ovarioEsquerdo'] = ovarioEsqOp;
-                              detalhes['ovarioEsquerdoTamanho'] = ovarioEsqTamanhoController.text;
-                              detalhes['edema'] = edemaSelecionado;
-                              detalhes['utero'] = uteroController.text;
                             } else if (manejo.tipo == 'Coleta de Embrião') {
                               detalhes['idadeEmbriao'] = idadeEmbriaoSelecionada;
                             } else if (manejo.tipo == 'Transferência de Embrião') {
@@ -2435,7 +2576,7 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                             manejo.statusSync = 'pending_update';
                             manejo.detalhes = detalhes;
                             manejo.dataAgendada = dataFinalManejo;
-                            
+
                             if (concluidoPorSelecionado is AppUser) {
                               manejo.concluidoPorId = concluidoPorSelecionado.uid;
                               manejo.concluidoPorPeaoId = null;
@@ -2451,13 +2592,13 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
                               Navigator.of(ctx).pop();
                             }
 
-                            if (manejo.tipo == 'Controle Folicular' && dataHoraInducao != null) {
+                            if ((manejo.tipo == 'Controle Folicular' || (manejo.tipo == 'Inseminação' && _incluirControleFolicular)) && dataHoraInducao != null) {
                               final Propriedade? prop = _allPropriedades[propriedadeMaeId];
                               if (prop != null) {
                                 await _promptForInseminationScheduleOnInduction(context, egua, prop, dataHoraInducao!);
                               }
                             }
-                            
+
                             final isFollicularControl = manejo.tipo == 'Controle Folicular' || _incluirControleFolicular;
                               if (isFollicularControl) {
                                 await _promptForFollicularControlSchedule(
@@ -2518,53 +2659,55 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
   }
 
   List<Widget> _buildSpecificForm({
-    required BuildContext context,
-    required Egua egua,
-    required String tipo,
-    required StateSetter setModalState,
-    required TextEditingController garanhaoController,
-    String? tipoSememSelecionado,
-    required Function(String?) onTipoSememChange,
-    required DateTime? dataHoraInseminacao,
-    required Function(DateTime?) onDataHoraInseminacaoChange,
-    required TextEditingController litrosController,
-    required Medicamento? medicamentoSelecionado,
-    required Function(Medicamento?) onMedicamentoChange,
-    required List<Medicamento> allMeds,
-    required String? ovarioDirOp,
-    required Function(String?) onOvarioDirChange,
-    required String? ovarioEsqOp,
-    required Function(String?) onOvarioEsqChange,
-    required TextEditingController ovarioDirTamanhoController,
-    required TextEditingController ovarioEsqTamanhoController,
-    required String? edemaSelecionado,
-    required Function(String?) onEdemaChange,
-    required TextEditingController uteroController,
-    required String? idadeEmbriao,
-    required Function(String?) onIdadeEmbriaoChange,
-    required Egua? doadoraSelecionada,
-    required Function(Egua?) onDoadoraChange,
-    required TextEditingController avaliacaoUterinaController,
-    required String? resultadoDiagnostico,
-    required Function(String?) onResultadoChange,
-    required TextEditingController diasPrenheController,
-    required Propriedade? propDoadoraSelecionada,
-    required TextEditingController propDoadoraSearchController,
-    required Function(Propriedade?) onPropDoadoraChange,
-    required List<Propriedade> filteredPropsDoadora,
-    required bool showPropDoadoraList,
-    required Function(String) onFilterPropsDoadora,
-    required Function(bool) onShowPropDoadoraListChange,
-    required List<Propriedade> allPropsDoadora,
-    String? sexoPotro,
-    required Function(String?) onSexoPotroChange,
-    required TextEditingController pelagemController,
-    DateTime? dataHoraParto,
-    required Function(DateTime?) onDataHoraPartoChange,
-    required TextEditingController observacoesPartoController,
-    required bool partoComSucesso,
-    required Function(bool) onPartoComSucessoChange,
-  }) {
+  required BuildContext context,
+  required Egua egua,
+  required String tipo,
+  required StateSetter setModalState,
+  required TextEditingController garanhaoController,
+  String? tipoSememSelecionado,
+  int? quantidadePalhetas,
+  required Function(String?) onTipoSememChange,
+  required Function(int?) onQuantidadePalhetasChange,
+  required DateTime? dataHoraInseminacao,
+  required Function(DateTime?) onDataHoraInseminacaoChange,
+  required TextEditingController litrosController,
+  required Medicamento? medicamentoSelecionado,
+  required Function(Medicamento?) onMedicamentoChange,
+  required List<Medicamento> allMeds,
+  required String? ovarioDirOp,
+  required Function(String?) onOvarioDirChange,
+  required String? ovarioEsqOp,
+  required Function(String?) onOvarioEsqChange,
+  required TextEditingController ovarioDirTamanhoController,
+  required TextEditingController ovarioEsqTamanhoController,
+  required String? edemaSelecionado,
+  required Function(String?) onEdemaChange,
+  required TextEditingController uteroController,
+  required String? idadeEmbriao,
+  required Function(String?) onIdadeEmbriaoChange,
+  required Egua? doadoraSelecionada,
+  required Function(Egua?) onDoadoraChange,
+  required TextEditingController avaliacaoUterinaController,
+  required String? resultadoDiagnostico,
+  required Function(String?) onResultadoChange,
+  required TextEditingController diasPrenheController,
+  required Propriedade? propDoadoraSelecionada,
+  required TextEditingController propDoadoraSearchController,
+  required Function(Propriedade?) onPropDoadoraChange,
+  required List<Propriedade> filteredPropsDoadora,
+  required bool showPropDoadoraList,
+  required Function(String) onFilterPropsDoadora,
+  required Function(bool) onShowPropDoadoraListChange,
+  required List<Propriedade> allPropsDoadora,
+  String? sexoPotro,
+  required Function(String?) onSexoPotroChange,
+  required TextEditingController pelagemController,
+  DateTime? dataHoraParto,
+  required Function(DateTime?) onDataHoraPartoChange,
+  required TextEditingController observacoesPartoController,
+  required bool partoComSucesso,
+  required Function(bool) onPartoComSucessoChange,
+}) {
     final idadeEmbriaoOptions = ['D6', 'D7', 'D8', 'D9', 'D10', 'D11'];
     final tiposSemem = ['Refrigerado', 'Congelado', 'A Fresco', 'Monta Natural'];
 
@@ -2750,6 +2893,22 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
             onChanged: (val) => setModalState(() => onTipoSememChange(val)),
             validator: (v) => v == null ? "Selecione o tipo de sêmen" : null,
           ),
+          if (tipoSememSelecionado == 'Congelado') ...[
+            const SizedBox(height: 10),
+            DropdownButtonFormField<int>(
+              value: quantidadePalhetas,
+              decoration: const InputDecoration(
+                labelText: "Quantidade de Palhetas",
+                prefixIcon: Icon(Icons.unfold_more_outlined),
+              ),
+              hint: const Text("Selecione a quantidade"),
+              items: List.generate(15, (index) => index + 1)
+                  .map((qnt) => DropdownMenuItem(value: qnt, child: Text(qnt.toString())))
+                  .toList(),
+              onChanged: (val) => setModalState(() => onQuantidadePalhetasChange(val)),
+              validator: (v) => v == null ? "Obrigatório" : null,
+            ),
+          ],
           const SizedBox(height: 15),
           TextFormField(
             readOnly: true,
@@ -2831,11 +2990,9 @@ void _showEditAgendamentoModal(BuildContext context, {required Manejo manejo}) a
           _buildControleFolicularInputs(
             setModalState: setModalState,
             ovarioDirOp: ovarioDirOp,
-            // CORRIGIDO: de onOvarioDirToggle para onOvarioDirChange
             onOvarioDirChange: onOvarioDirChange,
             ovarioDirTamanhoController: ovarioDirTamanhoController,
             ovarioEsqOp: ovarioEsqOp,
-            // CORRIGIDO: de onOvarioEsqToggle para onOvarioEsqChange
             onOvarioEsqChange: onOvarioEsqChange,
             ovarioEsqTamanhoController: ovarioEsqTamanhoController,
             edemaSelecionado: edemaSelecionado,
